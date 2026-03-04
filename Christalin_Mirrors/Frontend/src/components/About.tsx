@@ -3,13 +3,6 @@ import { StaggerContainer, StaggerItem } from './Animations'
 import aboutImg from '../assets/about-salon.png'
 import './About.css'
 
-const stats = [
-    { number: '200+', label: 'Happy Clients' },
-    { number: '5', label: 'Branches' },
-    { number: '15+', label: 'Expert Stylists' },
-    { number: '12+', label: 'Years Experience' },
-]
-
 export default function About() {
     return (
         <section className="about section" id="about">
@@ -24,46 +17,42 @@ export default function About() {
                         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     >
                         <div className="about-image-ring" />
-                        <img src={aboutImg} alt="CM Salon Interior" className="about-image" loading="lazy" />
+                        <img src={aboutImg} alt="Christalin Mirrors Salon" className="about-image" loading="lazy" />
                     </motion.div>
 
                     {/* Text */}
                     <StaggerContainer>
                         <StaggerItem>
-                            <p className="section-label about-label">Our Story</p>
+                            <p className="section-label about-label">About Us</p>
                         </StaggerItem>
                         <StaggerItem>
-                            <h2 className="about-heading">The Story of CM</h2>
+                            <h2 className="about-heading">About Christalin Mirrors</h2>
                         </StaggerItem>
                         <StaggerItem>
                             <p className="about-text">
-                                Born from a passion for artistry and self-expression, Christalin Mirrors began
-                                with a single vision — to create a space where beauty meets individuality. From
-                                our roots in Kalaburagi to our growing presence across Karnataka, every salon is
-                                a studio of transformation.
+                                <strong>Christalin Mirrors</strong> is a refined unisex salon, created for individuals who
+                                appreciate quality, comfort, and elevated grooming experiences. We offer
+                                expert hair, skin, and beauty services for both women and men, combining
+                                skilled artistry with premium products and personalised attention. Our
+                                space is thoughtfully designed to feel calm, welcoming, and sophisticated,
+                                where every client is treated with care and precision.
                             </p>
                         </StaggerItem>
                         <StaggerItem>
                             <p className="about-text">
-                                Our master stylists blend international techniques with a deep understanding of
-                                Indian hair textures and trends. We don't just style hair — we craft confidence,
-                                one look at a time.
+                                At Christalin Mirrors, we believe beauty and grooming are personal journeys.
+                                Our goal is to refine your look, reflect your individuality, and help you
+                                radiate confidence every day.
                             </p>
+                        </StaggerItem>
+                        <StaggerItem>
+                            <div className="founder-note">
+                                <p className="founder-label">Founder</p>
+                                <p className="founder-name">Sushmitha Cristalin A.</p>
+                            </div>
                         </StaggerItem>
                     </StaggerContainer>
                 </div>
-
-                {/* Stats Row */}
-                <StaggerContainer className="about-stats">
-                    {stats.map(stat => (
-                        <StaggerItem key={stat.label}>
-                            <div className="about-stat">
-                                <div className="about-stat-number">{stat.number}</div>
-                                <div className="about-stat-label">{stat.label}</div>
-                            </div>
-                        </StaggerItem>
-                    ))}
-                </StaggerContainer>
             </div>
         </section>
     )

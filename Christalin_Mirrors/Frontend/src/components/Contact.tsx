@@ -42,10 +42,10 @@ export default function Contact() {
                 >
                     {/* Image Side */}
                     <div className="contact-image-side">
-                        <img src={contactImg} alt="CM Salon" loading="lazy" />
+                        <img src={contactImg} alt="Christalin Mirrors Salon" loading="lazy" />
                         <div className="contact-image-overlay">
                             <span className="contact-image-text">
-                                Let's Create<br />Something<br />Beautiful
+                                Refine<br />Reflect<br />Radiate
                             </span>
                         </div>
                     </div>
@@ -102,7 +102,7 @@ export default function Contact() {
                                             name="user_phone"
                                             type="tel"
                                             className="form-input"
-                                            placeholder="+91 98765 43210"
+                                            placeholder="+91 72042 36981"
                                         />
                                     </div>
 
@@ -116,10 +116,15 @@ export default function Contact() {
                                         >
                                             <option value="" disabled>Select a service</option>
                                             <option value="haircut">Haircut & Styling</option>
-                                            <option value="color">Color & Highlights</option>
-                                            <option value="treatment">Hair Treatment</option>
-                                            <option value="bridal">Bridal Package</option>
-                                            <option value="grooming">Grooming</option>
+                                            <option value="haircare">Hair Care & Spa</option>
+                                            <option value="korean">Korean Head Spa Rituals</option>
+                                            <option value="color">Hair Colour & Highlights</option>
+                                            <option value="treatment">Hair Treatments (Keratin/Smoothing)</option>
+                                            <option value="skincare">Skincare & Facials</option>
+                                            <option value="bridal">Bridal & Party Makeup</option>
+                                            <option value="nails">Nails & Extensions</option>
+                                            <option value="mens">Men's Grooming</option>
+                                            <option value="massage">Wellness Massage</option>
                                             <option value="other">Other</option>
                                         </select>
                                     </div>

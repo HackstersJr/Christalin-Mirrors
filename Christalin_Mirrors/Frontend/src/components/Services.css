@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   Services — Editorial Grid with Tabs
+   Services — Editorial Grid with Tabs + Korean Highlight
    ═══════════════════════════════════════════════════════════════ */
 
 .services {
@@ -38,7 +38,6 @@
     font-size: var(--text-xs);
     font-weight: 500;
     letter-spacing: 1.5px;
-    text-transform: uppercase;
     color: var(--text-muted);
     background: none;
     border: 1px solid var(--border);
@@ -46,6 +45,9 @@
     padding: 10px 24px;
     cursor: pointer;
     transition: all var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .services-tab:hover {
@@ -59,7 +61,30 @@
     color: #FAFAFA;
 }
 
-/* ─── Featured Service ────────────────────────────────────────── */
+/* Korean Ritual Tab — Special Glow */
+.services-tab.korean-tab {
+    border-color: var(--accent);
+    color: var(--accent);
+    position: relative;
+}
+
+.services-tab.korean-tab::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(135deg, var(--accent), #D4A574, var(--accent));
+    z-index: -1;
+    opacity: 0.15;
+}
+
+.services-tab.korean-tab.active {
+    background: linear-gradient(135deg, var(--accent), #D4A574);
+    border-color: transparent;
+    color: #FAFAFA;
+}
+
+/* ─── Featured Service — Korean Head Spa ─────────────────────── */
 .featured-service {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -68,6 +93,20 @@
     border-radius: var(--radius-lg);
     overflow: hidden;
     background: var(--bg-secondary);
+}
+
+.korean-featured {
+    position: relative;
+}
+
+.korean-featured::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--accent-muted);
+    z-index: 1;
+    pointer-events: none;
 }
 
 .featured-service-image {
@@ -97,9 +136,10 @@
     font-family: var(--font-heading);
     font-size: var(--text-xs);
     letter-spacing: 2px;
-    text-transform: uppercase;
     color: var(--accent);
     margin-bottom: 16px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .featured-service-name {
@@ -119,20 +159,20 @@
 .featured-service-meta {
     display: flex;
     align-items: center;
-    gap: 24px;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
-.featured-service-price {
+.featured-service-tag {
     font-family: var(--font-heading);
-    font-size: var(--text-xl);
-    font-weight: 700;
-    color: var(--accent);
-}
-
-.featured-service-duration {
-    font-size: var(--text-sm);
-    color: var(--text-muted);
+    font-size: var(--text-xs);
+    font-weight: 500;
     letter-spacing: 1px;
+    color: var(--accent);
+    background: var(--accent-muted);
+    padding: 6px 16px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--accent-muted);
 }
 
 /* ─── Service Grid ────────────────────────────────────────────── */
@@ -160,6 +200,22 @@
     background: var(--bg-accent);
 }
 
+/* Korean Service Item — Subtle Glow */
+.service-item.korean-item {
+    position: relative;
+}
+
+.service-item.korean-item::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(to bottom, var(--accent), #D4A574);
+    opacity: 0.8;
+}
+
 .service-info {
     flex: 1;
 }
@@ -168,35 +224,23 @@
     font-family: var(--font-heading);
     font-size: var(--text-md);
     font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+    letter-spacing: 0.3px;
     color: var(--text-primary);
     margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.korean-icon {
+    color: var(--accent);
+    flex-shrink: 0;
 }
 
 .service-tag {
     font-size: var(--text-sm);
     color: var(--text-secondary);
     font-weight: 300;
-}
-
-.service-meta {
-    text-align: right;
-    flex-shrink: 0;
-}
-
-.service-price {
-    font-family: var(--font-heading);
-    font-size: var(--text-md);
-    font-weight: 700;
-    color: var(--accent);
-    margin-bottom: 4px;
-}
-
-.service-duration {
-    font-size: var(--text-xs);
-    color: var(--text-muted);
-    letter-spacing: 1px;
 }
 
 /* ─── Responsive ──────────────────────────────────────────────── */

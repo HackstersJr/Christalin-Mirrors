@@ -48,8 +48,7 @@
     font-family: var(--font-heading);
     font-size: var(--text-hero);
     font-weight: 700;
-    letter-spacing: -0.04em;
-    text-transform: uppercase;
+    letter-spacing: -0.02em;
     color: #FAFAFA;
     line-height: 0.9;
     margin-bottom: 24px;
@@ -216,8 +215,7 @@
     font-family: var(--font-heading);
     font-size: var(--text-lg);
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     color: #FAFAFA;
     margin-bottom: 4px;
 }

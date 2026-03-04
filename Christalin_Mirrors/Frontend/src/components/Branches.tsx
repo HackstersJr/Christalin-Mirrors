@@ -4,20 +4,12 @@ import './Branches.css'
 
 const branches = [
     {
-        name: 'CM — Kalaburagi',
-        city: 'Gulbarga, Karnataka',
-        address: 'Orchid Mall, Kalaburagi (Gulbarga), Karnataka 585104',
+        name: 'CM — Bengaluru',
+        city: 'Bengaluru, Karnataka',
+        address: 'Century Ethos Club House, Bellary Rd, Bengaluru 560092',
         hours: 'Mon – Sat: 10:00 AM – 8:00 PM | Sun: 11:00 AM – 6:00 PM',
-        phone: '+91 98765 43210',
-        mapUrl: 'https://maps.google.com/?q=Orchid+Mall+Kalaburagi',
-    },
-    {
-        name: 'CM — Bangalore',
-        city: 'Bangalore, Karnataka',
-        address: 'Indiranagar, Bangalore, Karnataka 560038',
-        hours: 'Mon – Sat: 10:00 AM – 9:00 PM | Sun: 11:00 AM – 7:00 PM',
-        phone: '+91 98765 43211',
-        mapUrl: 'https://maps.google.com/?q=Indiranagar+Bangalore',
+        phone: '+91 72042 36981',
+        mapUrl: 'https://maps.google.com/?q=Century+Ethos+Club+House+Bellary+Road+Bengaluru',
     },
 ]
 
@@ -30,10 +22,10 @@ export default function Branches() {
                         <p className="section-label">Find Us</p>
                     </StaggerItem>
                     <StaggerItem>
-                        <h2 className="branches-heading">Our Locations</h2>
+                        <h2 className="branches-heading">Our Location</h2>
                     </StaggerItem>
                     <StaggerItem>
-                        <p className="branches-sub">Visit us at any of our studios across Karnataka</p>
+                        <p className="branches-sub">Visit us at our studio in Bengaluru</p>
                     </StaggerItem>
                 </StaggerContainer>
 

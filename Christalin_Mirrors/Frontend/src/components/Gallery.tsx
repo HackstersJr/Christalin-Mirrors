@@ -8,12 +8,12 @@ import gallery6 from '../assets/gallery-6.png'
 import './Gallery.css'
 
 const galleryItems = [
-    { img: gallery1, label: 'Copper Waves' },
-    { img: gallery2, label: 'Bridal Updo' },
+    { img: gallery1, label: 'Glossy Waves' },
+    { img: gallery2, label: 'Bridal Elegance' },
     { img: gallery3, label: 'Natural Curls' },
-    { img: gallery4, label: 'Modern Fade' },
+    { img: gallery4, label: 'Men\'s Grooming' },
     { img: gallery5, label: 'Creative Color' },
-    { img: gallery6, label: 'Silk Treatment' },
+    { img: gallery6, label: 'K-Beauty Glow' },
 ]
 
 export default function Gallery() {

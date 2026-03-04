@@ -8,9 +8,9 @@ import editorialImg from '../assets/collection-editorial.png'
 import './Hero.css'
 
 const collections = [
-    { num: '01', name: 'Nordic Minimal', tag: 'Precision Cut', img: nordicImg },
-    { num: '02', name: 'Bespoke Balayage', tag: 'Color Art', img: balayageImg },
-    { num: '03', name: 'The Editorial Cut', tag: 'Avant-Garde', img: editorialImg },
+    { num: '01', name: 'Korean Head Spa', tag: 'K-Beauty Rituals', img: nordicImg },
+    { num: '02', name: 'Bridal Elegance', tag: 'Luxury Makeovers', img: balayageImg },
+    { num: '03', name: 'Colours Studio', tag: 'Balayage & Beyond', img: editorialImg },
 ]
 
 export default function Hero() {
@@ -21,7 +21,7 @@ export default function Hero() {
                 <div className="hero-image-wrapper">
                     <motion.img
                         src={heroImg}
-                        alt="CM Hair Salon — Editorial Portrait"
+                        alt="Christalin Mirrors — Refined Unisex Salon"
                         className="hero-image"
                         initial={{ scale: 1.15 }}
                         animate={{ scale: 1 }}
@@ -37,11 +37,11 @@ export default function Hero() {
                     transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
                 >
                     <h1 className="hero-title">
-                        HAIR<br />
-                        <span className="hero-title-accent">SALON</span>
+                        Christalin<br />
+                        <span className="hero-title-accent">Mirrors</span>
                     </h1>
                     <p className="hero-tagline">
-                        Where artistry meets precision. Crafting signature looks that define individuality.
+                        Refine &bull; Reflect &bull; Radiate
                     </p>
                     <div className="hero-cta-row">
                         <a href="#contact" className="btn btn-primary" onClick={(e) => { e.preventDefault(); document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' }) }}>
@@ -65,19 +65,21 @@ export default function Hero() {
                 <StaggerContainer className="container hero-intro-inner">
                     <StaggerItem>
                         <h2 className="hero-intro-heading">
-                            We help create moments of beauty for you and your style
+                            Where beauty & grooming become personal journeys
                         </h2>
                     </StaggerItem>
                     <StaggerItem>
                         <div className="hero-intro-text">
                             <p>
-                                At CM Hair Salon, we believe hair is an art form — a bold expression of who you are.
-                                Our master stylists blend global trends with personalized artistry to craft looks
-                                that feel uniquely, authentically you.
+                                Christalin Mirrors is a refined unisex salon, created for individuals who
+                                appreciate quality, comfort, and elevated grooming experiences. We offer
+                                expert hair, skin, and beauty services for both women and men, combining
+                                skilled artistry with premium products and personalised attention.
                             </p>
                             <p>
-                                From precision cuts to bespoke color treatments, every service is a curated
-                                experience designed to elevate not just your style, but your confidence.
+                                From classic grooming to advanced Korean beauty treatments, we focus on
+                                enhancing your natural features while maintaining the integrity of hair
+                                and skin.
                             </p>
                         </div>
                     </StaggerItem>
@@ -90,7 +92,7 @@ export default function Hero() {
                     <div className="collections-header">
                         <span className="collections-label">Signature Collections</span>
                         <div className="collections-line" />
-                        <span className="collections-count">03 Looks</span>
+                        <span className="collections-count">03 Specialties</span>
                     </div>
 
                     <StaggerContainer className="collections-grid">
@@ -116,8 +118,8 @@ export default function Hero() {
                     <Instagram size={16} />
                     Instagram
                 </a>
-                <a href="#" className="social-link">Pinterest</a>
-                <a href="#" className="social-link">Vogue Portfolio</a>
+                <a href="tel:+917204236981" className="social-link">Call Us</a>
+                <a href="#services" className="social-link" onClick={(e) => { e.preventDefault(); document.querySelector('#services')?.scrollIntoView({ behavior: 'smooth' }) }}>Our Services</a>
             </div>
         </>
     )

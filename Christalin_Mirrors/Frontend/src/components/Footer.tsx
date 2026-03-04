@@ -1,4 +1,4 @@
-import { Instagram, Mail, ArrowRight } from 'lucide-react'
+import { Instagram, Mail, Phone, ArrowRight } from 'lucide-react'
 import './Footer.css'
 
 export default function Footer() {
@@ -10,11 +10,12 @@ export default function Footer() {
                 <div className="footer-inner">
                     {/* Brand */}
                     <div>
-                        <div className="footer-brand-name">CM Hair Salon</div>
-                        <div className="footer-brand-tagline">Christalin Mirrors</div>
+                        <div className="footer-brand-name">Christalin Mirrors</div>
+                        <div className="footer-brand-tagline">Refine &bull; Reflect &bull; Radiate</div>
                         <p className="footer-brand-desc">
-                            Where artistry meets precision. Crafting signature looks
-                            that define individuality since 2012.
+                            A refined unisex salon combining skilled artistry with premium
+                            products and personalised attention to help you radiate confidence
+                            every day.
                         </p>
                     </div>
 
@@ -29,14 +30,14 @@ export default function Footer() {
                         </ul>
                     </div>
 
-                    {/* Hours */}
+                    {/* Location */}
                     <div>
-                        <h4 className="footer-col-title">Hours</h4>
+                        <h4 className="footer-col-title">Visit Us</h4>
                         <ul className="footer-col-list">
-                            <li>Mon — Sat</li>
-                            <li>10:00 AM — 8:00 PM</li>
-                            <li style={{ marginTop: 8 }}>Sunday</li>
-                            <li>11:00 AM — 6:00 PM</li>
+                            <li>Century Ethos Club House</li>
+                            <li>Bellary Rd, Bengaluru 560092</li>
+                            <li style={{ marginTop: 8 }}>Mon — Sat: 10 AM — 8 PM</li>
+                            <li>Sun: 11 AM — 6 PM</li>
                         </ul>
                     </div>
 
@@ -63,13 +64,16 @@ export default function Footer() {
                 {/* Bottom Bar */}
                 <div className="footer-bottom">
                     <span className="footer-copyright">
-                        © {currentYear} CM Hair Salon — Christalin Mirrors. All rights reserved.
+                        © {currentYear} Christalin Mirrors. All rights reserved.
                     </span>
                     <div className="footer-social-links">
                         <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="footer-social-link" aria-label="Instagram">
                             <Instagram size={18} />
                         </a>
-                        <a href="mailto:hello@cmhairsalon.com" className="footer-social-link" aria-label="Email">
+                        <a href="tel:+917204236981" className="footer-social-link" aria-label="Phone">
+                            <Phone size={18} />
+                        </a>
+                        <a href="mailto:hello@christalinmirrors.com" className="footer-social-link" aria-label="Email">
                             <Mail size={18} />
                         </a>
                     </div>
