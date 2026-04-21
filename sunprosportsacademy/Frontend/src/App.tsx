@@ -4,12 +4,9 @@ import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './hooks/useTheme'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
-import About from './components/About'
-import FoundersNote from './components/FoundersNote'
-import Services from './components/Services'
-import Testimonials from './components/Testimonials'
-import Gallery from './components/Gallery'
-import Branches from './components/Branches'
+import WhatWeDo from './components/WhatWeDo'
+import Partnerships from './components/Partnerships'
+import WhyChooseUs from './components/WhyChooseUs'
 import Contact from './components/Contact'
 import Footer from './components/Footer'
 import LoadingScreen from './components/LoadingScreen'
@@ -49,6 +46,7 @@ const queryClient = new QueryClient({
 function LandingPage() {
     const { theme, toggleTheme } = useTheme()
     const [isLoading, setIsLoading] = useState(true)
+    const [scrolled, setScrolled] = useState(false)
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -57,21 +55,25 @@ function LandingPage() {
         return () => clearTimeout(timer)
     }, [])
 
+    useEffect(() => {
+        const handleScroll = () => setScrolled(window.scrollY > 120)
+        window.addEventListener('scroll', handleScroll, { passive: true })
+        handleScroll()
+        return () => window.removeEventListener('scroll', handleScroll)
+    }, [])
+
     return (
         <>
             <AnimatePresence>
                 {isLoading && <LoadingScreen key="loader" />}
             </AnimatePresence>
 
-            <Navbar theme={theme} toggleTheme={toggleTheme} isAppLoading={isLoading} />
+            <Navbar theme={theme} toggleTheme={toggleTheme} isAppLoading={isLoading} scrolled={scrolled} />
             <main>
-                <Hero isAppLoading={isLoading} />
-                <About />
-                <FoundersNote />
-                <Services />
-                <Testimonials />
-                <Gallery />
-                <Branches />
+                <Hero isAppLoading={isLoading} isScrolled={scrolled} />
+                <WhatWeDo />
+                <Partnerships />
+                <WhyChooseUs />
                 <Contact />
             </main>
             <Footer />

@@ -1,0 +1,77 @@
+.what-we-do {
+    background: var(--bg-dark);
+}
+
+.wwd-header {
+    margin-bottom: 80px;
+}
+
+.section-label {
+    display: block;
+    font-family: var(--font-heading);
+    color: var(--accent-gold);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.section-title {
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    color: var(--text-white);
+    margin-bottom: 20px;
+}
+
+.section-subtitle {
+    max-width: 600px;
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    line-height: 1.7;
+}
+
+.wwd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+}
+
+.wwd-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 12px;
+    color: var(--accent-gold);
+    margin-bottom: 24px;
+    transition: var(--transition-smooth);
+}
+
+.card-premium:hover .wwd-icon {
+    background: var(--accent-gold);
+    color: var(--primary-navy);
+    transform: rotateY(360deg);
+}
+
+.wwd-card-title {
+    font-size: 1.25rem;
+    color: var(--text-white);
+    margin-bottom: 16px;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.wwd-card-desc {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .wwd-header {
+        margin-bottom: 50px;
+    }
+}

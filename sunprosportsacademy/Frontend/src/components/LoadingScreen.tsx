@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import cmLogo from '../assets/cm-logo-white.png'
+import logo from '../assets/Logo/Logo.png'
 import './LoadingScreen.css'
 
 export default function LoadingScreen() {
@@ -13,9 +13,9 @@ export default function LoadingScreen() {
             />
             <motion.div
                 className="loading-logo-container"
-                layoutId="main-logo"
+                layoutId="hero-logo"
                 initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1.25, opacity: 1 }}
+                animate={{ scale: 1, opacity: 1 }}
                 transition={{
                     type: "spring",
                     stiffness: 70,
@@ -23,7 +23,7 @@ export default function LoadingScreen() {
                     mass: 1.2
                 }}
             >
-                <img src={cmLogo} alt="CM" className="loading-logo-img" />
+                <img src={logo} alt="Sun Pro Sports Academy" className="loading-logo-img" />
             </motion.div>
         </div>
     )
