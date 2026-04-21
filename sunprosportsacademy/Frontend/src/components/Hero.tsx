@@ -13,7 +13,6 @@ export default function Hero({ isAppLoading, isScrolled }: { isAppLoading?: bool
             <div className="hero-image-wrapper">
                 <motion.img
                     src={heroImg}
-                    alt="Modern Sports Infrastructure"
                     className="hero-image"
                     initial={{ scale: 1.1 }}
                     animate={{ scale: 1 }}
@@ -28,7 +27,7 @@ export default function Hero({ isAppLoading, isScrolled }: { isAppLoading?: bool
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
             >
-                <motion.div 
+                <motion.div
                     className="hero-badge"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -36,7 +35,7 @@ export default function Hero({ isAppLoading, isScrolled }: { isAppLoading?: bool
                 >
                     <span className="dot" /> Premier Sports Infrastructure
                 </motion.div>
-                
+
                 <h1 className="hero-title-container">
                     <div className="hero-title-split">
                         <div className="title-side title-left">
@@ -44,10 +43,10 @@ export default function Hero({ isAppLoading, isScrolled }: { isAppLoading?: bool
                             <span>The</span>
                             <span>Future</span>
                         </div>
-                        
+
                         <div className="hero-logo-center">
                             {!isScrolled && (
-                                <motion.div 
+                                <motion.div
                                     layoutId="hero-logo"
                                     transition={{
                                         type: "spring",
@@ -68,8 +67,8 @@ export default function Hero({ isAppLoading, isScrolled }: { isAppLoading?: bool
                         </div>
                     </div>
                 </h1>
-                
-                <motion.p 
+
+                <motion.p
                     className="hero-description"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -77,8 +76,8 @@ export default function Hero({ isAppLoading, isScrolled }: { isAppLoading?: bool
                 >
                     Transforming university campuses into vibrant hubs of athletic excellence through state-of-the-art stadium development and multi-sport facility design.
                 </motion.p>
-                
-                <motion.div 
+
+                <motion.div
                     className="hero-actions"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}

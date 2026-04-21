@@ -3,13 +3,13 @@ version: '3.8'
 services:
   frontend:
     build: .
-    container_name: cm_hair_salon_frontend
+    container_name: sunpro_frontend
     ports:
-      - "127.0.0.1:8081:80"
+      - "80:80"
     restart: always
     networks:
-      - cm_network
+      - sunpro_network
 
 networks:
-  cm_network:
+  sunpro_network:
     driver: bridge

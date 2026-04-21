@@ -121,13 +121,34 @@
 }
 
 @media (max-width: 991px) {
+    .footer {
+        padding: 60px 0 30px;
+    }
+
     .footer-inner {
         grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        text-align: center;
+    }
+
+    .footer-brand-desc {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .footer-newsletter-form {
+        flex-direction: column;
     }
 }
 
 @media (max-width: 480px) {
     .footer-inner {
         grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        gap: 20px;
     }
 }

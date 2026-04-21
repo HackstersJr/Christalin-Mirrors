@@ -5,7 +5,7 @@
 .wcu-inner {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 100px;
+    gap: clamp(40px, 8vw, 100px);
     align-items: center;
 }
 
@@ -56,6 +56,23 @@
 @media (max-width: 991px) {
     .wcu-inner {
         grid-template-columns: 1fr;
-        gap: 60px;
+        gap: 50px;
+        text-align: center;
+    }
+
+    .wcu-item {
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .section-subtitle {
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .wcu-grid {
+        gap: 30px;
     }
 }

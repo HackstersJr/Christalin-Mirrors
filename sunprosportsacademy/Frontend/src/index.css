@@ -17,7 +17,7 @@
   --font-body: 'Inter', sans-serif;
 
   /* Spacing */
-  --section-padding: clamp(60px, 8vw, 120px);
+  --section-padding: clamp(40px, 10vw, 120px);
   --container-max: 1280px;
 
   /* Transitions */
@@ -40,12 +40,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Base Styles */
 h1, h2, h3, h4, h5 {
   font-family: var(--font-heading);
   text-transform: uppercase;
   letter-spacing: 1px;
+  word-wrap: break-word;
 }
+
+h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); }
+h2 { font-size: clamp(1.8rem, 5vw, 3rem); }
+h3 { font-size: clamp(1.25rem, 3vw, 1.75rem); }
 
 a {
   text-decoration: none;
@@ -57,7 +61,7 @@ a {
 .container {
   max-width: var(--container-max);
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0 1.5rem;
 }
 
 .section {
@@ -138,6 +142,20 @@ a {
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .container {
-    padding: 0 1.5rem;
+    padding: 0 1.25rem;
+  }
+  
+  .section {
+    padding: 60px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    padding: 0.85rem 1.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    width: 100%;
+    text-align: center;
   }
 }

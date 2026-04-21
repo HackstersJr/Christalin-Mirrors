@@ -4,14 +4,14 @@
 
 .partners-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 40px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
 }
 
 .partner-card {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(212, 175, 55, 0.1);
-    padding: 2.5rem;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -71,8 +71,18 @@
     letter-spacing: 0.5px;
 }
 
+@media (max-width: 768px) {
+    .partners-grid {
+        gap: 20px;
+    }
+}
+
 @media (max-width: 480px) {
     .partners-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .partner-card {
+        padding: 1.25rem;
     }
 }

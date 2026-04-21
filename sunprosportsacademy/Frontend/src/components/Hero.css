@@ -122,19 +122,27 @@
 
 @media (max-width: 992px) {
     .hero-title-split {
+        display: flex;
         flex-direction: column;
-        gap: 2rem;
+        align-items: center;
+        gap: 1.5rem;
     }
     
     .title-side {
         text-align: center;
         align-items: center;
-        font-size: clamp(2rem, 8vw, 3rem);
+        font-size: clamp(1.8rem, 10vw, 2.5rem);
     }
     
     .hero-logo-center {
-        width: 150px;
+        width: 140px;
         order: -1;
+        margin-bottom: 0.5rem;
+    }
+
+    .title-left, .title-right {
+        text-align: center;
+        align-items: center;
     }
 }
 
@@ -199,6 +207,10 @@
 
 /* ─── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
+    .hero-content {
+        padding-top: 40px;
+    }
+
     .hero-actions {
         flex-direction: column;
         gap: 1rem;
@@ -207,5 +219,25 @@
     .hero-actions .btn {
         width: 100%;
         margin-left: 0 !important;
+    }
+
+    .hero-description {
+        font-size: 1rem;
+        margin-bottom: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-title-split {
+        gap: 1rem;
+    }
+
+    .hero-logo-center {
+        width: 120px;
+    }
+
+    .hero-badge {
+        padding: 6px 15px;
+        font-size: 0.65rem;
     }
 }

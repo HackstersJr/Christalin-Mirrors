@@ -72,6 +72,20 @@
 
 @media (max-width: 768px) {
     .wwd-header {
-        margin-bottom: 50px;
+        margin-bottom: 40px;
+        text-align: center;
+    }
+
+    .section-subtitle {
+        margin: 0 auto;
+    }
+
+    .wwd-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .card-premium {
+        padding: 1.5rem;
     }
 }

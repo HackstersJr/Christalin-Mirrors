@@ -88,7 +88,7 @@ export default function AdminLayout() {
                     <button className="admin-menu-btn" onClick={() => setSidebarOpen(true)}>
                         <Menu size={22} />
                     </button>
-                    <div className="admin-topbar-title">Christalin Mirrors</div>
+                    <div className="admin-topbar-title">Sun Pro Sports Academy</div>
                     <div className="admin-topbar-user">
                         <button 
                             onClick={toggleTheme} 
