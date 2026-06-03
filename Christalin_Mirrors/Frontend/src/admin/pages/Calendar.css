@@ -1,0 +1,97 @@
+/* ─── Calendar Specific Styles ──────────────────────────── */
+
+.calendar-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 24px;
+}
+
+.calendar-day-headers {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.calendar-day-header {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 8px 0;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+}
+
+.calendar-cell {
+    padding: 8px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    min-height: 66px;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+}
+
+.calendar-cell:hover {
+    background: var(--calendar-today-bg);
+}
+
+.calendar-cell.is-today {
+    background: var(--calendar-today-bg);
+    border-color: var(--calendar-today-border);
+}
+
+.calendar-cell.is-selected {
+    background: var(--calendar-selected-bg);
+    border-color: var(--calendar-selected-border);
+}
+
+.calendar-day-number {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.calendar-cell.is-today .calendar-day-number {
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.calendar-apt-tag {
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-top: 2px;
+}
+
+.calendar-apt-tag.confirmed {
+    background: var(--calendar-confirmed-bg);
+    color: var(--success-light);
+}
+
+.calendar-apt-tag.pending {
+    background: var(--calendar-pending-bg);
+    color: var(--warning-light);
+}
+
+/* Side panel appointment card */
+.calendar-apt-card {
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--calendar-apt-bg);
+}
+
+/* Responsive */
+@media (max-width: 1000px) {
+    .calendar-layout {
+        grid-template-columns: 1fr;
+    }
+}

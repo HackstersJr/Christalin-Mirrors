@@ -1,0 +1,618 @@
+
+:root[data-theme="dark"] {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #0B0B0F;
+  --bg-card: #141418;
+  --bg-card-hover: rgba(255, 255, 255, 0.04);
+  --bg-card-alt: rgba(255, 255, 255, 0.02);
+  --text-primary: #E8E8E8;
+  --text-bright: #FFFFFF;
+  --text-secondary: #CCCCCC;
+  --text-muted: #888888;
+  --text-dim: #666666;
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --border-extreme: rgba(255, 255, 255, 0.3);
+  --input-bg: #0B0B0F;
+  --sidebar-bg: #101014;
+  --topbar-bg: #0B0B0F;
+  --accent: #C17F59;
+  --accent-hover: #a96d4d;
+  --accent-alt: #d4a847;
+  --accent-alt-hover: #c19535;
+  --success: #10b981;
+  --success-light: #4ADE80;
+  --danger: #E85D5D;
+  --danger-strong: #ef4444;
+  --warning: #f59e0b;
+  --warning-light: #FBBF24;
+  --info: #60A5FA;
+  --purple: #A78BFA;
+  --pink: #F472B6;
+  --red-light: #F87171;
+  --black-solid: #000000;
+  --alert-warning-bg: rgba(245, 158, 11, 0.08);
+  --alert-danger-bg: rgba(239, 68, 68, 0.08);
+  --calendar-today-bg: rgba(255, 255, 255, 0.04);
+  --calendar-today-border: rgba(255, 255, 255, 0.1);
+  --calendar-selected-bg: rgba(193, 127, 89, 0.12);
+  --calendar-selected-border: rgba(193, 127, 89, 0.3);
+  --calendar-confirmed-bg: rgba(74, 222, 128, 0.15);
+  --calendar-pending-bg: rgba(251, 191, 36, 0.15);
+  --calendar-apt-bg: rgba(255, 255, 255, 0.03);
+  --whatsapp-green: #25D366;
+  --danger-bg: rgba(239, 68, 68, 0.08);
+  --counter-bg: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="light"] {
+  --bg-primary: #f4f4f0;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f9f9f7;
+  --bg-card-alt: #fafafa;
+  --text-primary: #1a1a1a;
+  --text-bright: #000000;
+  --text-secondary: #555555;
+  --text-muted: #777777;
+  --text-dim: #999999;
+  --border-color: #e5e5e0;
+  --border-light: #d1d1cc;
+  --border-strong: #bcbcbc;
+  --border-extreme: #a0a099;
+  --input-bg: #fdfdfc;
+  --sidebar-bg: #101014; 
+  --topbar-bg: #0B0B0F;  
+  --accent: #C17F59;
+  --accent-hover: #a96d4d;
+  --accent-alt: #d4a847;
+  --accent-alt-hover: #c19535;
+  --success: #059669;
+  --success-light: #10b981;
+  --danger: #dc2626;
+  --danger-strong: #b91c1c;
+  --warning: #d97706;
+  --warning-light: #f59e0b;
+  --info: #2563eb;
+  --purple: #7c3aed;
+  --pink: #db2777;
+  --red-light: #ef4444;
+  --black-solid: #000000;
+  --alert-warning-bg: rgba(245, 158, 11, 0.10);
+  --alert-danger-bg: rgba(239, 68, 68, 0.10);
+  --calendar-today-bg: rgba(0, 0, 0, 0.04);
+  --calendar-today-border: rgba(0, 0, 0, 0.1);
+  --calendar-selected-bg: rgba(193, 127, 89, 0.12);
+  --calendar-selected-border: rgba(193, 127, 89, 0.3);
+  --calendar-confirmed-bg: rgba(16, 185, 129, 0.12);
+  --calendar-pending-bg: rgba(245, 158, 11, 0.12);
+  --calendar-apt-bg: rgba(0, 0, 0, 0.03);
+  --whatsapp-green: #25D366;
+  --danger-bg: rgba(239, 68, 68, 0.08);
+  --counter-bg: rgba(0, 0, 0, 0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Admin Shared Styles — Reusable across all admin pages
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Page Header ─────────────────────────────────────────────── */
+.admin-page-header {
+    margin-bottom: 28px;
+}
+
+.admin-page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.admin-page-sub {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 400;
+}
+
+/* ─── Stats Cards ─────────────────────────────────────────────── */
+.admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.admin-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.2s ease;
+}
+
+.admin-stat-card:hover {
+    border-color: rgba(193, 127, 89, 0.3);
+}
+
+.admin-stat-card .stat-label {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.admin-stat-card .stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1;
+}
+
+.admin-stat-card .stat-value.accent {
+    color: var(--accent);
+}
+
+.admin-stat-card .stat-value.green {
+    color: var(--success-light);
+}
+
+.admin-stat-card .stat-value.red {
+    color: var(--danger);
+}
+
+.admin-stat-card .stat-change {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+}
+
+/* ─── Tables ──────────────────────────────────────────────────── */
+.admin-table-wrapper {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.admin-table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.admin-table-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.admin-table td {
+    padding: 20px 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--bg-card-alt);
+    vertical-align: middle;
+}
+
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-table tr:hover td {
+    background: var(--bg-card-hover);
+}
+
+.admin-table tr:nth-child(even) td {
+    background: var(--bg-card-alt);
+}
+
+.cell-primary {
+    font-weight: 600;
+    color: var(--text-bright);
+}
+
+.cell-secondary {
+    font-weight: 400;
+    color: var(--text-dim);
+    font-size: 11px;
+}
+
+/* ─── Status Badges ───────────────────────────────────────────── */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: capitalize;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+@keyframes pulse-amber {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+}
+
+.status-badge.pending .status-dot {
+    background: var(--warning);
+    animation: pulse-amber 2s infinite;
+}
+
+.status-badge.confirmed {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.status-badge.confirmed .status-dot {
+    background: var(--success);
+}
+
+.status-badge.completed {
+    background: rgba(96, 165, 250, 0.15);
+    color: var(--info);
+}
+
+.status-badge.completed .status-dot {
+    background: var(--info);
+}
+
+.status-badge.cancelled {
+    background: var(--border-color);
+    color: var(--text-muted);
+}
+
+.status-badge.cancelled .status-dot {
+    background: var(--text-muted);
+}
+
+/* ─── Category Badges ─────────────────────────────────────────── */
+.category-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--border-color);
+    color: var(--text-muted);
+}
+
+.category-badge.hair { background: rgba(193, 127, 89, 0.15); color: var(--accent); }
+.category-badge.skin { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
+.category-badge.korean { background: rgba(248, 113, 113, 0.15); color: var(--red-light); }
+.category-badge.womens { background: rgba(244, 114, 182, 0.15); color: var(--pink); }
+.category-badge.mens { background: rgba(96, 165, 250, 0.15); color: var(--info); }
+
+/* ─── Role Badges ─────────────────────────────────────────────── */
+.role-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.role-badge.stylist { background: rgba(193, 127, 89, 0.15); color: var(--accent); }
+.role-badge.therapist { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
+.role-badge.manager { background: rgba(74, 222, 128, 0.15); color: var(--success-light); }
+.role-badge.receptionist { background: rgba(96, 165, 250, 0.15); color: var(--info); }
+
+/* ─── Buttons ─────────────────────────────────────────────────── */
+.admin-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.admin-btn-primary {
+    background: var(--accent);
+    color: var(--text-bright);
+}
+
+.admin-btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.admin-btn-secondary {
+    background: var(--border-color);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-light);
+}
+
+.admin-btn-secondary:hover {
+    background: var(--border-light);
+}
+
+.admin-btn-ghost {
+    background: none;
+    color: var(--text-muted);
+    padding: 6px 6px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.admin-btn-ghost:hover {
+    color: var(--text-bright);
+    background: var(--border-light);
+}
+
+.admin-btn-danger {
+    background: rgba(232, 93, 93, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(232, 93, 93, 0.2);
+}
+
+.admin-btn-danger:hover {
+    background: rgba(232, 93, 93, 0.2);
+}
+
+.admin-btn-sm {
+    padding: 5px 10px;
+    font-size: 11px;
+}
+
+/* ─── Action Row ──────────────────────────────────────────────── */
+.admin-actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* ─── Search & Filters ────────────────────────────────────────── */
+.admin-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.admin-search {
+    flex: 1;
+    min-width: 200px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.admin-search::placeholder {
+    color: var(--text-dim);
+}
+
+.admin-search:focus {
+    border-color: rgba(193, 127, 89, 0.5);
+}
+
+.admin-filter-select {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.admin-filter-select:focus {
+    border-color: rgba(193, 127, 89, 0.5);
+}
+
+/* ─── Forms (Modal-like inline) ───────────────────────────────── */
+.admin-form-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.admin-form-card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+.admin-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.admin-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.admin-form-group.full {
+    grid-column: 1 / -1;
+}
+
+.admin-form-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.admin-form-input,
+.admin-form-select,
+.admin-form-textarea {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.admin-form-input:focus,
+.admin-form-select:focus,
+.admin-form-textarea:focus {
+    border-color: rgba(193, 127, 89, 0.5);
+}
+
+.admin-form-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.admin-form-input::placeholder,
+.admin-form-textarea::placeholder {
+    color: var(--text-dim);
+}
+
+.admin-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
+/* ─── Empty State ─────────────────────────────────────────────── */
+.admin-empty {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--text-dim);
+}
+
+.admin-empty-icon {
+    margin-bottom: 16px;
+    color: var(--text-dim);
+}
+
+.admin-empty h3 {
+    font-size: 16px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.admin-empty p {
+    font-size: 13px;
+}
+
+/* ─── Tags ────────────────────────────────────────────────────── */
+.admin-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(193, 127, 89, 0.12);
+    color: var(--accent);
+    margin-right: 4px;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .admin-stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .admin-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .admin-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-toolbar {
+        flex-direction: column;
+    }
+
+    .admin-search {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ─── WhatsApp Button Shared (Fix 11) ──────────── */
+.admin-btn-whatsapp {
+    background: var(--whatsapp-green) !important;
+    color: #ffffff !important;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 0.2s;
+}
+
+.admin-btn-whatsapp:hover {
+    opacity: 0.9;
+}

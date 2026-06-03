@@ -1,0 +1,105 @@
+/* ─── Dashboard Specific Styles ──────────────────────────── */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+}
+
+/* Alert Bars */
+.dashboard-alerts {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.dashboard-alert {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-left: 4px solid transparent;
+    transition: background 0.2s;
+}
+
+.dashboard-alert.alert-warning {
+    background: var(--alert-warning-bg);
+    border-color: rgba(245, 158, 11, 0.2);
+    border-left-color: var(--warning);
+}
+
+.dashboard-alert.alert-danger {
+    background: var(--alert-danger-bg);
+    border-color: rgba(239, 68, 68, 0.2);
+    border-left-color: var(--danger-strong);
+}
+
+.dashboard-alert-icon {
+    flex-shrink: 0;
+}
+
+.dashboard-alert.alert-warning .dashboard-alert-icon {
+    color: var(--warning-light);
+}
+
+.dashboard-alert.alert-danger .dashboard-alert-icon {
+    color: var(--danger-strong);
+}
+
+.dashboard-alert-text {
+    font-size: 13px;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.dashboard-alert-text strong {
+    font-size: 14px;
+}
+
+.dashboard-alert.alert-warning .dashboard-alert-text strong {
+    color: var(--warning-light);
+}
+
+.dashboard-alert.alert-danger .dashboard-alert-text strong {
+    color: var(--danger-strong);
+}
+
+.dashboard-alert-action {
+    font-weight: 600;
+    padding: 0;
+}
+
+.dashboard-alert.alert-warning .dashboard-alert-action {
+    color: var(--warning-light);
+}
+
+.dashboard-alert.alert-danger .dashboard-alert-action {
+    color: var(--danger-strong);
+}
+
+/* Revenue Summary */
+.dashboard-revenue-divider {
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.dashboard-counter-badge {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--counter-bg);
+    padding: 4px 12px;
+    border-radius: 12px;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}

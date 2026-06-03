@@ -1,0 +1,7 @@
+tunnel: f482af46-dfd3-467d-b0c5-c11c47958512
+credentials-file: /etc/cloudflared/f482af46-dfd3-467d-b0c5-c11c47958512.json
+
+ingress:
+  - hostname: cm.hacksters.tech
+    service: http://127.0.0.1:8081
+  - service: http_status:404

@@ -1,0 +1,111 @@
+/* ─── Toast / Snackbar Component ──────────────────────── */
+
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    min-width: 260px;
+    max-width: 400px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    pointer-events: auto;
+    animation: toast-in 0.3s ease-out;
+    border-left: 4px solid transparent;
+}
+
+.toast.toast-success {
+    background: #0d1f14;
+    border-left-color: #10b981;
+    color: #a7f3d0;
+}
+
+.toast.toast-error {
+    background: #1f0d0d;
+    border-left-color: #ef4444;
+    color: #fca5a5;
+}
+
+.toast.toast-warning {
+    background: #1f180d;
+    border-left-color: #f59e0b;
+    color: #fde68a;
+}
+
+.toast.toast-info {
+    background: #0d1520;
+    border-left-color: #3b82f6;
+    color: #93c5fd;
+}
+
+.toast-icon {
+    flex-shrink: 0;
+}
+
+.toast-message {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: inherit;
+    opacity: 0.5;
+    cursor: pointer;
+    padding: 2px;
+    flex-shrink: 0;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
+.toast-exiting {
+    animation: toast-out 0.2s ease-in forwards;
+}
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateX(40px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-out {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(40px); }
+}
+
+/* Light mode overrides */
+:root[data-theme="light"] .toast.toast-success {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+:root[data-theme="light"] .toast.toast-error {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+:root[data-theme="light"] .toast.toast-warning {
+    background: #fffbeb;
+    color: #92400e;
+}
+
+:root[data-theme="light"] .toast.toast-info {
+    background: #eff6ff;
+    color: #1e40af;
+}
