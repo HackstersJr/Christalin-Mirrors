@@ -162,6 +162,7 @@
     border-radius: var(--radius-lg);
     display: grid;
     grid-template-columns: 1fr 1fr;
+    height: 480px;
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     overflow: hidden;
@@ -177,7 +178,8 @@
 .featured-scroll-image img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    background-color: var(--bg-primary);
     transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -351,6 +353,12 @@
 }
 
 /* ─── Responsive ──────────────────────────────────────────────── */
+.services-show-more-mobile {
+    display: none;
+    text-align: center;
+    margin-top: 32px;
+}
+
 @media (max-width: 768px) {
     .featured-scroll-card {
         grid-template-columns: 1fr;
@@ -423,11 +431,6 @@
     }
 }
 
-.services-show-more-mobile {
-    display: none;
-    text-align: center;
-    margin-top: 32px;
-}
 
 .services-show-more-btn {
     font-family: var(--font-heading);

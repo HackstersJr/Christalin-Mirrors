@@ -79,10 +79,17 @@ function LandingPage() {
     )
 }
 
-export default function App() {
+import Privacy from './components/Privacy'
+import Terms from './components/Terms'
+import Franchise from './components/Franchise'
+
+function App() {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/franchise" element={<Franchise />} />
             <Route path="/admin/login" element={<Login />} />
             <Route path="/admin" element={
                 <QueryClientProvider client={queryClient}>
@@ -107,3 +114,5 @@ export default function App() {
         </Routes>
     )
 }
+
+export default App

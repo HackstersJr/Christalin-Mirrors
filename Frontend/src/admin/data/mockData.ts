@@ -44,16 +44,16 @@ export const mockStaff: StaffMember[] = [
     { id: 'stf-002', name: 'Vikram Singh', role: 'stylist', branch: 'Bengaluru', phone: '+91 88776 65544', email: 'vikram@cm.com', specialties: ['Men\'s Cuts', 'Hair Color', 'Keratin'], isActive: true, joinedDate: '2025-05-15' },
     { id: 'stf-003', name: 'Divya Menon', role: 'therapist', branch: 'Kalaburagi', phone: '+91 77665 54433', email: 'divya@cm.com', specialties: ['Korean Head Spa', 'Facials', 'Massage'], isActive: true, joinedDate: '2025-11-01' },
     { id: 'stf-004', name: 'Preethi S.', role: 'receptionist', branch: 'Bengaluru', phone: '+91 66554 43322', email: 'preethi@cm.com', specialties: [], isActive: true, joinedDate: '2025-04-01' },
-    { id: 'stf-005', name: 'Sushmitha Cristalin A.', role: 'manager', branch: 'Bengaluru', phone: '+91 72042 36981', email: 'info@christalinmirrors.com', specialties: ['Salon Management', 'Brand Strategy'], isActive: true, joinedDate: '2025-01-01' },
+    { id: 'stf-005', name: 'Sushmitha Cristalin A.', role: 'manager', branch: 'Bengaluru', phone: '+91 99001 18383', email: 'Support@christalinmirrors.com', specialties: ['Salon Management', 'Brand Strategy'], isActive: true, joinedDate: '2025-01-01' },
 ]
 
 export const defaultSettings: SalonSettings = {
     name: 'Christalin Mirrors',
-    email: 'info@christalinmirrors.com',
-    phone: '+91 72042 36981',
+    email: 'Support@christalinmirrors.com',
+    phone: '+91 99001 18383',
     hours: 'Everyday: 10:00 AM – 9:00 PM',
     branches: [
-        { name: 'CM — Bengaluru', city: 'Bengaluru, Karnataka', address: 'Century Ethos Club House, Bellary Rd, Bengaluru 560092', phone: '+91 72042 36981', isActive: true },
+        { name: 'CM — Bengaluru', city: 'Bengaluru, Karnataka', address: 'Century Ethos Club House, Bellary Rd, Bengaluru 560092', phone: '+91 99001 18383', isActive: true },
         { name: 'CM — Kalaburagi', city: 'Kalaburagi, Karnataka', address: 'Orchid Mall, Mahaveer Nagar, Khuba Plot, Brahmpur, Kalaburagi 585105', phone: '+91 XXXXX XXXXX', isActive: true },
     ],
     socialLinks: { instagram: 'https://instagram.com' },

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowDown } from 'lucide-react'
-import heroImg from '../assets/branch-kalaburagi.png'
+import { HERO_IMAGE } from '../data/assets'
 import cmLogo from '../assets/cm-logo-white.png'
 import './Hero.css'
 
@@ -19,7 +19,7 @@ export default function Hero({ isAppLoading }: { isAppLoading?: boolean }) {
         <section className="hero" id="hero">
             <div className="hero-image-wrapper">
                 <motion.img
-                    src={heroImg}
+                    src={HERO_IMAGE}
                     alt="Christalin Mirrors — Refined Unisex Salon"
                     className="hero-image"
                     initial={{ scale: 1.15 }}

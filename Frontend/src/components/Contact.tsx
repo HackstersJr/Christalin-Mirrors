@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { CheckCircle, Send, Calendar, Clock } from 'lucide-react'
 import emailjs from '@emailjs/browser'
 import { StaggerItem } from './Animations'
-import contactImg from '../assets/contact-portrait.png' // TODO: Replace with actual staff photo
+import { CONTACT_IMAGE } from '../data/assets'
 import './Contact.css'
 
 const timeSlots = [
@@ -50,7 +50,7 @@ export default function Contact() {
                 <StaggerItem className="contact-split">
                     {/* Image Side */}
                     <div className="contact-image-side">
-                        <img src={contactImg} alt="Christalin Mirrors Salon" loading="lazy" />
+                        <img src={CONTACT_IMAGE} alt="Christalin Mirrors Salon" loading="lazy" />
                         <div className="contact-image-overlay">
                             <span className="contact-image-text">
                                 Refine<br />Reflect<br />Radiate

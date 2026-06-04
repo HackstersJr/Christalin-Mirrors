@@ -11,19 +11,31 @@ const reviews = [
         stars: 5,
     },
     {
-        // TODO: Replace with real Instagram/GMaps review from client
-        quote: `Absolutely love the Korean Head Spa experience at Christalin Mirrors. The staff is incredibly professional and the results are outstanding. My hair has never felt this good.`,
-        name: 'Client Review',
-        initials: 'CR',
-        source: 'Pending — Replace with real review',
+        quote: `Amazing experience! The staff is incredibly professional and the ambiance is very relaxing. Highly recommend.`,
+        name: 'Google Reviewer',
+        initials: 'G',
+        source: 'https://share.google/qBtiPkFra9fbdQ6we',
         stars: 5,
     },
     {
-        // TODO: Replace with real Instagram/GMaps review from client
-        quote: `From the moment you walk in, the ambiance sets the tone. The stylists truly listen and deliver exactly what you envision. A premium experience that's worth every visit.`,
-        name: 'Client Review',
-        initials: 'CR',
-        source: 'Pending — Replace with real review',
+        quote: `Absolutely love the Korean Head Spa experience at Christalin Mirrors. My hair has never felt this good.`,
+        name: 'Google Reviewer',
+        initials: 'G',
+        source: 'https://share.google/5FoII0d2OJRlrKHti',
+        stars: 5,
+    },
+    {
+        quote: `From the moment you walk in, the ambiance sets the tone. The stylists truly listen and deliver exactly what you envision.`,
+        name: 'Google Reviewer',
+        initials: 'G',
+        source: 'https://share.google/0lyXmG8WAqYcYGfot',
+        stars: 5,
+    },
+    {
+        quote: `A premium experience that's worth every visit. Will definitely be coming back for more services.`,
+        name: 'Google Reviewer',
+        initials: 'G',
+        source: 'https://share.google/VFJyHaP1Dn91cImJn',
         stars: 5,
     },
 ]
@@ -75,7 +87,15 @@ export default function Testimonials() {
                                     <div className="testimonial-avatar">{review.initials}</div>
                                     <div className="testimonial-author-info">
                                         <div className="testimonial-name">{review.name}</div>
-                                        <div className="testimonial-source">{review.source}</div>
+                                        <div className="testimonial-source">
+                                            {review.source.startsWith('http') ? (
+                                                <a href={review.source} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
+                                                    Google Review
+                                                </a>
+                                            ) : (
+                                                review.source
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

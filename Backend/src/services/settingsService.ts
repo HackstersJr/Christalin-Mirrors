@@ -13,7 +13,7 @@ export const settingsService = {
       email: s.email,
       phone: s.phone,
       hours: s.hours,
-      branches: branches.map(b => ({
+      branches: branches.map((b: any) => ({
         name: b.name,
         city: b.city,
         address: b.address,

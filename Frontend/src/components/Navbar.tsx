@@ -30,7 +30,12 @@ export default function Navbar({ theme, toggleTheme, isAppLoading }: NavbarProps
     const scrollTo = (href: string) => {
         setMobileOpen(false)
         const el = document.querySelector(href)
-        if (el) el.scrollIntoView({ behavior: 'smooth' })
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth' })
+        } else {
+            // If element not on current page, go to homepage + hash
+            window.location.href = '/' + href
+        }
     }
 
     return (

@@ -17,7 +17,7 @@ export const staffService = {
       prisma.staff.count({ where }),
     ]);
 
-    const mapped = items.map(s => ({
+    const mapped = items.map((s: any) => ({
       id: s.id,
       name: s.name,
       role: s.role.toLowerCase(),

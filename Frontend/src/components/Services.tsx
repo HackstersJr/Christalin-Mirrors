@@ -2,11 +2,7 @@ import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { StaggerContainer, StaggerItem } from './Animations'
 import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
-import featuredService1 from '../assets/featured-service.png'
-import featuredService2 from '../assets/collection-editorial.png'
-import featuredService3 from '../assets/collection-balayage.png'
-import featuredService4 from '../assets/gallery-1.png'
-import featuredService5 from '../assets/gallery-4.png'
+import { SERVICE_IMAGES } from '../data/assets'
 import './Services.css'
 
 type Category = 'all' | 'hair' | 'skin' | 'korean' | 'womens' | 'mens'
@@ -73,7 +69,7 @@ const featuredServices = [
         desc: 'Immerse yourself in our signature K-beauty head spa experience — a luxurious journey combining deep cleansing, hydra restoration, scalp renewal, and the ultimate K-Glow ritual. Designed to rejuvenate both scalp and soul.',
         tags: ['K-Beauty', 'Head Spa', 'Premium'],
         isKorean: true,
-        image: featuredService1
+        image: SERVICE_IMAGES[0]
     },
     {
         name: 'Luxury Bridal Makeover',
@@ -81,7 +77,7 @@ const featuredServices = [
         desc: 'Complete bridal transformation combining high-definition HD or Airbrush makeup, professional hair styling, intricate saree draping, and essential skincare prep tailored for your perfect day.',
         tags: ['Bridal', 'Makeup', 'Styling'],
         isKorean: false,
-        image: featuredService2
+        image: SERVICE_IMAGES[1]
     },
     {
         name: 'Balayage & Color Mastery',
@@ -89,7 +85,7 @@ const featuredServices = [
         desc: 'Expert hand-painted natural gradients and sun-kissed looks created with premium ammonia-free colors. Express your unique style with fashion shades and meticulously crafted creative highlights.',
         tags: ['Color', 'Balayage', 'Creative'],
         isKorean: false,
-        image: featuredService3
+        image: SERVICE_IMAGES[2]
     },
     {
         name: 'Glass Skin Facial',
@@ -97,7 +93,7 @@ const featuredServices = [
         desc: 'Achieve the coveted flawless glass skin glow with our signature Korean hydra facial protocol. Utilizing premium imported serums and advanced restorative hydration techniques to deeply nourish your skin.',
         tags: ['Korean', 'Facial', 'Glow'],
         isKorean: true,
-        image: featuredService4
+        image: SERVICE_IMAGES[3]
     },
     {
         name: "Men's Premium Grooming Suite",
@@ -105,7 +101,7 @@ const featuredServices = [
         desc: 'The complete elevated men\'s experience. Precision creative cuts, master beard sculpting, smoothing keratin treatments, and premium hair coloring, all delivered in a refined environment.',
         tags: ['Grooming', 'Cuts', 'Beard'],
         isKorean: false,
-        image: featuredService5
+        image: SERVICE_IMAGES[4]
     },
 ]
 
@@ -192,34 +188,31 @@ export default function Services() {
 
                 {/* Services Grid */}
                 <div className={`services-list-container ${showAllServices ? 'expanded' : ''}`}>
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={active}
-                            className="services-grid"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.4 }}
-                        >
-                            {filtered.map((service, i) => (
-                                <motion.div
-                                    key={service.name}
-                                    className={`service-item ${service.isKorean ? 'korean-item' : ''}`}
-                                    initial={{ opacity: 0, y: 15 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.05, duration: 0.4 }}
-                                >
-                                    <div className="service-info">
-                                        <div className="service-name">
-                                            {service.isKorean && <Sparkles size={14} className="korean-icon" />}
-                                            {service.name}
-                                        </div>
-                                        <div className="service-tag">{service.tag}</div>
+                    <motion.div
+                        key={active}
+                        className="services-grid"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4 }}
+                    >
+                        {filtered.map((service, i) => (
+                            <motion.div
+                                key={service.name}
+                                className={`service-item ${service.isKorean ? 'korean-item' : ''}`}
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.05, duration: 0.4 }}
+                            >
+                                <div className="service-info">
+                                    <div className="service-name">
+                                        {service.isKorean && <Sparkles size={14} className="korean-icon" />}
+                                        {service.name}
                                     </div>
-                                </motion.div>
-                            ))}
-                        </motion.div>
-                    </AnimatePresence>
+                                    <div className="service-tag">{service.tag}</div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </motion.div>
                 </div>
 
                 {filtered.length > 5 && (

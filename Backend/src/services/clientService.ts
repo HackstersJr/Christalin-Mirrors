@@ -26,7 +26,7 @@ export const clientService = {
       prisma.client.count({ where }),
     ]);
 
-    const mapped = items.map(c => ({
+    const mapped = items.map((c: any) => ({
       id: c.id,
       name: c.name,
       email: c.email,

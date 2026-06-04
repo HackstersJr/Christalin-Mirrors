@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { StaggerContainer, StaggerItem } from './Animations'
-import founderImg from '../assets/founder.jpeg'
+import { FOUNDER_IMAGE } from '../data/assets'
 import './FoundersNote.css'
 
 export default function FoundersNote() {
@@ -62,7 +62,7 @@ export default function FoundersNote() {
 
                     {/* Image Side */}
                     <StaggerItem className="founders-note-image-side" xOffset={40} yOffset={0}>
-                        <img src={founderImg} alt="Sushmitha Cristalin A." className="founders-note-image" />
+                        <img src={FOUNDER_IMAGE} alt="Sushmitha Cristalin A." className="founders-note-image" loading="lazy" />
                     </StaggerItem>
                 </StaggerContainer>
             </div>

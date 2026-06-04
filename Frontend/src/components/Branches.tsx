@@ -11,7 +11,7 @@ const branches = [
         city: 'Bengaluru, Karnataka',
         address: 'Century Ethos Club House, Bellary Rd, Bengaluru 560092',
         hours: 'Everyday: 10:00 AM – 9:00 PM',
-        phone: '+91 72042 36981',
+        phone: '+91 99001 18383',
         mapUrl: 'https://maps.google.com/?q=Century+Ethos+Club+House+Bellary+Road+Bengaluru',
         image: branchBengaluru,
     },
@@ -20,7 +20,7 @@ const branches = [
         city: 'Kalaburagi, Karnataka',
         address: 'Orchid Mall, Mahaveer Nagar, Khuba Plot, Brahmpur, Kalaburagi 585105',
         hours: 'Everyday: 10:00 AM – 9:00 PM',
-        phone: '+91 XXXXX XXXXX', // TODO: Replace with actual phone number
+        phone: '+91 99001 18383',
         mapUrl: 'https://maps.google.com/?q=Orchid+Mall+Kalaburagi',
         image: branchKalaburagi,
     },
@@ -44,7 +44,7 @@ export default function Branches() {
 
                 <StaggerContainer className="branches-grid">
                     {branches.map((branch) => (
-                        <StaggerItem key={branch.name}>
+                        <div key={branch.name} className="branch-card-wrapper">
                             <div className="branch-card branch-card-with-image">
                                 <div className="branch-image-wrapper">
                                     <img src={branch.image} alt={branch.name} className="branch-image" loading="lazy" />
@@ -88,11 +88,11 @@ export default function Branches() {
                                     </div>
                                 </div>
                             </div>
-                        </StaggerItem>
+                        </div>
                     ))}
 
                     {/* Dubai — Coming Soon */}
-                    <StaggerItem>
+                    <div className="branch-card-wrapper">
                         <div className="branch-card branch-card-with-image branch-card-coming-soon">
                             <div className="branch-image-wrapper">
                                 <img src={branchDubai} alt="CM Dubai — Coming Soon" className="branch-image" loading="lazy" />
@@ -120,7 +120,7 @@ export default function Branches() {
                                 </div>
                             </div>
                         </div>
-                    </StaggerItem>
+                    </div>
                 </StaggerContainer>
             </div>
         </section>

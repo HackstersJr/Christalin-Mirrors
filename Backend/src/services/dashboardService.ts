@@ -56,10 +56,10 @@ export const dashboardService = {
     const allActive = await prisma.inventoryItem.findMany({
       where: { ...branchFilter, isActive: true },
     });
-    const lowStockItems = allActive.filter(i => i.currentStock <= i.minStock);
+    const lowStockItems = allActive.filter((i: any) => i.currentStock <= i.minStock);
 
     return {
-      lowStockItems: lowStockItems.map(i => ({
+      lowStockItems: lowStockItems.map((i: any) => ({
         id: i.id,
         name: i.name,
         currentStock: i.currentStock,

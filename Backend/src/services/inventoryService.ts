@@ -114,6 +114,6 @@ export const inventoryService = {
       where,
       include: { branch: true },
     });
-    return all.filter(i => i.currentStock <= i.minStock).map(mapToFrontend);
+    return all.filter((i: any) => i.currentStock <= i.minStock).map(mapToFrontend);
   },
 };
