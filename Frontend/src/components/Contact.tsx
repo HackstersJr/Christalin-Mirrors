@@ -73,9 +73,9 @@ export default function Contact() {
                             </motion.div>
                         ) : (
                             <>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
                                     <h2 className="contact-heading" style={{ margin: 0 }}>Book an Appointment</h2>
-                                    <span style={{ backgroundColor: 'rgba(255, 215, 0, 0.2)', color: '#FFD700', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', border: '1px solid rgba(255, 215, 0, 0.4)' }}>
+                                    <span style={{ color: 'var(--accent)', fontSize: 'var(--text-sm)', textShadow: '0 0 10px rgba(212, 175, 55, 0.3)', letterSpacing: '1px' }}>
                                         Available Soon
                                     </span>
                                 </div>
