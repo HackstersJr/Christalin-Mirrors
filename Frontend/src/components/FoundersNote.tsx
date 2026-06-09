@@ -1,9 +1,12 @@
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { StaggerContainer, StaggerItem } from './Animations'
 import { FOUNDER_IMAGE } from '../data/assets'
 import './FoundersNote.css'
 
 export default function FoundersNote() {
+    const [showMore, setShowMore] = useState(false)
+
     return (
         <section className="founders-note-section" id="founders-note">
             <div className="container">
@@ -32,29 +35,49 @@ export default function FoundersNote() {
                                     that comes with earning a client's trust. These experiences shaped
                                     my respect for consistency and the intimate role beauty plays in confidence.
                                 </p>
-                                <p>
-                                    As my perspective evolved, I later associated with a Hyderabad-based
-                                    salon brand, contributing to its growth alongside trusted collaborators.
-                                    This phase refined my understanding of leadership and scale, and clarified
-                                    what mattered most to me: integrity, refinement, and thoughtfully crafted
-                                    experiences over volume.
-                                </p>
-                                <p>
-                                    With the encouragement of friends, family, and loyal clients, that shared
-                                    trust gave shape to Christalin Mirrors—a brand built on experience,
-                                    intention, and care.
-                                </p>
-                                <p>
-                                    Christalin Mirrors is more than a salon; it is a reflection of skill,
-                                    empowerment, and quiet confidence—guided by thoughtful growth and an
-                                    unwavering commitment to excellence.
-                                </p>
+                                <AnimatePresence>
+                                    {showMore && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.4 }}
+                                            style={{ overflow: 'hidden' }}
+                                        >
+                                            <p>
+                                                As my perspective evolved, I later associated with a Hyderabad-based
+                                                salon brand, contributing to its growth alongside trusted collaborators.
+                                                This phase refined my understanding of leadership and scale, and clarified
+                                                what mattered most to me: integrity, refinement, and thoughtfully crafted
+                                                experiences over volume.
+                                            </p>
+                                            <p>
+                                                With the encouragement of friends, family, and loyal clients, that shared
+                                                trust gave shape to Christalin Mirrors—a brand built on experience,
+                                                intention, and care.
+                                            </p>
+                                            <p>
+                                                Christalin Mirrors is more than a salon; it is a reflection of skill,
+                                                empowerment, and quiet confidence—guided by thoughtful growth and an
+                                                unwavering commitment to excellence.
+                                            </p>
+
+                                            <div className="founders-note-sign-off" style={{ marginTop: '2rem' }}>
+                                                <p className="founders-note-gratitude">With gratitude,</p>
+                                                <p className="founders-note-signature">Sushmitha Cristalin A.</p>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
-                            <div className="founders-note-sign-off">
-                                <p className="founders-note-gratitude">With gratitude,</p>
-                                <p className="founders-note-signature">Sushmitha Cristalin A.</p>
-                            </div>
+                            <button 
+                                className="btn btn-outline" 
+                                style={{ marginTop: '1.5rem', borderColor: 'var(--border)' }} 
+                                onClick={() => setShowMore(!showMore)}
+                            >
+                                {showMore ? 'Read Less' : 'Read Full Note'}
+                            </button>
 
                             <div className="founders-note-quote-close">&rdquo;</div>
                         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './hooks/useTheme'
 import Navbar from './components/Navbar'
@@ -49,6 +49,7 @@ const queryClient = new QueryClient({
 function LandingPage() {
     const { theme, toggleTheme } = useTheme()
     const [isLoading, setIsLoading] = useState(true)
+    const location = useLocation()
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -56,6 +57,15 @@ function LandingPage() {
         }, 2000)
         return () => clearTimeout(timer)
     }, [])
+
+    useEffect(() => {
+        if (!isLoading && location.hash) {
+            const el = document.querySelector(location.hash)
+            if (el) {
+                setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 100)
+            }
+        }
+    }, [location.hash, isLoading])
 
     return (
         <>
@@ -69,8 +79,8 @@ function LandingPage() {
                 <About />
                 <FoundersNote />
                 <Services />
-                <Testimonials />
                 <Gallery />
+                <Testimonials />
                 <Branches />
                 <Contact />
             </main>

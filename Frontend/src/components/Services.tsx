@@ -53,7 +53,6 @@ const services: ServiceItem[] = [
 ]
 
 const tabs: { label: string; value: Category; highlight?: boolean }[] = [
-    { label: 'All', value: 'all' },
     { label: 'Hair', value: 'hair' },
     { label: 'Skin & Beauty', value: 'skin' },
     { label: 'Korean Rituals', value: 'korean', highlight: true },
@@ -106,7 +105,7 @@ const featuredServices = [
 ]
 
 export default function Services() {
-    const [active, setActive] = useState<Category>('all')
+    const [active, setActive] = useState<Category>('korean')
     const [showAllServices, setShowAllServices] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
 

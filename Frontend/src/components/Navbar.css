@@ -9,15 +9,29 @@
     right: 0;
     z-index: 1000;
     padding: 18px 0;
-    transition: all var(--transition-slow);
+    transition: padding 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.navbar.scrolled {
+.navbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
     background: var(--navbar-bg);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    padding: 12px 0;
+    opacity: 0;
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: -1;
     border-bottom: 1px solid var(--border);
+    pointer-events: none;
+}
+
+.navbar.scrolled {
+    padding: 12px 0;
+}
+
+.navbar.scrolled::before {
+    opacity: 1;
 }
 
 .navbar-inner {
@@ -29,11 +43,8 @@
     padding: 0 var(--container-padding);
 }
 
-.navbar.loading {
-    background: transparent !important;
-    border-color: transparent !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+.navbar.loading::before {
+    opacity: 0 !important;
 }
 
 /* ─── Logo ────────────────────────────────────────────────────── */

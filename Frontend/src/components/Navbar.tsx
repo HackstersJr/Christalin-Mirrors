@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sun, Moon, Menu, X } from 'lucide-react'
 import cmLogo from '../assets/cm-logo-white.png'
@@ -13,6 +14,8 @@ interface NavbarProps {
 export default function Navbar({ theme, toggleTheme, isAppLoading }: NavbarProps) {
     const [scrolled, setScrolled] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
+    const location = useLocation()
+    const navigate = useNavigate()
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 50)
@@ -29,12 +32,13 @@ export default function Navbar({ theme, toggleTheme, isAppLoading }: NavbarProps
 
     const scrollTo = (href: string) => {
         setMobileOpen(false)
-        const el = document.querySelector(href)
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth' })
+        if (location.pathname === '/') {
+            const el = document.querySelector(href)
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth' })
+            }
         } else {
-            // If element not on current page, go to homepage + hash
-            window.location.href = '/' + href
+            navigate('/' + href)
         }
     }
 
@@ -68,21 +72,32 @@ export default function Navbar({ theme, toggleTheme, isAppLoading }: NavbarProps
 
                     {/* Centered Logo Container */}
                     <div className="navbar-logo-container">
-                        {!isAppLoading && scrolled && (
-                            <motion.a
-                                href="#"
+                        {!isAppLoading && (scrolled || location.pathname !== '/') && (
+                            <a
+                                href="/"
                                 className="navbar-logo"
-                                onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                                layoutId="main-logo"
-                                transition={{
-                                    type: "spring",
-                                    stiffness: 70,
-                                    damping: 24,
-                                    mass: 1.2
+                                onClick={(e) => { 
+                                    e.preventDefault(); 
+                                    if (location.pathname === '/') {
+                                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                                    } else {
+                                        navigate('/')
+                                    }
                                 }}
                             >
-                                <img src={cmLogo} alt="CM" className="navbar-logo-img" />
-                            </motion.a>
+                                <motion.img 
+                                    src={cmLogo} 
+                                    alt="CM" 
+                                    className="navbar-logo-img" 
+                                    layoutId="main-logo"
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 70,
+                                        damping: 24,
+                                        mass: 1.2
+                                    }}
+                                />
+                            </a>
                         )}
                     </div>
 

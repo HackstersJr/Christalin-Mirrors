@@ -75,7 +75,7 @@ export default function Testimonials() {
 
                 <StaggerContainer className="testimonials-grid">
                     {reviews.map((review, idx) => (
-                        <StaggerItem key={idx}>
+                        <StaggerItem key={idx} className="testimonial-stagger-item">
                             <div className="testimonial-card">
                                 <div className="testimonial-stars">
                                     {Array.from({ length: review.stars }).map((_, i) => (

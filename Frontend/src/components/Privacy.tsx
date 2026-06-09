@@ -1,4 +1,6 @@
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTheme } from '../hooks/useTheme'
 import Navbar from './Navbar'
@@ -21,6 +23,9 @@ export default function Privacy() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
                     >
+                        <Link to="/" className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '2rem', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: 'var(--radius-full)', color: 'var(--text-primary)', textDecoration: 'none', transition: 'all 0.3s ease' }}>
+                            <ArrowLeft size={16} /> Back to Home
+                        </Link>
                         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-4xl)', marginBottom: '32px' }}>Privacy Policy</h1>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.6 }}>Last updated: June 2026</p>
                         

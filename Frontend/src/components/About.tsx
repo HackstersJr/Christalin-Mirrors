@@ -1,9 +1,12 @@
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { StaggerContainer, StaggerItem } from './Animations'
 import { ABOUT_IMAGE } from '../data/assets'
 import './About.css'
 
 export default function About() {
+    const [showMore, setShowMore] = useState(false)
+
     return (
         <section className="about section" id="about">
             <div className="container">
@@ -31,18 +34,39 @@ export default function About() {
                                 where every client is treated with care and precision.
                             </p>
                         </StaggerItem>
+                        <AnimatePresence>
+                            {showMore && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    style={{ overflow: 'hidden' }}
+                                >
+                                    <StaggerItem>
+                                        <p className="about-text">
+                                            At Christalin Mirrors, we believe beauty and grooming are personal journeys.
+                                            Our goal is to refine your look, reflect your individuality, and help you
+                                            radiate confidence every day.
+                                        </p>
+                                    </StaggerItem>
+                                    <StaggerItem>
+                                        <div className="founder-note">
+                                            <p className="founder-label">Founder</p>
+                                            <p className="founder-name">Sushmitha Cristalin A.</p>
+                                        </div>
+                                    </StaggerItem>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                         <StaggerItem>
-                            <p className="about-text">
-                                At Christalin Mirrors, we believe beauty and grooming are personal journeys.
-                                Our goal is to refine your look, reflect your individuality, and help you
-                                radiate confidence every day.
-                            </p>
-                        </StaggerItem>
-                        <StaggerItem>
-                            <div className="founder-note">
-                                <p className="founder-label">Founder</p>
-                                <p className="founder-name">Sushmitha Cristalin A.</p>
-                            </div>
+                            <button 
+                                className="btn btn-outline" 
+                                style={{ marginTop: '1rem', borderColor: 'var(--border)' }} 
+                                onClick={() => setShowMore(!showMore)}
+                            >
+                                {showMore ? 'Read Less' : 'Read More'}
+                            </button>
                         </StaggerItem>
                     </StaggerContainer>
                 </div>

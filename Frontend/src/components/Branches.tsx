@@ -3,6 +3,7 @@ import { StaggerContainer, StaggerItem } from './Animations'
 import branchBengaluru from '../assets/branch-bengaluru.png'
 import branchKalaburagi from '../assets/branch-kalaburagi.png'
 import branchDubai from '../assets/branch-dubai.png'
+import { BRANCH_IMAGES } from '../data/assets'
 import './Branches.css'
 
 const branches = [
@@ -24,6 +25,13 @@ const branches = [
         mapUrl: 'https://maps.google.com/?q=Orchid+Mall+Kalaburagi',
         image: branchKalaburagi,
     },
+]
+
+const comingSoonBranches = [
+    { name: 'CM — Hassan', city: 'Hassan, Karnataka', image: BRANCH_IMAGES[2] },
+    { name: 'CM — Hubballi', city: 'Hubballi, Karnataka', image: BRANCH_IMAGES[1] },
+    { name: 'CM — Belagavi', city: 'Belagavi, Karnataka', image: BRANCH_IMAGES[0] },
+    { name: 'CM — Dubai', city: 'Dubai, UAE', image: branchDubai },
 ]
 
 export default function Branches() {
@@ -91,36 +99,38 @@ export default function Branches() {
                         </div>
                     ))}
 
-                    {/* Dubai — Coming Soon */}
-                    <div className="branch-card-wrapper">
-                        <div className="branch-card branch-card-with-image branch-card-coming-soon">
-                            <div className="branch-image-wrapper">
-                                <img src={branchDubai} alt="CM Dubai — Coming Soon" className="branch-image" loading="lazy" />
-                                <div className="branch-image-overlay coming-soon-overlay" />
-                                <div className="coming-soon-badge-overlay">
-                                    <span className="coming-soon-pulse" />
-                                    Opening Soon
+                    {/* Coming Soon Branches */}
+                    {comingSoonBranches.map((branch) => (
+                        <div key={branch.name} className="branch-card-wrapper">
+                            <div className="branch-card branch-card-with-image branch-card-coming-soon">
+                                <div className="branch-image-wrapper">
+                                    <img src={branch.image} alt={`${branch.name} — Coming Soon`} className="branch-image" loading="lazy" />
+                                    <div className="branch-image-overlay coming-soon-overlay" />
+                                    <div className="coming-soon-badge-overlay">
+                                        <span className="coming-soon-pulse" />
+                                        Opening Soon
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="branch-card-body">
-                                <div className="branch-name">CM — Dubai</div>
-                                <div className="branch-city">Dubai, UAE</div>
+                                <div className="branch-card-body">
+                                    <div className="branch-name">{branch.name}</div>
+                                    <div className="branch-city">{branch.city}</div>
 
-                                <div className="branch-detail">
-                                    <Globe size={16} className="branch-detail-icon" />
-                                    <span>Location to be announced</span>
-                                </div>
-                                <div className="branch-detail">
-                                    <Clock size={16} className="branch-detail-icon" />
-                                    <span>Coming Soon</span>
-                                </div>
+                                    <div className="branch-detail">
+                                        <Globe size={16} className="branch-detail-icon" />
+                                        <span>Location to be announced</span>
+                                    </div>
+                                    <div className="branch-detail">
+                                        <Clock size={16} className="branch-detail-icon" />
+                                        <span>Coming Soon</span>
+                                    </div>
 
-                                <div className="coming-soon-text">
-                                    We're bringing the Christalin Mirrors experience to Dubai. Stay tuned for updates.
+                                    <div className="coming-soon-text">
+                                        We're bringing the Christalin Mirrors experience to {branch.city.split(',')[0]}. Stay tuned for updates.
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    ))}
                 </StaggerContainer>
             </div>
         </section>
