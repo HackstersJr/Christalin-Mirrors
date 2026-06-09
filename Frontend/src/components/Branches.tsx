@@ -1,9 +1,7 @@
 import { MapPin, Clock, Phone, ExternalLink, Navigation, Globe } from 'lucide-react'
 import { StaggerContainer, StaggerItem } from './Animations'
-import branchBengaluru from '../assets/branch-bengaluru.png'
-import branchKalaburagi from '../assets/branch-kalaburagi.png'
-import branchDubai from '../assets/branch-dubai.png'
-import { BRANCH_IMAGES } from '../data/assets'
+const branchBengaluru = "https://res.cloudinary.com/djrtoihj8/image/upload/v1780593536/WhatsApp_Image_2026-03-26_at_9.24.34_PM_w3eof8.jpg"
+const branchKalaburagi = "https://res.cloudinary.com/djrtoihj8/image/upload/v1780593844/WhatsApp_Image_2026-06-04_at_2.56.43_PM_1_xatxwk.jpg"
 import './Branches.css'
 
 const branches = [
@@ -28,10 +26,10 @@ const branches = [
 ]
 
 const comingSoonBranches = [
-    { name: 'CM — Hassan', city: 'Hassan, Karnataka', image: BRANCH_IMAGES[2] },
-    { name: 'CM — Hubballi', city: 'Hubballi, Karnataka', image: BRANCH_IMAGES[1] },
-    { name: 'CM — Belagavi', city: 'Belagavi, Karnataka', image: BRANCH_IMAGES[0] },
-    { name: 'CM — Dubai', city: 'Dubai, UAE', image: branchDubai },
+    { name: 'CM — Hassan', city: 'Hassan, Karnataka' },
+    { name: 'CM — Hubballi', city: 'Hubballi, Karnataka' },
+    { name: 'CM — Belagavi', city: 'Belagavi, Karnataka' },
+    { name: 'CM — Dubai', city: 'Dubai, UAE' },
 ]
 
 export default function Branches() {
@@ -102,16 +100,14 @@ export default function Branches() {
                     {/* Coming Soon Branches */}
                     {comingSoonBranches.map((branch) => (
                         <div key={branch.name} className="branch-card-wrapper">
-                            <div className="branch-card branch-card-with-image branch-card-coming-soon">
-                                <div className="branch-image-wrapper">
-                                    <img src={branch.image} alt={`${branch.name} — Coming Soon`} className="branch-image" loading="lazy" />
-                                    <div className="branch-image-overlay coming-soon-overlay" />
-                                    <div className="coming-soon-badge-overlay">
-                                        <span className="coming-soon-pulse" />
-                                        Opening Soon
+                            <div className="branch-card branch-card-coming-soon">
+                                <div className="branch-card-body" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ marginBottom: '24px' }}>
+                                        <div className="coming-soon-badge">
+                                            <span className="coming-soon-pulse" />
+                                            Opening Soon
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="branch-card-body">
                                     <div className="branch-name">{branch.name}</div>
                                     <div className="branch-city">{branch.city}</div>
 

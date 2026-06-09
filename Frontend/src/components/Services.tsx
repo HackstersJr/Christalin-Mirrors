@@ -100,7 +100,7 @@ const featuredServices = [
         desc: 'The complete elevated men\'s experience. Precision creative cuts, master beard sculpting, smoothing keratin treatments, and premium hair coloring, all delivered in a refined environment.',
         tags: ['Grooming', 'Cuts', 'Beard'],
         isKorean: false,
-        image: SERVICE_IMAGES[4]
+        image: SERVICE_IMAGES[10]
     },
 ]
 
