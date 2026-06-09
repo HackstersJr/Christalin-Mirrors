@@ -273,6 +273,7 @@
 @media (max-width: 768px) {
     .branches-grid {
         display: flex;
+        align-items: stretch;
         overflow-x: auto;
         scroll-snap-type: x mandatory;
         gap: 16px;
