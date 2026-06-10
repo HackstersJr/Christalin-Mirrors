@@ -39,7 +39,7 @@ export default function Footer() {
                             <li><a href="#services" onClick={(e) => { e.preventDefault(); scrollTo('#services') }}>Services</a></li>
                             <li><a href="#gallery" onClick={(e) => { e.preventDefault(); scrollTo('#gallery') }}>Gallery</a></li>
                             <li><a href="#contact" onClick={(e) => { e.preventDefault(); scrollTo('#contact') }}>Contact</a></li>
-                            <li><Link to="/franchise" className="footer-franchise-link" onClick={() => window.scrollTo(0,0)}>Franchise Enquiry</Link></li>
+                            <li><a href="https://mail.google.com/mail/?view=cm&fs=1&to=christalinmirrors.admin@gmail.com" target="_blank" rel="noopener noreferrer" className="footer-franchise-link">Franchise Enquiry</a></li>
                         </ul>
                     </div>
 
@@ -66,24 +66,6 @@ export default function Footer() {
                         </ul>
                     </div>
 
-                    {/* Newsletter */}
-                    <div>
-                        <h4 className="footer-col-title">Stay Updated</h4>
-                        <p className="footer-newsletter-desc">
-                            Get styling tips, exclusive offers, and salon updates delivered to your inbox.
-                        </p>
-                        <form className="footer-newsletter-form" onSubmit={(e) => e.preventDefault()}>
-                            <input
-                                type="email"
-                                className="footer-newsletter-input"
-                                placeholder="your@email.com"
-                                aria-label="Email for newsletter"
-                            />
-                            <button type="submit" className="footer-newsletter-btn" aria-label="Subscribe">
-                                <ArrowRight size={18} />
-                            </button>
-                        </form>
-                    </div>
                 </div>
 
                 {/* Bottom Bar */}
