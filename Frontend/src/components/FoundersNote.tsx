@@ -24,16 +24,13 @@ export default function FoundersNote() {
 
                             <div className="founders-note-body">
                                 <p>
-                                    My journey in the beauty industry has been guided by passion,
-                                    perseverance, and a deep belief in standing confidently in my own
-                                    identity guided by values instilled in me early on.
+                                    My journey in the beauty industry has been shaped by passion,
+                                    perseverance, and purpose.
                                 </p>
                                 <p>
-                                    Before creating a brand of my own, I spent several formative years
-                                    learning from within the professional salon space—building a strong
-                                    foundation in discipline, service standards, and the responsibility
-                                    that comes with earning a client's trust. These experiences shaped
-                                    my respect for consistency and the intimate role beauty plays in confidence.
+                                    My interest in this field began long before I formally stepped into
+                                    the professional space. I was always attracted to the beauty sector
+                                    from my college days and had always dreamt of a career in it.
                                 </p>
                                 <AnimatePresence>
                                     {showMore && (
@@ -45,26 +42,58 @@ export default function FoundersNote() {
                                             style={{ overflow: 'hidden' }}
                                         >
                                             <p>
-                                                As my perspective evolved, I later associated with a Hyderabad-based
-                                                salon brand, contributing to its growth alongside trusted collaborators.
-                                                This phase refined my understanding of leadership and scale, and clarified
-                                                what mattered most to me: integrity, refinement, and thoughtfully crafted
-                                                experiences over volume.
+                                                My entry into this field began with the acquisition of one salon.
+                                                Initially, I chose to gain hands-on experience by working closely
+                                                with an established brand, where I spent several years understanding
+                                                the fundamentals of salon operations and management.
                                             </p>
                                             <p>
-                                                With the encouragement of friends, family, and loyal clients, that shared
-                                                trust gave shape to Christalin Mirrors—a brand built on experience,
-                                                intention, and care.
+                                                This phase allowed me to experience the industry from within—its
+                                                strengths, its challenges, and the discipline required to build
+                                                consistency, credibility and trust. It also allowed me to learn the
+                                                expertise of successfully and professionally managing salons, the art
+                                                of client retention, team leadership, estimating revenue growth,
+                                                inventory management, business marketing and the other essentials
+                                                which are mandatory to deliver in a highly competitive environment.
                                             </p>
                                             <p>
-                                                Christalin Mirrors is more than a salon; it is a reflection of skill,
-                                                empowerment, and quiet confidence—guided by thoughtful growth and an
-                                                unwavering commitment to excellence.
+                                                The second phase of my journey began when I started taking a keener
+                                                interest in the financial and administration part of the business.
+                                                During this phase, I acquainted myself with learning the different
+                                                work models of this business and varied management styles. The
+                                                importance of expansion and the skill required for such was also a
+                                                crucial development which I gained from this phase, which highlighted
+                                                the value of co-operation, collaboration as well as competition.
+                                            </p>
+                                            <p>
+                                                Along with growth, came development and I felt that the fruition of
+                                                my childhood interest in this field should develop into something
+                                                long lasting and worthwhile. Something which came from me, something
+                                                created by me, something which reflected my values and my skills and
+                                                something truly unique. I wanted to lay the foundation of my dreams
+                                                in it and to ensure that it fulfills the dreams of others. I wanted
+                                                to create beauty not just in a professional manner but I wanted to
+                                                create beauty in a caring way as well. It was this dream that
+                                                instilled in me a vision, a vision which became Christalin Mirrors—a
+                                                brand built on experience, insight, and the intention to elevate
+                                                everyday beauty through professionalism, consistency, excellence and
+                                                most of all CARE.
+                                            </p>
+                                            <p>
+                                                With the encouragement and belief of family, friends and thousands of
+                                                loyal clients, my dream became reality. It is this reality that I now
+                                                intend to take forward and make it a gift to everyone.
+                                            </p>
+                                            <p>
+                                                As Christalin Mirrors continues to evolve, expand and fulfill the
+                                                dreams of many, our core values remain the same: creating beauty
+                                                through professionalism and CARE.
                                             </p>
 
                                             <div className="founders-note-sign-off" style={{ marginTop: '2rem' }}>
                                                 <p className="founders-note-gratitude">With gratitude,</p>
                                                 <p className="founders-note-signature">Sushmitha Cristalin A.</p>
+                                                <p className="founders-note-gratitude" style={{ marginTop: '4px' }}>Founder, Christalin Mirrors</p>
                                             </div>
                                         </motion.div>
                                     )}

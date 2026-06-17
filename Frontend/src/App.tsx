@@ -91,6 +91,7 @@ function LandingPage() {
 
 import Privacy from './components/Privacy'
 import Terms from './components/Terms'
+import NotFound from './components/NotFound'
 
 function App() {
     return (
@@ -119,6 +120,7 @@ function App() {
                 <Route path="inventory" element={<Inventory />} />
                 <Route path="settings" element={<Settings />} />
             </Route>
+            <Route path="*" element={<NotFound />} />
         </Routes>
     )
 }
