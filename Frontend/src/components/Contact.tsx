@@ -85,8 +85,8 @@ export default function Contact() {
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '2rem' }}>
                                     {[
-                                        { name: 'Bengaluru Studio', phone: '+917204236981', displayPhone: '+91 72042 36981' },
-                                        { name: 'Kalaburagi Studio', phone: '+91918715909', displayPhone: '+91 91871 5909' }
+                                        { name: 'Bengaluru Salon', phone: '+917204236981', displayPhone: '+91 72042 36981' },
+                                        { name: 'Kalaburagi Salon', phone: '+91918715909', displayPhone: '+91 91871 5909' }
                                     ].map((branch) => (
                                         <div key={branch.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-secondary)', flexWrap: 'wrap', gap: '1rem' }}>
                                             <div>
