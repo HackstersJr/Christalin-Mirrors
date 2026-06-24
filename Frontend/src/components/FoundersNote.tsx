@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { StaggerContainer, StaggerItem } from './Animations'
 import { FOUNDER_IMAGE } from '../data/assets'
+import { cld, cldSrcSet } from '../lib/cld'
 import './FoundersNote.css'
 
 export default function FoundersNote() {
@@ -114,7 +115,14 @@ export default function FoundersNote() {
 
                     {/* Image Side */}
                     <StaggerItem className="founders-note-image-side" xOffset={40} yOffset={0}>
-                        <img src={FOUNDER_IMAGE} alt="Sushmitha Cristalin A." className="founders-note-image" loading="lazy" />
+                        <img
+                            src={cld(FOUNDER_IMAGE, 800)}
+                            srcSet={cldSrcSet(FOUNDER_IMAGE, [400, 600, 800, 1000, 1280])}
+                            sizes="(max-width: 768px) 90vw, 640px"
+                            alt="Sushmitha Cristalin A."
+                            className="founders-note-image"
+                            loading="lazy"
+                        />
                     </StaggerItem>
                 </StaggerContainer>
             </div>

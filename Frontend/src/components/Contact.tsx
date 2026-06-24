@@ -4,6 +4,7 @@ import { CheckCircle, Send, Calendar, Clock, Phone } from 'lucide-react'
 import emailjs from '@emailjs/browser'
 import { StaggerItem } from './Animations'
 import { CONTACT_IMAGE } from '../data/assets'
+import { cld, cldSrcSet } from '../lib/cld'
 import './Contact.css'
 
 const timeSlots = [
@@ -50,7 +51,13 @@ export default function Contact() {
                 <StaggerItem className="contact-split">
                     {/* Image Side */}
                     <div className="contact-image-side">
-                        <img src={CONTACT_IMAGE} alt="Christalin Mirrors Salon" loading="lazy" />
+                        <img
+                            src={cld(CONTACT_IMAGE, 800)}
+                            srcSet={cldSrcSet(CONTACT_IMAGE, [400, 600, 800, 1000, 1200])}
+                            sizes="(max-width: 768px) 90vw, 600px"
+                            alt="Christalin Mirrors Salon"
+                            loading="lazy"
+                        />
                         <div className="contact-image-overlay">
                             <span className="contact-image-text">
                                 Refine<br />Reflect<br />Radiate

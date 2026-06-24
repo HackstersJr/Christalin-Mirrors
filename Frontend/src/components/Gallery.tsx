@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { StaggerContainer, StaggerItem } from './Animations'
 import { SERVICE_IMAGES, BRANCH_IMAGES } from '../data/assets'
+import { cld, cldSrcSet } from '../lib/cld'
 import './Gallery.css'
 
 type Tab = 'all' | 'services' | 'branches'
@@ -60,7 +61,13 @@ export default function Gallery() {
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <img src={img.src} alt="Gallery" loading="lazy" />
+                                <img
+                                    src={cld(img.src, 500)}
+                                    srcSet={cldSrcSet(img.src, [200, 300, 400, 500, 600, 800])}
+                                    sizes="(max-width: 600px) 45vw, (max-width: 1000px) 30vw, 300px"
+                                    alt="Gallery"
+                                    loading="lazy"
+                                />
                                 <div className="gallery-item-overlay">
                                     <span className="gallery-item-label">{img.type === 'services' ? 'Service' : 'Branch'}</span>
                                 </div>

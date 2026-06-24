@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { StaggerContainer, StaggerItem } from './Animations'
 import { ABOUT_IMAGE } from '../data/assets'
+import { cld, cldSrcSet } from '../lib/cld'
 import './About.css'
 
 export default function About() {
@@ -13,7 +14,14 @@ export default function About() {
                 <div className="about-inner">
                     {/* Image */}
                     <StaggerItem className="about-image-wrapper" xOffset={-40} yOffset={0}>
-                        <img src={ABOUT_IMAGE} alt="Christalin Mirrors Salon" className="about-image" loading="lazy" />
+                        <img
+                            src={cld(ABOUT_IMAGE, 800)}
+                            srcSet={cldSrcSet(ABOUT_IMAGE, [400, 600, 800, 1000, 1200])}
+                            sizes="(max-width: 768px) 90vw, 600px"
+                            alt="Christalin Mirrors Salon"
+                            className="about-image"
+                            loading="lazy"
+                        />
                     </StaggerItem>
 
                     {/* Text */}

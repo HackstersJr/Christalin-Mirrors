@@ -2,7 +2,8 @@
    CM Hair Salon — Lunaria Editorial Design System
    ═══════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600&display=swap');
+/* Google Fonts (Inter + Playfair Display incl. italics) are loaded via a
+   single consolidated <link> in index.html — no render-blocking @import here. */
 
 /* ─── Custom & Google Fonts ───────────────────────────────────────── */
 @font-face {

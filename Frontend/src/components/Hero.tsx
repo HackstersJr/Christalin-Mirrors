@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowDown } from 'lucide-react'
 import { HERO_IMAGE } from '../data/assets'
+import { cld, cldSrcSet } from '../lib/cld'
 import cmLogo from '../assets/cm-logo-white.png'
 import './Hero.css'
 
@@ -19,7 +20,10 @@ export default function Hero({ isAppLoading }: { isAppLoading?: boolean }) {
         <section className="hero" id="hero">
             <div className="hero-image-wrapper">
                 <motion.img
-                    src={HERO_IMAGE}
+                    src={cld(HERO_IMAGE, 1280)}
+                    srcSet={cldSrcSet(HERO_IMAGE, [640, 828, 1080, 1280, 1600, 1920, 2560])}
+                    sizes="100vw"
+                    fetchPriority="high"
                     alt="Christalin Mirrors — Refined Unisex Salon"
                     className="hero-image"
                     initial={{ scale: 1.15 }}
@@ -36,11 +40,13 @@ export default function Hero({ isAppLoading }: { isAppLoading?: boolean }) {
                 transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
                 {!scrolled && !isAppLoading ? (
-                    <motion.img 
+                    <motion.img
                         layoutId="main-logo"
-                        src={cmLogo} 
-                        alt="CM" 
-                        className="hero-monogram-img" 
+                        src={cmLogo}
+                        alt="CM"
+                        className="hero-monogram-img"
+                        width={1498}
+                        height={286}
                         transition={{ type: "spring", stiffness: 70, damping: 24, mass: 1.2 }}
                     />
                 ) : (

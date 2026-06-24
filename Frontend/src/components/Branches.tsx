@@ -1,5 +1,6 @@
 import { MapPin, Clock, Phone, ExternalLink, Navigation, Globe } from 'lucide-react'
 import { StaggerContainer, StaggerItem } from './Animations'
+import { cld, cldSrcSet } from '../lib/cld'
 const branchBengaluru = "https://res.cloudinary.com/djrtoihj8/image/upload/v1780593536/WhatsApp_Image_2026-03-26_at_9.24.34_PM_w3eof8.jpg"
 const branchKalaburagi = "https://res.cloudinary.com/djrtoihj8/image/upload/v1780593844/WhatsApp_Image_2026-06-04_at_2.56.43_PM_1_xatxwk.jpg"
 import './Branches.css'
@@ -54,7 +55,14 @@ export default function Branches() {
                         <div key={branch.name} className="branch-card-wrapper">
                             <div className="branch-card branch-card-with-image">
                                 <div className="branch-image-wrapper">
-                                    <img src={branch.image} alt={branch.name} className="branch-image" loading="lazy" />
+                                    <img
+                                        src={cld(branch.image, 600)}
+                                        srcSet={cldSrcSet(branch.image, [300, 450, 600, 800, 1000])}
+                                        sizes="(max-width: 768px) 90vw, 450px"
+                                        alt={branch.name}
+                                        className="branch-image"
+                                        loading="lazy"
+                                    />
                                     <div className="branch-image-overlay" />
                                 </div>
                                 <div className="branch-card-body">

@@ -23,7 +23,7 @@ export default function LoadingScreen() {
                     mass: 1.2
                 }}
             >
-                <img src={cmLogo} alt="CM" className="loading-logo-img" />
+                <img src={cmLogo} alt="CM" className="loading-logo-img" width={1498} height={286} />
             </motion.div>
         </div>
     )

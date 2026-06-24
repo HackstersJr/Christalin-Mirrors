@@ -85,10 +85,12 @@ export default function Navbar({ theme, toggleTheme, isAppLoading }: NavbarProps
                                     }
                                 }}
                             >
-                                <motion.img 
-                                    src={cmLogo} 
-                                    alt="CM" 
-                                    className="navbar-logo-img" 
+                                <motion.img
+                                    src={cmLogo}
+                                    alt="CM"
+                                    className="navbar-logo-img"
+                                    width={1498}
+                                    height={286}
                                     layoutId="main-logo"
                                     transition={{
                                         type: "spring",

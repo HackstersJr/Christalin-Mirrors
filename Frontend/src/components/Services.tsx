@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { StaggerContainer, StaggerItem } from './Animations'
 import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 import { SERVICE_IMAGES } from '../data/assets'
+import { cld, cldSrcSet } from '../lib/cld'
 import './Services.css'
 
 type Category = 'all' | 'hair' | 'skin' | 'korean' | 'womens' | 'mens'
@@ -150,7 +151,13 @@ export default function Services() {
                         {featuredServices.map((svc) => (
                             <div key={svc.name} className={`featured-scroll-card ${svc.isKorean ? 'korean-card' : ''}`}>
                                 <div className="featured-scroll-image">
-                                    <img src={svc.image} alt={svc.name} loading="lazy" />
+                                    <img
+                                        src={cld(svc.image, 900)}
+                                        srcSet={cldSrcSet(svc.image, [400, 600, 800, 1000, 1200])}
+                                        sizes="(max-width: 768px) 90vw, 920px"
+                                        alt={svc.name}
+                                        loading="lazy"
+                                    />
                                 </div>
                                 <div className="featured-scroll-content">
                                     <span className="featured-card-badge">
