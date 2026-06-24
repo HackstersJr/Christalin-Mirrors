@@ -129,6 +129,7 @@
     text-transform: uppercase;
     color: var(--accent);
     margin-bottom: 20px;
+    font-variant-numeric: lining-nums;
 }
 
 .branch-detail {

@@ -26,7 +26,7 @@ const branches = [
 ]
 
 const comingSoonBranches = [
-    { name: 'CM — Yelahanka', city: 'Yelahanka, Bengaluru' },
+    { name: 'CM — Yelahanka', city: 'Yelahanka Phase 1, Bengaluru' },
     { name: 'CM — Hassan', city: 'Hassan, Karnataka' },
     { name: 'CM — Hubballi', city: 'Hubballi, Karnataka' },
     { name: 'CM — Belagavi', city: 'Belagavi, Karnataka' },
