@@ -1,6 +1,6 @@
 import prisma from '../utils/prisma';
 import { NotFoundError, BadRequestError } from '../utils/errors';
-import { paisaToRupees } from '../utils/currency';
+import { paisaToRupees, rupeesToPaisa } from '../utils/currency';
 import { computeInvoiceTotals, lineTotal, Discount, PricedLine } from '../utils/money';
 import { parsePagination, paginate } from '../utils/pagination';
 import { TokenPayload } from '../utils/jwt';
@@ -149,7 +149,17 @@ export const invoiceService = {
     return prisma.$transaction(async (tx) => {
       const priced = await priceLines(tx, branchId, data.items);
       const taxPercent = await taxPercentFromSettings(tx);
-      const discount: Discount | undefined = data.discount;
+      // The request sends money in rupees (a flat discount of 500 means ₹500);
+      // money.ts works in paisa. Convert the flat value at this boundary, the
+      // same place line prices cross over. A percent discount is unitless.
+      const discount: Discount | undefined = data.discount
+        ? {
+            type: data.discount.type,
+            value: data.discount.type === 'flat'
+              ? rupeesToPaisa(data.discount.value)
+              : data.discount.value,
+          }
+        : undefined;
       const totals = computeInvoiceTotals(priced, discount, taxPercent);
 
       // Checked after totals so a flat discount is measured as a real percentage.

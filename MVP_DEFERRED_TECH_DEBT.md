@@ -6,6 +6,14 @@ Everything deliberately cut for v1. Each entry: what, why now, why not forever, 
 
 ---
 
+## Demo-readiness pass (2026-07-25) — new items
+
+### Per-branch summary count chips read 0 (cosmetic)
+**What:** On Staff and Inventory, the small per-branch count chips ("BENGALURU 0 / KALABURAGI 0") always show 0. They filter on the bare string `branch === 'Bengaluru'`, but the backend returns the full display name `'CM — Bengaluru'`. Leftover from the mock-data era, which used short names.
+**Why now:** Cosmetic only — the main stat (total count), the table, and the branch filter dropdown are all correct. The page is fully usable; a runtime test did not prove it broken, and the demo-readiness brief says not to change UI unless a page is unusable.
+**Why not forever:** A demo viewer will notice "Bengaluru: 0 staff" next to 4 Bengaluru staff.
+**Trigger / fix:** One-line change per page — match on the real branch name (`includes('Bengaluru')`) or compare against `branchId`. Do it opportunistically, or when polishing the UI.
+
 ## Runtime verification pass (2026-07-24) — new items
 
 ### Docker was not actually used
