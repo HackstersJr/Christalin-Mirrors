@@ -21,7 +21,7 @@ export default function Inventory() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState(emptyForm)
 
-    const reload = () => setItems(inventoryStore.getAll())
+    const reload = () => inventoryStore.getAll().then(setItems).catch(() => {})
     useEffect(() => { reload() }, [])
 
     const lowStock = items.filter(i => i.isActive && i.currentStock <= i.minStock)
@@ -39,15 +39,18 @@ export default function Inventory() {
         setEditingId(item.id); const { id, ...rest } = item; setForm(rest); setShowForm(true)
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (editingId) { inventoryStore.update(editingId, form) } else { inventoryStore.create(form) }
-        resetForm(); reload()
+        if (editingId) await inventoryStore.update(editingId, form)
+        else await inventoryStore.create(form)
+        resetForm(); await reload()
     }
 
     const resetForm = () => { setForm(emptyForm); setEditingId(null); setShowForm(false) }
 
-    const deleteItem = (id: string) => { if (confirm('Delete this item?')) { inventoryStore.delete(id); reload() } }
+    const deleteItem = async (id: string) => {
+        if (confirm('Delete this item?')) { await inventoryStore.delete(id); await reload() }
+    }
 
     return (
         <div>

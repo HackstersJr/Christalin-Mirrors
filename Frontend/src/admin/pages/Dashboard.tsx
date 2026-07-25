@@ -2,21 +2,26 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Users, TrendingUp, Clock, AlertTriangle, Package, FileText } from 'lucide-react'
 import { appointmentStore, clientStore, invoiceStore, inventoryStore, visitStore } from '../data/store'
-import type { Appointment, Invoice } from '../data/types'
+import type { Appointment, Invoice, Client, InventoryItem, ServiceVisit } from '../data/types'
 import '../AdminShared.css'
 import './Dashboard.css'
 
 export default function Dashboard() {
     const navigate = useNavigate()
     const [appointments, setAppointments] = useState<Appointment[]>([])
+    const [clients, setClients] = useState<Client[]>([])
+    const [invoices, setInvoices] = useState<Invoice[]>([])
+    const [lowStock, setLowStock] = useState<InventoryItem[]>([])
+    const [visits, setVisits] = useState<ServiceVisit[]>([])
     const today = new Date().toISOString().split('T')[0]
 
-    useEffect(() => { setAppointments(appointmentStore.getAll()) }, [])
-
-    const clients = clientStore.getAll()
-    const invoices = invoiceStore.getAll()
-    const lowStock = inventoryStore.getLowStock()
-    const visits = visitStore.getAll()
+    useEffect(() => {
+        appointmentStore.getAll().then(setAppointments).catch(() => {})
+        clientStore.getAll().then(setClients).catch(() => {})
+        invoiceStore.getAll().then(setInvoices).catch(() => {})
+        inventoryStore.getLowStock().then(setLowStock).catch(() => {})
+        visitStore.getAll().then(setVisits).catch(() => {})
+    }, [])
 
     const todayApts = appointments.filter(a => a.date === today)
     const pendingApts = appointments.filter(a => a.status === 'pending')
@@ -33,7 +38,8 @@ export default function Dashboard() {
     const topServices = Object.entries(serviceCount).sort((a, b) => b[1] - a[1]).slice(0, 5)
 
     // Recent invoices
-    const recentInvoices = invoices.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
+    // copy before sorting — `invoices` is React state and .sort() mutates in place
+    const recentInvoices = [...invoices].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
 
     return (
         <div>

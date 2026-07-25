@@ -1,0 +1,29 @@
+# Local development database only. Not for production.
+# Port 5433 on the host so it cannot collide with a local Postgres on 5432.
+#
+#   docker compose -f docker-compose.dev.yml up -d postgres
+#   docker compose -f docker-compose.dev.yml ps
+#   docker compose -f docker-compose.dev.yml logs postgres --tail=100
+#   docker compose -f docker-compose.dev.yml down -v      # wipe and start over
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: christalin-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: christalin_dev
+      POSTGRES_USER: christalin
+      POSTGRES_PASSWORD: christalin_dev_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - christalin_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U christalin -d christalin_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  christalin_postgres_data:

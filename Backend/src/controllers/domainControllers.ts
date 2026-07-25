@@ -7,87 +7,82 @@ import { appointmentService } from '../services/appointmentService';
 import { invoiceService } from '../services/invoiceService';
 import { inventoryService } from '../services/inventoryService';
 import { settingsService } from '../services/settingsService';
+import { contactService } from '../services/contactService';
+import { serviceVisitService } from '../services/serviceVisitService';
+import { TokenPayload } from '../utils/jwt';
 
-// ─── Branch ─────────────────────────────────────────────────
-export const branchController = {
-  async list(req: Request, res: Response) { res.json(await branchService.list(req.query as any)); },
-  async getById(req: Request, res: Response) { res.json(await branchService.getById((req.params.id as string))); },
-  async create(req: Request, res: Response) { res.status(201).json(await branchService.create(req.body)); },
-  async update(req: Request, res: Response) { res.json(await branchService.update((req.params.id as string), req.body)); },
-  async remove(req: Request, res: Response) { await branchService.remove((req.params.id as string)); res.status(204).end(); },
-};
+/**
+ * Every domain service exposes the same five methods with the same shape
+ * (ctx first). One helper replaces eight hand-written copies.
+ */
+interface CrudService {
+  list(ctx: TokenPayload, query: any): Promise<unknown>;
+  getById(ctx: TokenPayload, id: string): Promise<unknown>;
+  create(ctx: TokenPayload, data: any): Promise<unknown>;
+  update(ctx: TokenPayload, id: string, data: any): Promise<unknown>;
+  remove(ctx: TokenPayload, id: string): Promise<unknown>;
+}
 
-// ─── Staff ──────────────────────────────────────────────────
-export const staffController = {
-  async list(req: Request, res: Response) { res.json(await staffService.list(req.query as any)); },
-  async getById(req: Request, res: Response) { res.json(await staffService.getById((req.params.id as string))); },
-  async create(req: Request, res: Response) { res.status(201).json(await staffService.create(req.body)); },
-  async update(req: Request, res: Response) { res.json(await staffService.update((req.params.id as string), req.body)); },
-  async remove(req: Request, res: Response) { await staffService.remove((req.params.id as string)); res.status(204).end(); },
-};
+function crud(service: CrudService) {
+  return {
+    async list(req: Request, res: Response) {
+      res.json(await service.list(req.user!, req.query));
+    },
+    async getById(req: Request, res: Response) {
+      res.json(await service.getById(req.user!, req.params.id as string));
+    },
+    async create(req: Request, res: Response) {
+      res.status(201).json(await service.create(req.user!, req.body));
+    },
+    async update(req: Request, res: Response) {
+      res.json(await service.update(req.user!, req.params.id as string, req.body));
+    },
+    async remove(req: Request, res: Response) {
+      await service.remove(req.user!, req.params.id as string);
+      res.status(204).end();
+    },
+  };
+}
 
-// ─── Client ─────────────────────────────────────────────────
-export const clientController = {
-  async list(req: Request, res: Response) { res.json(await clientService.list(req.query as any)); },
-  async getById(req: Request, res: Response) { res.json(await clientService.getById((req.params.id as string))); },
-  async create(req: Request, res: Response) { res.status(201).json(await clientService.create(req.body)); },
-  async update(req: Request, res: Response) { res.json(await clientService.update((req.params.id as string), req.body)); },
-  async remove(req: Request, res: Response) { await clientService.remove((req.params.id as string)); res.status(204).end(); },
-};
+export const branchController = crud(branchService);
+export const staffController = crud(staffService);
+export const clientController = crud(clientService);
+export const serviceController = crud(serviceService);
+export const appointmentController = crud(appointmentService);
+export const invoiceController = crud(invoiceService);
 
-// ─── Service ────────────────────────────────────────────────
-export const serviceController = {
-  async list(req: Request, res: Response) { res.json(await serviceService.list(req.query as any)); },
-  async getById(req: Request, res: Response) { res.json(await serviceService.getById((req.params.id as string))); },
-  async create(req: Request, res: Response) { res.status(201).json(await serviceService.create(req.body)); },
-  async update(req: Request, res: Response) { res.json(await serviceService.update((req.params.id as string), req.body)); },
-  async remove(req: Request, res: Response) { await serviceService.remove((req.params.id as string)); res.status(204).end(); },
-};
-
-// ─── Appointment ────────────────────────────────────────────
-export const appointmentController = {
-  async list(req: Request, res: Response) { res.json(await appointmentService.list(req.query as any)); },
-  async getById(req: Request, res: Response) { res.json(await appointmentService.getById((req.params.id as string))); },
-  async create(req: Request, res: Response) { res.status(201).json(await appointmentService.create(req.body)); },
-  async update(req: Request, res: Response) { res.json(await appointmentService.update((req.params.id as string), req.body)); },
-  async remove(req: Request, res: Response) { await appointmentService.remove((req.params.id as string)); res.status(204).end(); },
-};
-
-// ─── Invoice ────────────────────────────────────────────────
-export const invoiceController = {
-  async list(req: Request, res: Response) { res.json(await invoiceService.list(req.query as any)); },
-  async getById(req: Request, res: Response) { res.json(await invoiceService.getById((req.params.id as string))); },
-  async create(req: Request, res: Response) { res.status(201).json(await invoiceService.create(req.body)); },
-  async update(req: Request, res: Response) { res.json(await invoiceService.update((req.params.id as string), req.body)); },
-  async remove(req: Request, res: Response) { await invoiceService.remove((req.params.id as string)); res.status(204).end(); },
-};
-
-// ─── Inventory ──────────────────────────────────────────────
 export const inventoryController = {
-  async list(req: Request, res: Response) { res.json(await inventoryService.list(req.query as any)); },
-  async getById(req: Request, res: Response) { res.json(await inventoryService.getById((req.params.id as string))); },
-  async create(req: Request, res: Response) { res.status(201).json(await inventoryService.create(req.body)); },
-  async update(req: Request, res: Response) { res.json(await inventoryService.update((req.params.id as string), req.body)); },
-  async remove(req: Request, res: Response) { await inventoryService.remove((req.params.id as string)); res.status(204).end(); },
+  ...crud(inventoryService),
   async lowStock(req: Request, res: Response) {
-    const branchId = req.user?.role === 'OWNER' ? (req.query.branchId as string) : req.user?.branchId;
-    res.json(await inventoryService.getLowStock(branchId));
+    res.json(await inventoryService.getLowStock(req.user!));
   },
 };
 
-// ─── Settings ───────────────────────────────────────────────
-export const settingsController = {
-  async get(_req: Request, res: Response) { res.json(await settingsService.get()); },
-  async update(req: Request, res: Response) { res.json(await settingsService.update(req.body)); },
+export const serviceVisitController = {
+  async list(req: Request, res: Response) {
+    res.json(await serviceVisitService.list(req.user!, req.query));
+  },
 };
 
-// ─── Public ─────────────────────────────────────────────────
+export const settingsController = {
+  async get(_req: Request, res: Response) {
+    res.json(await settingsService.get());
+  },
+  async update(req: Request, res: Response) {
+    res.json(await settingsService.update(req.body));
+  },
+};
+
 export const publicController = {
-  async branches(_req: Request, res: Response) { res.json(await branchService.listPublic()); },
-  async services(_req: Request, res: Response) { res.json(await serviceService.listPublic()); },
+  async branches(_req: Request, res: Response) {
+    res.json(await branchService.listPublic());
+  },
+  async services(_req: Request, res: Response) {
+    res.json(await serviceService.listPublic());
+  },
   async contact(req: Request, res: Response) {
-    const { default: prisma } = await import('../utils/prisma');
-    const submission = await prisma.contactSubmission.create({ data: req.body });
-    res.status(201).json(submission);
+    await contactService.submit(req.body);
+    // Deliberately does not echo the stored row back to an anonymous caller.
+    res.status(201).json({ ok: true });
   },
 };

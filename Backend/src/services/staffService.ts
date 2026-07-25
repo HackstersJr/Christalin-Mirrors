@@ -1,11 +1,14 @@
 import prisma from '../utils/prisma';
 import { NotFoundError } from '../utils/errors';
 import { parsePagination, paginate } from '../utils/pagination';
+import { TokenPayload } from '../utils/jwt';
+import { branchScope, writeBranchId } from '../auth/scope';
 
 export const staffService = {
-  async list(query: { page?: string; limit?: string; branchId?: string }) {
+  async list(ctx: TokenPayload, query: { page?: string; limit?: string; branchId?: string }) {
     const p = parsePagination(query);
-    const where = query.branchId ? { branchId: query.branchId } : {};
+    const where: any = { ...branchScope(ctx) };
+    if (query.branchId && ctx.role === 'OWNER') where.branchId = query.branchId;
     const [items, total] = await Promise.all([
       prisma.staff.findMany({
         where,
@@ -33,9 +36,9 @@ export const staffService = {
     return paginate(mapped, total, p);
   },
 
-  async getById(id: string) {
-    const s = await prisma.staff.findUnique({
-      where: { id },
+  async getById(ctx: TokenPayload, id: string) {
+    const s = await prisma.staff.findFirst({
+      where: { id, ...branchScope(ctx) },
       include: { branch: true },
     });
     if (!s) throw new NotFoundError('Staff');
@@ -53,12 +56,12 @@ export const staffService = {
     };
   },
 
-  async create(data: any) {
+  async create(ctx: TokenPayload, data: any) {
     return prisma.staff.create({
       data: {
         name: data.name,
         role: data.role,
-        branchId: data.branchId,
+        branchId: writeBranchId(ctx, data.branchId),
         phone: data.phone,
         email: data.email,
         specialties: data.specialties || [],
@@ -68,13 +71,20 @@ export const staffService = {
     });
   },
 
-  async update(id: string, data: any) {
-    await this.getById(id);
-    return prisma.staff.update({ where: { id }, data });
+  /**
+   * branchId and role are NOT updatable here. Staff.branchId is the source of the
+   * branchId claim minted at login, so letting a MANAGER rewrite it would let them
+   * move the OWNER's record — and with it, what the owner can see.
+   * Transfers are an OWNER-only operation and are deliberately not built for v1.
+   */
+  async update(ctx: TokenPayload, id: string, data: any) {
+    await this.getById(ctx, id);
+    const { branchId: _b, role: _r, ...safe } = data;
+    return prisma.staff.update({ where: { id }, data: safe });
   },
 
-  async remove(id: string) {
-    await this.getById(id);
+  async remove(ctx: TokenPayload, id: string) {
+    await this.getById(ctx, id);
     return prisma.staff.delete({ where: { id } });
   },
 };

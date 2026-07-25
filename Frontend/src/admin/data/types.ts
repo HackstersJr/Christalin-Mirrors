@@ -137,8 +137,9 @@ export interface InvoiceItem {
     service: string
     description?: string
     quantity: number
-    unitPrice: number
-    total: number
+    unitPrice: number     // display only — the server prices every line itself
+    total: number         // display only
+    serviceId?: string    // sent to the API so the server can look up the price
     productId?: string    // linked inventory item ID for stock decrement
 }
 

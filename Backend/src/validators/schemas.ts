@@ -1,13 +1,9 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-export const refreshSchema = z.object({
-  refreshToken: z.string().min(1),
-});
+  email: z.string().email().max(200),
+  password: z.string().min(6).max(200),
+}).strict();
 
 export const createAppointmentSchema = z.object({
   clientId: z.string().optional(),
@@ -107,43 +103,45 @@ export const updateStaffSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+/**
+ * The client sends INTENT only — what was sold and how many. It sends no prices
+ * and no totals; every monetary value is computed server-side (see utils/money.ts).
+ * Unknown keys are rejected by .strict(), so a stale frontend still posting
+ * `subtotal`/`total` gets a loud 422 instead of being silently ignored.
+ */
 export const createInvoiceSchema = z.object({
   clientId: z.string().nullable().optional(),
-  clientName: z.string().min(1),
-  clientEmail: z.string().min(1),
-  clientPhone: z.string().optional(),
-  date: z.string().min(1),
+  clientName: z.string().min(1).max(200),
+  clientEmail: z.string().min(1).max(200),
+  clientPhone: z.string().max(40).optional(),
+  date: z.string().min(1).max(40),
   items: z.array(z.object({
     serviceId: z.string().optional(),
-    serviceName: z.string().min(1),
-    description: z.string().optional(),
-    quantity: z.number().int().positive(),
-    unitPrice: z.number().nonnegative(),
-    total: z.number().nonnegative(),
     productId: z.string().optional(),
-  })).min(1),
-  subtotal: z.number().nonnegative(),
-  discountPercent: z.number().nonnegative().optional(),
-  discountAmount: z.number().nonnegative().optional(),
-  taxPercent: z.number().nonnegative().optional(),
-  taxAmount: z.number().nonnegative().optional(),
-  total: z.number().nonnegative(),
+    description: z.string().max(500).optional(),
+    quantity: z.number().int().positive().max(1000),
+  }).strict().refine((i) => !!(i.serviceId || i.productId), {
+    message: 'each item needs a serviceId or a productId',
+  })).min(1).max(100),
+  discount: z.object({
+    type: z.enum(['percent', 'flat']),
+    value: z.number().nonnegative(),
+  }).strict().optional(),
   amountPaid: z.number().nonnegative().optional(),
   status: z.enum(['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED']).optional(),
   paymentMethod: z.enum(['CASH', 'CARD', 'UPI', 'OTHER']).optional(),
-  branchId: z.string().min(1),
+  branchId: z.string().optional(),
   staffId: z.string().optional(),
-  staffName: z.string().optional(),
+  staffName: z.string().max(200).optional(),
   appointmentId: z.string().optional(),
-  notes: z.string().optional(),
-});
+  notes: z.string().max(2000).optional(),
+}).strict();
 
 export const updateInvoiceSchema = z.object({
   status: z.enum(['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED']).optional(),
   paymentMethod: z.enum(['CASH', 'CARD', 'UPI', 'OTHER']).optional(),
-  amountPaid: z.number().nonnegative().optional(),
-  notes: z.string().nullable().optional(),
-});
+  notes: z.string().max(2000).nullable().optional(),
+}).strict();
 
 export const createInventorySchema = z.object({
   name: z.string().min(1),
@@ -198,10 +196,18 @@ export const updateBranchSchema = z.object({
   isComingSoon: z.boolean().optional(),
 });
 
+// Public + unauthenticated: every field is length-bounded.
 export const contactSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().optional(),
-  subject: z.string().optional(),
-  message: z.string().min(1),
+  name: z.string().min(1).max(120),
+  email: z.string().email().max(200),
+  phone: z.string().max(40).optional(),
+  subject: z.string().max(200).optional(),
+  message: z.string().min(1).max(2000),
+  /** Honeypot — real users never fill this. Not persisted. */
+  website: z.string().max(200).optional(),
+}).strict();
+
+/** :id params. cuid() would be stricter but the seed also creates readable ids. */
+export const idParamSchema = z.object({
+  id: z.string().min(1).max(64),
 });

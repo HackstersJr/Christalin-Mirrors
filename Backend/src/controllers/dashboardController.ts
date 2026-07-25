@@ -1,16 +1,13 @@
 import { Request, Response } from 'express';
 import { dashboardService } from '../services/dashboardService';
 
+// Branch scoping is derived from the token inside the service — see auth/scope.ts.
 export const dashboardController = {
   async getStats(req: Request, res: Response) {
-    const branchId = req.user?.role === 'OWNER' ? undefined : req.user?.branchId;
-    const stats = await dashboardService.getStats(branchId);
-    res.json(stats);
+    res.json(await dashboardService.getStats(req.user!));
   },
 
   async getAlerts(req: Request, res: Response) {
-    const branchId = req.user?.role === 'OWNER' ? undefined : req.user?.branchId;
-    const alerts = await dashboardService.getAlerts(branchId);
-    res.json(alerts);
+    res.json(await dashboardService.getAlerts(req.user!));
   },
 };

@@ -3,22 +3,20 @@ import { authService } from '../services/authService';
 
 export const authController = {
   async login(req: Request, res: Response) {
-    const result = await authService.login(req.body.email, req.body.password);
-    res.json(result);
+    res.json(await authService.login(req.body.email, req.body.password));
   },
 
-  async refresh(req: Request, res: Response) {
-    const result = await authService.refresh(req.body.refreshToken);
-    res.json(result);
-  },
-
-  async logout(req: Request, res: Response) {
-    await authService.logout(req.user!.sub);
-    res.json({ message: 'Logged out successfully' });
+  /**
+   * v1 has no server-side session state, so logout is client-side only:
+   * the frontend discards the token. This endpoint exists so the frontend has
+   * something conventional to call and so adding real revocation later is
+   * a backend-only change.
+   */
+  async logout(_req: Request, res: Response) {
+    res.status(204).end();
   },
 
   async me(req: Request, res: Response) {
-    const user = await authService.me(req.user!.sub);
-    res.json(user);
+    res.json(await authService.me(req.user!.sub));
   },
 };

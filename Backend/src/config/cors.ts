@@ -7,7 +7,7 @@ export const corsOptions: cors.CorsOptions = {
     'http://localhost:5173',
     'http://localhost:3000',
   ],
-  credentials: true,
+  // No `credentials: true` — auth is a Bearer header, not a cookie.
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };

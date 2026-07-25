@@ -2,6 +2,7 @@ import prisma from '../utils/prisma';
 import { NotFoundError } from '../utils/errors';
 import { rupeesToPaisa, paisaToRupees } from '../utils/currency';
 import { parsePagination, paginate } from '../utils/pagination';
+import { TokenPayload } from '../utils/jwt';
 
 function mapToFrontend(s: any) {
   return {
@@ -17,7 +18,8 @@ function mapToFrontend(s: any) {
 }
 
 export const serviceService = {
-  async list(query: { page?: string; limit?: string; category?: string }) {
+  // Service catalogue is shared across branches, so no branch scope here.
+  async list(_ctx: TokenPayload, query: { page?: string; limit?: string; category?: string }) {
     const p = parsePagination(query);
     const where: any = {};
     if (query.category) where.category = query.category.toUpperCase();
@@ -30,13 +32,13 @@ export const serviceService = {
     return paginate(items.map(mapToFrontend), total, p);
   },
 
-  async getById(id: string) {
+  async getById(_ctx: TokenPayload, id: string) {
     const s = await prisma.service.findUnique({ where: { id } });
     if (!s) throw new NotFoundError('Service');
     return mapToFrontend(s);
   },
 
-  async create(data: any) {
+  async create(_ctx: TokenPayload, data: any) {
     const svc = await prisma.service.create({
       data: {
         name: data.name,
@@ -53,8 +55,8 @@ export const serviceService = {
     return mapToFrontend(svc);
   },
 
-  async update(id: string, data: any) {
-    await this.getById(id);
+  async update(ctx: TokenPayload, id: string, data: any) {
+    await this.getById(ctx, id);
     const updateData = { ...data };
     if (data.price !== undefined) updateData.price = rupeesToPaisa(data.price);
     if (data.category) updateData.category = data.category.toUpperCase();
@@ -62,8 +64,8 @@ export const serviceService = {
     return mapToFrontend(svc);
   },
 
-  async remove(id: string) {
-    await this.getById(id);
+  async remove(ctx: TokenPayload, id: string) {
+    await this.getById(ctx, id);
     return prisma.service.delete({ where: { id } });
   },
 

@@ -18,17 +18,27 @@ export default function ClientDetail() {
 
     useEffect(() => {
         if (!clientId) return
-        const c = clientStore.getById(clientId)
-        if (c) {
-            setClient(c)
-            setVisits(visitStore.getByClientId(clientId))
-            setInvoices(invoiceStore.getByClientId(clientId))
-            setAppointments(
-                appointmentStore.getAll()
-                    .filter(a => a.clientEmail === c.email)
-                    .sort((a, b) => b.date.localeCompare(a.date))
-            )
-        }
+        let alive = true
+        ;(async () => {
+            try {
+                const c = await clientStore.getById(clientId)
+                if (!alive || !c) return
+                setClient(c)
+                const [v, inv, apts] = await Promise.all([
+                    visitStore.getByClientId(clientId),
+                    invoiceStore.getByClientId(clientId),
+                    appointmentStore.getAll(),
+                ])
+                if (!alive) return
+                setVisits(v)
+                setInvoices(inv)
+                setAppointments(
+                    apts.filter(a => a.clientEmail === c.email)
+                        .sort((a, b) => b.date.localeCompare(a.date))
+                )
+            } catch { /* 404 falls through to the "not found" state below */ }
+        })()
+        return () => { alive = false }
     }, [clientId])
 
     if (!client) {

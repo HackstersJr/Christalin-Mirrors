@@ -1,7 +1,13 @@
 import prisma from '../utils/prisma';
-import { hashPassword, comparePassword } from '../utils/password';
-import { signAccessToken, signRefreshToken, verifyRefreshToken, TokenPayload } from '../utils/jwt';
+import { comparePassword, hashPassword } from '../utils/password';
+import { signAccessToken, TokenPayload } from '../utils/jwt';
 import { UnauthorizedError, NotFoundError } from '../utils/errors';
+
+/**
+ * Dummy hash so a missing user costs the same bcrypt work as a real one.
+ * Without it, response time leaks which emails exist.
+ */
+const DUMMY_HASH = '$2a$12$C6UzMDM.H6dfI/f/IKcEe.9Qm5Z0Ur4v0Vd0/8kK1Jz3xq3hQm2Iu';
 
 export const authService = {
   async login(email: string, password: string) {
@@ -9,10 +15,10 @@ export const authService = {
       where: { email },
       include: { staff: { include: { branch: true } } },
     });
-    if (!user || !user.isActive) throw new UnauthorizedError('Invalid credentials');
 
-    const valid = await comparePassword(password, user.passwordHash);
-    if (!valid) throw new UnauthorizedError('Invalid credentials');
+    // Always run a compare, even on a miss — constant-ish time.
+    const valid = await comparePassword(password, user?.passwordHash ?? DUMMY_HASH);
+    if (!user || !user.isActive || !valid) throw new UnauthorizedError('Invalid credentials');
 
     const payload: TokenPayload = {
       sub: user.id,
@@ -22,19 +28,13 @@ export const authService = {
       branchId: user.staff.branchId,
     };
 
-    const accessToken = signAccessToken(payload);
-    const refreshToken = signRefreshToken(payload);
-
-    // Store hashed refresh token
-    const hashedRefresh = await hashPassword(refreshToken);
     await prisma.user.update({
       where: { id: user.id },
-      data: { refreshToken: hashedRefresh, lastLogin: new Date() },
+      data: { lastLogin: new Date() },
     });
 
     return {
-      accessToken,
-      refreshToken,
+      accessToken: signAccessToken(payload),
       user: {
         id: user.id,
         email: user.email,
@@ -42,52 +42,9 @@ export const authService = {
         staffId: user.staffId,
         name: user.staff.name,
         branch: user.staff.branch.name,
+        branchId: user.staff.branchId,
       },
     };
-  },
-
-  async refresh(refreshTokenInput: string) {
-    let payload: TokenPayload;
-    try {
-      payload = verifyRefreshToken(refreshTokenInput);
-    } catch {
-      throw new UnauthorizedError('Invalid refresh token');
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      include: { staff: true },
-    });
-    if (!user || !user.refreshToken) throw new UnauthorizedError('Invalid refresh token');
-
-    const valid = await comparePassword(refreshTokenInput, user.refreshToken);
-    if (!valid) throw new UnauthorizedError('Refresh token revoked');
-
-    const newPayload: TokenPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      staffId: user.staffId,
-      branchId: user.staff.branchId,
-    };
-
-    const accessToken = signAccessToken(newPayload);
-    const newRefreshToken = signRefreshToken(newPayload);
-    const hashedRefresh = await hashPassword(newRefreshToken);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { refreshToken: hashedRefresh },
-    });
-
-    return { accessToken, refreshToken: newRefreshToken };
-  },
-
-  async logout(userId: string) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { refreshToken: null },
-    });
   },
 
   async me(userId: string) {
@@ -95,7 +52,7 @@ export const authService = {
       where: { id: userId },
       include: { staff: { include: { branch: true } } },
     });
-    if (!user) throw new NotFoundError('User');
+    if (!user || !user.isActive) throw new NotFoundError('User');
     return {
       id: user.id,
       email: user.email,
@@ -107,3 +64,5 @@ export const authService = {
     };
   },
 };
+
+export { hashPassword };

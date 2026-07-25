@@ -19,7 +19,7 @@ export default function Services() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState(emptyForm)
 
-    const reload = () => setServices(serviceStore.getAll())
+    const reload = () => serviceStore.getAll().then(setServices).catch(() => {})
     useEffect(() => { reload() }, [])
 
     const filtered = services.filter(s => {
@@ -35,23 +35,23 @@ export default function Services() {
         setShowForm(true)
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (editingId) { serviceStore.update(editingId, form) }
-        else { serviceStore.create(form) }
+        if (editingId) await serviceStore.update(editingId, form)
+        else await serviceStore.create(form)
         resetForm()
-        reload()
+        await reload()
     }
 
     const resetForm = () => { setForm(emptyForm); setEditingId(null); setShowForm(false) }
 
-    const toggleActive = (id: string, current: boolean) => {
-        serviceStore.update(id, { isActive: !current })
-        reload()
+    const toggleActive = async (id: string, current: boolean) => {
+        await serviceStore.update(id, { isActive: !current })
+        await reload()
     }
 
-    const deleteSvc = (id: string) => {
-        if (confirm('Delete this service?')) { serviceStore.delete(id); reload() }
+    const deleteSvc = async (id: string) => {
+        if (confirm('Delete this service?')) { await serviceStore.delete(id); await reload() }
     }
 
     return (

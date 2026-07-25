@@ -8,10 +8,12 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
-  JWT_REFRESH_SECRET: z.string().min(32),
-  CLOUDINARY_CLOUD_NAME: z.string().min(1),
-  CLOUDINARY_API_KEY: z.string().min(1),
-  CLOUDINARY_API_SECRET: z.string().min(1),
+  // v1 has no refresh token, so no JWT_REFRESH_SECRET.
+  // Cloudinary is optional: the upload helper is not wired to any route, and
+  // requiring these blocked CI and fresh checkouts from booting at all.
+  CLOUDINARY_CLOUD_NAME: z.string().min(1).optional(),
+  CLOUDINARY_API_KEY: z.string().min(1).optional(),
+  CLOUDINARY_API_SECRET: z.string().min(1).optional(),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });
 

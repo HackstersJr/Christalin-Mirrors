@@ -29,9 +29,20 @@ export const settingsService = {
   },
 
   async update(data: any) {
-    const updated = await prisma.salonSettings.update({
+    // upsert, not update — an unseeded database would otherwise 500 (P2025).
+    await prisma.salonSettings.upsert({
       where: { id: 'singleton' },
-      data: {
+      create: {
+        id: 'singleton',
+        name: data.name ?? 'Christalin Mirrors',
+        email: data.email ?? 'info@christalinmirrors.com',
+        phone: data.phone ?? '',
+        hours: data.hours ?? '',
+        instagram: data.instagram ?? null,
+        facebook: data.facebook ?? null,
+        website: data.website ?? null,
+      },
+      update: {
         ...(data.name ? { name: data.name } : {}),
         ...(data.email ? { email: data.email } : {}),
         ...(data.phone ? { phone: data.phone } : {}),

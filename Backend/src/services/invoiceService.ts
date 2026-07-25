@@ -1,7 +1,12 @@
 import prisma from '../utils/prisma';
 import { NotFoundError, BadRequestError } from '../utils/errors';
-import { rupeesToPaisa, paisaToRupees } from '../utils/currency';
+import { paisaToRupees } from '../utils/currency';
+import { computeInvoiceTotals, lineTotal, Discount, PricedLine } from '../utils/money';
 import { parsePagination, paginate } from '../utils/pagination';
+import { TokenPayload } from '../utils/jwt';
+import { branchScope, writeBranchId, assertDiscountAllowed } from '../auth/scope';
+
+const DEFAULT_TAX_PERCENT = 18;
 
 function mapToFrontend(inv: any) {
   return {
@@ -13,6 +18,7 @@ function mapToFrontend(inv: any) {
     clientPhone: inv.clientPhone || undefined,
     date: inv.date instanceof Date ? inv.date.toISOString().split('T')[0] : inv.date,
     items: (inv.items || []).map((it: any) => ({
+      serviceId: it.serviceId || undefined,
       service: it.serviceName,
       description: it.description || undefined,
       quantity: it.quantity,
@@ -37,11 +43,75 @@ function mapToFrontend(inv: any) {
   };
 }
 
+/**
+ * Resolve every line's price from the catalogue. The request supplies intent
+ * (what and how many); the server supplies all money.
+ */
+async function priceLines(tx: any, branchId: string, items: any[]) {
+  const priced: (PricedLine & {
+    serviceId: string | null;
+    serviceName: string;
+    description?: string;
+    productId: string | null;
+  })[] = [];
+
+  for (const item of items) {
+    const quantity = item.quantity;
+
+    if (item.productId) {
+      const product = await tx.inventoryItem.findFirst({
+        where: { id: item.productId, branchId, isActive: true },
+      });
+      if (!product) throw new BadRequestError(`Product ${item.productId} not found in this branch`);
+      priced.push({
+        serviceId: null,
+        serviceName: product.name,
+        description: item.description,
+        productId: product.id,
+        quantity,
+        unitPrice: product.retailPrice,
+        total: lineTotal(product.retailPrice, quantity),
+      });
+      continue;
+    }
+
+    if (item.serviceId) {
+      const service = await tx.service.findFirst({ where: { id: item.serviceId, isActive: true } });
+      if (!service) throw new BadRequestError(`Service ${item.serviceId} not found`);
+      // Per-branch price override — modelled all along, wired up here for the first time.
+      const override = await tx.serviceBranch.findUnique({
+        where: { serviceId_branchId: { serviceId: service.id, branchId } },
+      });
+      const unitPrice = override?.priceOverride ?? service.price;
+      priced.push({
+        serviceId: service.id,
+        serviceName: service.name,
+        description: item.description,
+        productId: null,
+        quantity,
+        unitPrice,
+        total: lineTotal(unitPrice, quantity),
+      });
+      continue;
+    }
+
+    throw new BadRequestError('Each invoice item needs a serviceId or a productId');
+  }
+
+  return priced;
+}
+
+async function taxPercentFromSettings(tx: any): Promise<number> {
+  // SalonSettings has no tax column yet; keep the rate in one place until it does.
+  void tx;
+  return DEFAULT_TAX_PERCENT;
+}
+
 export const invoiceService = {
-  async list(query: { page?: string; limit?: string; branchId?: string; status?: string; clientId?: string }) {
+  async list(ctx: TokenPayload, query: { page?: string; limit?: string; branchId?: string; status?: string; clientId?: string }) {
     const p = parsePagination(query);
-    const where: any = {};
-    if (query.branchId) where.branchId = query.branchId;
+    const where: any = { ...branchScope(ctx) };
+    if (query.branchId && ctx.role === 'OWNER') where.branchId = query.branchId;
     if (query.status) where.status = query.status.toUpperCase();
     if (query.clientId) where.clientId = query.clientId;
 
@@ -59,9 +129,9 @@ export const invoiceService = {
     return paginate(items.map(mapToFrontend), total, p);
   },
 
-  async getById(id: string) {
-    const inv = await prisma.invoice.findUnique({
-      where: { id },
+  async getById(ctx: TokenPayload, id: string) {
+    const inv = await prisma.invoice.findFirst({
+      where: { id, ...branchScope(ctx) },
       include: { items: true, branch: true },
     });
     if (!inv) throw new NotFoundError('Invoice');
@@ -69,12 +139,31 @@ export const invoiceService = {
   },
 
   /**
-   * BILLING PIPELINE — The most critical business logic
-   * All operations inside a single Prisma transaction
+   * BILLING PIPELINE — server-authoritative.
+   * The request carries {serviceId|productId, quantity} and a discount.
+   * Every monetary value below is computed here.
    */
-  async create(data: any) {
+  async create(ctx: TokenPayload, data: any) {
+    const branchId = writeBranchId(ctx, data.branchId);
+
     return prisma.$transaction(async (tx) => {
-      // 1. Generate invoice number atomically
+      const priced = await priceLines(tx, branchId, data.items);
+      const taxPercent = await taxPercentFromSettings(tx);
+      const discount: Discount | undefined = data.discount;
+      const totals = computeInvoiceTotals(priced, discount, taxPercent);
+
+      // Checked after totals so a flat discount is measured as a real percentage.
+      // Throws inside the transaction, so nothing is written on rejection.
+      assertDiscountAllowed(ctx, totals.discountPercent);
+
+      const status = (data.status || 'DRAFT').toUpperCase();
+      if (status === 'PAID' && data.amountPaid !== undefined) {
+        const paid = Math.round(data.amountPaid * 100);
+        if (paid < totals.total) {
+          throw new BadRequestError('amountPaid is less than the invoice total');
+        }
+      }
+
       const seq = await tx.invoiceSequence.upsert({
         where: { id: 'singleton' },
         create: { id: 'singleton', lastNum: 1 },
@@ -82,7 +171,6 @@ export const invoiceService = {
       });
       const invoiceNumber = `CM-INV-${String(seq.lastNum).padStart(4, '0')}`;
 
-      // 2. Create invoice
       const invoice = await tx.invoice.create({
         data: {
           invoiceNumber,
@@ -91,64 +179,67 @@ export const invoiceService = {
           clientEmail: data.clientEmail,
           clientPhone: data.clientPhone,
           date: new Date(data.date),
-          subtotal: rupeesToPaisa(data.subtotal),
-          discountPercent: data.discountPercent ?? 0,
-          discountAmount: rupeesToPaisa(data.discountAmount ?? 0),
-          taxPercent: data.taxPercent ?? 18,
-          taxAmount: rupeesToPaisa(data.taxAmount ?? 0),
-          total: rupeesToPaisa(data.total),
-          amountPaid: rupeesToPaisa(data.amountPaid ?? 0),
-          status: data.status?.toUpperCase() || 'DRAFT',
+          subtotal: totals.subtotal,
+          discountPercent: totals.discountPercent,
+          discountAmount: totals.discountAmount,
+          taxPercent: totals.taxPercent,
+          taxAmount: totals.taxAmount,
+          total: totals.total,
+          amountPaid: status === 'PAID' ? totals.total : 0,
+          status,
           paymentMethod: data.paymentMethod?.toUpperCase() || null,
-          branchId: data.branchId,
+          branchId,
           staffId: data.staffId || null,
           staffName: data.staffName || null,
           appointmentId: data.appointmentId || null,
           notes: data.notes,
           items: {
-            create: data.items.map((item: any) => ({
-              serviceId: item.serviceId || null,
-              serviceName: item.serviceName,
-              description: item.description,
-              quantity: item.quantity,
-              unitPrice: rupeesToPaisa(item.unitPrice),
-              total: rupeesToPaisa(item.total),
-              productId: item.productId || null,
+            create: priced.map((l) => ({
+              serviceId: l.serviceId,
+              serviceName: l.serviceName,
+              description: l.description,
+              quantity: l.quantity,
+              unitPrice: l.unitPrice,
+              total: l.total,
+              productId: l.productId,
             })),
           },
         },
         include: { items: true, branch: true },
       });
 
-      // 3. If PAID — execute side effects
       if (invoice.status === 'PAID') {
-        await executePaidSideEffects(tx, invoice, data);
+        await executePaidSideEffects(tx, invoice);
       }
 
       return mapToFrontend(invoice);
     });
   },
 
-  async update(id: string, data: any) {
-    const existing = await prisma.invoice.findUnique({
-      where: { id },
-      include: { items: true },
-    });
+  async update(ctx: TokenPayload, id: string, data: any) {
+    const existing = await prisma.invoice.findFirst({ where: { id, ...branchScope(ctx) } });
     if (!existing) throw new NotFoundError('Invoice');
 
-    // If transitioning to PAID
-    if (data.status === 'PAID' && existing.status !== 'PAID') {
+    if (data.status && data.status.toUpperCase() === 'PAID') {
       return prisma.$transaction(async (tx) => {
-        const updated = await tx.invoice.update({
-          where: { id },
+        // Conditional transition — the DB decides, so a double-click applies once.
+        const { count } = await tx.invoice.updateMany({
+          where: { id, status: { not: 'PAID' } },
           data: {
             status: 'PAID',
             paymentMethod: data.paymentMethod?.toUpperCase() || existing.paymentMethod,
-            amountPaid: data.amountPaid ? rupeesToPaisa(data.amountPaid) : existing.total,
+            amountPaid: existing.total,
           },
+        });
+
+        const updated = await tx.invoice.findUnique({
+          where: { id },
           include: { items: true, branch: true },
         });
-        await executePaidSideEffects(tx, updated, data);
+
+        // count === 0 means it was already PAID: no-op, no side effects re-applied.
+        if (count > 0) await executePaidSideEffects(tx, updated);
+
         return mapToFrontend(updated);
       });
     }
@@ -158,7 +249,6 @@ export const invoiceService = {
       data: {
         ...(data.status ? { status: data.status.toUpperCase() } : {}),
         ...(data.paymentMethod ? { paymentMethod: data.paymentMethod.toUpperCase() } : {}),
-        ...(data.amountPaid !== undefined ? { amountPaid: rupeesToPaisa(data.amountPaid) } : {}),
         ...(data.notes !== undefined ? { notes: data.notes } : {}),
       },
       include: { items: true, branch: true },
@@ -166,8 +256,8 @@ export const invoiceService = {
     return mapToFrontend(updated);
   },
 
-  async remove(id: string) {
-    const existing = await prisma.invoice.findUnique({ where: { id } });
+  async remove(ctx: TokenPayload, id: string) {
+    const existing = await prisma.invoice.findFirst({ where: { id, ...branchScope(ctx) } });
     if (!existing) throw new NotFoundError('Invoice');
     if (existing.status === 'PAID') {
       throw new BadRequestError('Cannot delete a paid invoice');
@@ -176,41 +266,33 @@ export const invoiceService = {
   },
 };
 
-/** Side effects when an invoice reaches PAID status */
-async function executePaidSideEffects(tx: any, invoice: any, _data: any) {
+/** Side effects when an invoice reaches PAID. Runs exactly once per invoice. */
+async function executePaidSideEffects(tx: any, invoice: any) {
   const items = await tx.invoiceItem.findMany({ where: { invoiceId: invoice.id } });
 
-  // 3a. Decrement inventory for retail product items
+  // Atomic conditional decrement — rejects overselling instead of clamping to 0.
   for (const item of items) {
-    if (item.productId) {
+    if (!item.productId) continue;
+    const { count } = await tx.inventoryItem.updateMany({
+      where: { id: item.productId, currentStock: { gte: item.quantity } },
+      data: { currentStock: { decrement: item.quantity } },
+    });
+    if (count === 0) {
       const product = await tx.inventoryItem.findUnique({ where: { id: item.productId } });
-      if (product) {
-        const newStock = Math.max(0, product.currentStock - item.quantity);
-        await tx.inventoryItem.update({
-          where: { id: item.productId },
-          data: { currentStock: newStock },
-        });
-      }
+      throw new BadRequestError(
+        `Insufficient stock for ${item.serviceName}: ${product?.currentStock ?? 0} left, ${item.quantity} requested`
+      );
     }
   }
 
-  // 3b. Increment client totalVisits + set lastVisit (skip walk-ins)
   if (invoice.clientId) {
     await tx.client.update({
       where: { id: invoice.clientId },
-      data: {
-        totalVisits: { increment: 1 },
-        lastVisit: new Date(),
-      },
+      data: { totalVisits: { increment: 1 }, lastVisit: new Date() },
     });
   }
 
-  // 3c. Create ServiceVisit record (skip walk-ins)
   if (invoice.clientId && invoice.staffId) {
-    const serviceItems = items.map((it: any) => ({
-      name: it.serviceName,
-      price: paisaToRupees(it.unitPrice),
-    }));
     await tx.serviceVisit.create({
       data: {
         clientId: invoice.clientId,
@@ -226,12 +308,11 @@ async function executePaidSideEffects(tx: any, invoice: any, _data: any) {
         paymentMethod: invoice.paymentMethod || 'OTHER',
         notes: invoice.notes,
         invoiceId: invoice.id,
-        services: serviceItems,
+        services: items.map((it: any) => ({ name: it.serviceName, price: paisaToRupees(it.unitPrice) })),
       },
     });
   }
 
-  // 3d. Update linked appointment to COMPLETED
   if (invoice.appointmentId) {
     await tx.appointment.update({
       where: { id: invoice.appointmentId },

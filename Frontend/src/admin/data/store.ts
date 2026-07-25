@@ -1,308 +1,376 @@
 // ═══════════════════════════════════════════════════════════════
-//  Admin Store — localStorage CRUD (Backend-Ready)
-//  Replace these functions with API calls when backend is ready
+//  Admin Store — backed by the real API.
+//
+//  Same function names and same data shapes as the old localStorage
+//  version, so pages only had to switch from sync to async. All business
+//  data now lives in Postgres; nothing here reads localStorage except the
+//  auth token (see lib/api.ts).
 // ═══════════════════════════════════════════════════════════════
 
-import type { Appointment, Client, ServiceRecord, StaffMember, SalonSettings, ServiceVisit, Invoice, InventoryItem } from './types'
-import { mockAppointments, mockClients, mockServices, mockStaff, defaultSettings, mockVisits, mockInvoices, mockInventory } from './mockData'
+import type {
+    Appointment, Client, ServiceRecord, StaffMember, SalonSettings,
+    ServiceVisit, Invoice, InventoryItem, DashboardStats,
+} from './types'
+import { adminApi, auth } from '../../lib/api'
 
-const KEYS = {
-    APPOINTMENTS: 'cm_admin_appointments',
-    CLIENTS: 'cm_admin_clients',
-    SERVICES: 'cm_admin_services',
-    STAFF: 'cm_admin_staff',
-    SETTINGS: 'cm_admin_settings',
-    VISITS: 'cm_admin_visits',
-    INVOICES: 'cm_admin_invoices',
-    INVENTORY: 'cm_admin_inventory',
-    INITIALIZED: 'cm_admin_initialized_v2',
+/** Lists come back paginated as { items, total, ... }. Pages want the array. */
+async function items<T>(url: string, params?: Record<string, unknown>): Promise<T[]> {
+    const { data } = await adminApi.get(url, { params: { limit: 100, ...params } })
+    return Array.isArray(data) ? data : (data.items ?? [])
 }
 
-// ─── Initialize with mock data if first load ─────────────────
-export function initializeStore() {
-    if (localStorage.getItem(KEYS.INITIALIZED)) return
-    localStorage.setItem(KEYS.APPOINTMENTS, JSON.stringify(mockAppointments))
-    localStorage.setItem(KEYS.CLIENTS, JSON.stringify(mockClients))
-    localStorage.setItem(KEYS.SERVICES, JSON.stringify(mockServices))
-    localStorage.setItem(KEYS.STAFF, JSON.stringify(mockStaff))
-    localStorage.setItem(KEYS.SETTINGS, JSON.stringify(defaultSettings))
-    localStorage.setItem(KEYS.VISITS, JSON.stringify(mockVisits))
-    localStorage.setItem(KEYS.INVOICES, JSON.stringify(mockInvoices))
-    localStorage.setItem(KEYS.INVENTORY, JSON.stringify(mockInventory))
-    localStorage.setItem(KEYS.INITIALIZED, 'true')
+// ─── Branch name ⇄ id ────────────────────────────────────────
+// The UI models branch as a display name; the API needs an id on writes.
+// Cached for the session — two branches that rarely change.
+let branchCache: { id: string; name: string }[] | null = null
+
+export async function getBranches() {
+    if (!branchCache) branchCache = await items<{ id: string; name: string }>('/admin/branches')
+    return branchCache
 }
 
-// ─── Generic helpers ─────────────────────────────────────────
-function getAll<T>(key: string): T[] {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : []
-}
-
-function saveAll<T>(key: string, data: T[]) {
-    localStorage.setItem(key, JSON.stringify(data))
-}
-
-function generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+/**
+ * Resolve a branch display name to an id. Falls back to the logged-in user's
+ * own branch, which is what the server would enforce anyway for non-owners.
+ */
+export async function branchIdFor(name?: string): Promise<string | undefined> {
+    const me = auth.user()
+    if (!name) return me?.branchId
+    const all = await getBranches()
+    const hit = all.find(b => b.name === name || b.name.includes(name) || name.includes(b.name))
+    return hit?.id ?? me?.branchId
 }
 
 // ─── Appointments ────────────────────────────────────────────
 export const appointmentStore = {
-    getAll: (): Appointment[] => getAll(KEYS.APPOINTMENTS),
+    getAll: (): Promise<Appointment[]> => items<Appointment>('/admin/appointments'),
 
-    getById: (id: string): Appointment | undefined =>
-        getAll<Appointment>(KEYS.APPOINTMENTS).find(a => a.id === id),
-
-    create: (apt: Omit<Appointment, 'id' | 'createdAt'>): Appointment => {
-        const all = getAll<Appointment>(KEYS.APPOINTMENTS)
-        const newApt: Appointment = { ...apt, id: `apt-${generateId()}`, createdAt: new Date().toISOString() }
-        all.unshift(newApt)
-        saveAll(KEYS.APPOINTMENTS, all)
-        return newApt
+    getById: async (id: string): Promise<Appointment | undefined> => {
+        const { data } = await adminApi.get(`/admin/appointments/${id}`)
+        return data
     },
 
-    update: (id: string, updates: Partial<Appointment>): Appointment | undefined => {
-        const all = getAll<Appointment>(KEYS.APPOINTMENTS)
-        const idx = all.findIndex(a => a.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.APPOINTMENTS, all)
-        return all[idx]
+    create: async (apt: Omit<Appointment, 'id' | 'createdAt'>): Promise<Appointment> => {
+        const { data } = await adminApi.post('/admin/appointments', {
+            clientId: apt.clientId || undefined,
+            clientName: apt.clientName,
+            clientEmail: apt.clientEmail,
+            clientPhone: apt.clientPhone,
+            date: apt.date,
+            time: apt.time,
+            serviceId: apt.serviceId || undefined,
+            serviceName: apt.service,
+            staffId: apt.staffId || undefined,
+            staffName: apt.stylist,
+            status: apt.status?.toUpperCase(),
+            notes: apt.notes,
+            branchId: await branchIdFor(apt.branch),
+        })
+        return data
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<Appointment>(KEYS.APPOINTMENTS)
-        const filtered = all.filter(a => a.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.APPOINTMENTS, filtered)
+    update: async (id: string, u: Partial<Appointment>): Promise<Appointment | undefined> => {
+        const { data } = await adminApi.put(`/admin/appointments/${id}`, {
+            ...(u.clientName !== undefined ? { clientName: u.clientName } : {}),
+            ...(u.clientEmail !== undefined ? { clientEmail: u.clientEmail } : {}),
+            ...(u.clientPhone !== undefined ? { clientPhone: u.clientPhone } : {}),
+            ...(u.date !== undefined ? { date: u.date } : {}),
+            ...(u.time !== undefined ? { time: u.time } : {}),
+            ...(u.service !== undefined ? { serviceName: u.service } : {}),
+            ...(u.stylist !== undefined ? { staffName: u.stylist } : {}),
+            ...(u.status !== undefined ? { status: u.status.toUpperCase() } : {}),
+            ...(u.notes !== undefined ? { notes: u.notes } : {}),
+        })
+        return data
+    },
+
+    delete: async (id: string): Promise<boolean> => {
+        await adminApi.delete(`/admin/appointments/${id}`)
         return true
     },
 }
 
 // ─── Clients ─────────────────────────────────────────────────
 export const clientStore = {
-    getAll: (): Client[] => getAll(KEYS.CLIENTS),
+    getAll: (): Promise<Client[]> => items<Client>('/admin/clients'),
 
-    getById: (id: string): Client | undefined =>
-        getAll<Client>(KEYS.CLIENTS).find(c => c.id === id),
-
-    create: (client: Omit<Client, 'id'>): Client => {
-        const all = getAll<Client>(KEYS.CLIENTS)
-        const newClient: Client = { ...client, id: `cli-${generateId()}` }
-        all.unshift(newClient)
-        saveAll(KEYS.CLIENTS, all)
-        return newClient
+    getById: async (id: string): Promise<Client | undefined> => {
+        const { data } = await adminApi.get(`/admin/clients/${id}`)
+        return data
     },
 
-    update: (id: string, updates: Partial<Client>): Client | undefined => {
-        const all = getAll<Client>(KEYS.CLIENTS)
-        const idx = all.findIndex(c => c.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.CLIENTS, all)
-        return all[idx]
+    create: async (c: Omit<Client, 'id'>): Promise<Client> => {
+        const { data } = await adminApi.post('/admin/clients', {
+            name: c.name,
+            email: c.email,
+            phone: c.phone,
+            gender: c.gender.toUpperCase(),
+            branchId: await branchIdFor(c.branch),
+            joinedDate: c.joinedDate,
+            notes: c.notes,
+            tags: c.tags ?? [],
+        })
+        return data
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<Client>(KEYS.CLIENTS)
-        const filtered = all.filter(c => c.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.CLIENTS, filtered)
+    update: async (id: string, u: Partial<Client>): Promise<Client | undefined> => {
+        const { data } = await adminApi.put(`/admin/clients/${id}`, {
+            ...(u.name !== undefined ? { name: u.name } : {}),
+            ...(u.email !== undefined ? { email: u.email } : {}),
+            ...(u.phone !== undefined ? { phone: u.phone } : {}),
+            ...(u.gender !== undefined ? { gender: u.gender.toUpperCase() } : {}),
+            ...(u.notes !== undefined ? { notes: u.notes } : {}),
+            ...(u.tags !== undefined ? { tags: u.tags } : {}),
+        })
+        return data
+    },
+
+    delete: async (id: string): Promise<boolean> => {
+        await adminApi.delete(`/admin/clients/${id}`)
         return true
     },
 }
 
 // ─── Services ────────────────────────────────────────────────
 export const serviceStore = {
-    getAll: (): ServiceRecord[] => getAll(KEYS.SERVICES),
+    getAll: (): Promise<ServiceRecord[]> => items<ServiceRecord>('/admin/services'),
 
-    create: (svc: Omit<ServiceRecord, 'id'>): ServiceRecord => {
-        const all = getAll<ServiceRecord>(KEYS.SERVICES)
-        const newSvc: ServiceRecord = { ...svc, id: `svc-${generateId()}` }
-        all.push(newSvc)
-        saveAll(KEYS.SERVICES, all)
-        return newSvc
+    create: async (s: Omit<ServiceRecord, 'id'>): Promise<ServiceRecord> => {
+        const { data } = await adminApi.post('/admin/services', {
+            name: s.name,
+            category: s.category.toUpperCase(),
+            duration: s.duration,
+            price: s.price,
+            isActive: s.isActive,
+            isKorean: s.isKorean,
+            description: s.description,
+        })
+        return data
     },
 
-    update: (id: string, updates: Partial<ServiceRecord>): ServiceRecord | undefined => {
-        const all = getAll<ServiceRecord>(KEYS.SERVICES)
-        const idx = all.findIndex(s => s.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.SERVICES, all)
-        return all[idx]
+    update: async (id: string, u: Partial<ServiceRecord>): Promise<ServiceRecord | undefined> => {
+        const { data } = await adminApi.put(`/admin/services/${id}`, {
+            ...(u.name !== undefined ? { name: u.name } : {}),
+            ...(u.category !== undefined ? { category: u.category.toUpperCase() } : {}),
+            ...(u.duration !== undefined ? { duration: u.duration } : {}),
+            ...(u.price !== undefined ? { price: u.price } : {}),
+            ...(u.isActive !== undefined ? { isActive: u.isActive } : {}),
+            ...(u.isKorean !== undefined ? { isKorean: u.isKorean } : {}),
+            ...(u.description !== undefined ? { description: u.description } : {}),
+        })
+        return data
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<ServiceRecord>(KEYS.SERVICES)
-        const filtered = all.filter(s => s.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.SERVICES, filtered)
+    delete: async (id: string): Promise<boolean> => {
+        await adminApi.delete(`/admin/services/${id}`)
         return true
     },
 }
 
 // ─── Staff ───────────────────────────────────────────────────
 export const staffStore = {
-    getAll: (): StaffMember[] => getAll(KEYS.STAFF),
+    getAll: (): Promise<StaffMember[]> => items<StaffMember>('/admin/staff'),
 
-    create: (member: Omit<StaffMember, 'id'>): StaffMember => {
-        const all = getAll<StaffMember>(KEYS.STAFF)
-        const newMember: StaffMember = { ...member, id: `stf-${generateId()}` }
-        all.push(newMember)
-        saveAll(KEYS.STAFF, all)
-        return newMember
+    create: async (m: Omit<StaffMember, 'id'>): Promise<StaffMember> => {
+        const { data } = await adminApi.post('/admin/staff', {
+            name: m.name,
+            role: m.role.toUpperCase(),
+            branchId: await branchIdFor(m.branch),
+            phone: m.phone,
+            email: m.email,
+            specialties: m.specialties ?? [],
+            isActive: m.isActive,
+            joinedDate: m.joinedDate,
+        })
+        return data
     },
 
-    update: (id: string, updates: Partial<StaffMember>): StaffMember | undefined => {
-        const all = getAll<StaffMember>(KEYS.STAFF)
-        const idx = all.findIndex(s => s.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.STAFF, all)
-        return all[idx]
+    // branchId and role are server-rejected on update by design — staff transfers
+    // are an OWNER-only operation not built for v1.
+    update: async (id: string, u: Partial<StaffMember>): Promise<StaffMember | undefined> => {
+        const { data } = await adminApi.put(`/admin/staff/${id}`, {
+            ...(u.name !== undefined ? { name: u.name } : {}),
+            ...(u.phone !== undefined ? { phone: u.phone } : {}),
+            ...(u.email !== undefined ? { email: u.email } : {}),
+            ...(u.specialties !== undefined ? { specialties: u.specialties } : {}),
+            ...(u.isActive !== undefined ? { isActive: u.isActive } : {}),
+        })
+        return data
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<StaffMember>(KEYS.STAFF)
-        const filtered = all.filter(s => s.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.STAFF, filtered)
+    delete: async (id: string): Promise<boolean> => {
+        await adminApi.delete(`/admin/staff/${id}`)
         return true
     },
 }
 
 // ─── Settings ────────────────────────────────────────────────
 export const settingsStore = {
-    get: (): SalonSettings => {
-        const raw = localStorage.getItem(KEYS.SETTINGS)
-        return raw ? JSON.parse(raw) : defaultSettings
+    get: async (): Promise<SalonSettings> => {
+        const { data } = await adminApi.get('/admin/settings')
+        return data
     },
-
-    update: (updates: Partial<SalonSettings>): SalonSettings => {
-        const current = settingsStore.get()
-        const updated = { ...current, ...updates }
-        localStorage.setItem(KEYS.SETTINGS, JSON.stringify(updated))
-        return updated
+    update: async (u: Partial<SalonSettings>): Promise<SalonSettings> => {
+        const { data } = await adminApi.put('/admin/settings', {
+            ...(u.name !== undefined ? { name: u.name } : {}),
+            ...(u.email !== undefined ? { email: u.email } : {}),
+            ...(u.phone !== undefined ? { phone: u.phone } : {}),
+            ...(u.hours !== undefined ? { hours: u.hours } : {}),
+            ...(u.socialLinks?.instagram !== undefined ? { instagram: u.socialLinks.instagram } : {}),
+            ...(u.socialLinks?.facebook !== undefined ? { facebook: u.socialLinks.facebook } : {}),
+            ...(u.socialLinks?.website !== undefined ? { website: u.socialLinks.website } : {}),
+        })
+        return data
     },
 }
 
-// ─── Service Visits (History) ────────────────────────────────
+// ─── Service Visits (history) ────────────────────────────────
 export const visitStore = {
-    getAll: (): ServiceVisit[] => getAll(KEYS.VISITS),
-
-    getByClientId: (clientId: string): ServiceVisit[] =>
-        getAll<ServiceVisit>(KEYS.VISITS).filter(v => v.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date)),
-
-    create: (visit: Omit<ServiceVisit, 'id'>): ServiceVisit => {
-        const all = getAll<ServiceVisit>(KEYS.VISITS)
-        const newVisit: ServiceVisit = { ...visit, id: `vis-${generateId()}` }
-        all.unshift(newVisit)
-        saveAll(KEYS.VISITS, all)
-        return newVisit
-    },
-
-    update: (id: string, updates: Partial<ServiceVisit>): ServiceVisit | undefined => {
-        const all = getAll<ServiceVisit>(KEYS.VISITS)
-        const idx = all.findIndex(v => v.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.VISITS, all)
-        return all[idx]
-    },
-
-    delete: (id: string): boolean => {
-        const all = getAll<ServiceVisit>(KEYS.VISITS)
-        const filtered = all.filter(v => v.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.VISITS, filtered)
-        return true
-    },
+    getAll: (): Promise<ServiceVisit[]> => items<ServiceVisit>('/admin/service-visits'),
+    getByClientId: (clientId: string): Promise<ServiceVisit[]> =>
+        items<ServiceVisit>('/admin/service-visits', { clientId }),
 }
 
 // ─── Invoices ────────────────────────────────────────────────
+export interface InvoiceLineIntent {
+    serviceId?: string
+    productId?: string
+    description?: string
+    quantity: number
+}
+
+export interface CreateInvoiceIntent {
+    clientId?: string
+    clientName: string
+    clientEmail: string
+    clientPhone?: string
+    date: string
+    items: InvoiceLineIntent[]
+    discount?: { type: 'percent' | 'flat'; value: number }
+    amountPaid?: number
+    status?: 'DRAFT' | 'SENT' | 'PAID'
+    paymentMethod?: 'CASH' | 'CARD' | 'UPI' | 'OTHER'
+    staffId?: string
+    staffName?: string
+    appointmentId?: string
+    notes?: string
+    branch?: string
+}
+
 export const invoiceStore = {
-    getAll: (): Invoice[] => getAll(KEYS.INVOICES),
+    getAll: (): Promise<Invoice[]> => items<Invoice>('/admin/invoices'),
 
-    getById: (id: string): Invoice | undefined =>
-        getAll<Invoice>(KEYS.INVOICES).find(i => i.id === id),
-
-    getByClientId: (clientId: string): Invoice[] =>
-        getAll<Invoice>(KEYS.INVOICES).filter(i => i.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date)),
-
-    getNextInvoiceNumber: (): string => {
-        const all = getAll<Invoice>(KEYS.INVOICES)
-        const max = all.reduce((m, inv) => {
-            const num = parseInt(inv.invoiceNumber.replace('CM-INV-', ''))
-            return num > m ? num : m
-        }, 0)
-        return `CM-INV-${String(max + 1).padStart(4, '0')}`
+    getById: async (id: string): Promise<Invoice | undefined> => {
+        const { data } = await adminApi.get(`/admin/invoices/${id}`)
+        return data
     },
 
-    create: (inv: Omit<Invoice, 'id' | 'createdAt'>): Invoice => {
-        const all = getAll<Invoice>(KEYS.INVOICES)
-        const newInv: Invoice = { ...inv, id: `inv-${generateId()}`, createdAt: new Date().toISOString() }
-        all.unshift(newInv)
-        saveAll(KEYS.INVOICES, all)
-        return newInv
+    getByClientId: (clientId: string): Promise<Invoice[]> =>
+        items<Invoice>('/admin/invoices', { clientId }),
+
+    /**
+     * Sends INTENT only — what was sold and how many. The server resolves every
+     * price from the catalogue and computes subtotal/discount/tax/total.
+     * The returned invoice is authoritative; display that, not local arithmetic.
+     */
+    create: async (intent: CreateInvoiceIntent): Promise<Invoice> => {
+        const { data } = await adminApi.post('/admin/invoices', {
+            clientId: intent.clientId || undefined,
+            clientName: intent.clientName,
+            clientEmail: intent.clientEmail,
+            clientPhone: intent.clientPhone,
+            date: intent.date,
+            items: intent.items,
+            discount: intent.discount,
+            amountPaid: intent.amountPaid,
+            status: intent.status,
+            paymentMethod: intent.paymentMethod,
+            staffId: intent.staffId || undefined,
+            staffName: intent.staffName,
+            appointmentId: intent.appointmentId || undefined,
+            notes: intent.notes,
+            branchId: await branchIdFor(intent.branch),
+        })
+        return data
     },
 
-    update: (id: string, updates: Partial<Invoice>): Invoice | undefined => {
-        const all = getAll<Invoice>(KEYS.INVOICES)
-        const idx = all.findIndex(i => i.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.INVOICES, all)
-        return all[idx]
+    update: async (id: string, u: { status?: string; paymentMethod?: string; notes?: string | null }): Promise<Invoice | undefined> => {
+        const { data } = await adminApi.put(`/admin/invoices/${id}`, {
+            ...(u.status !== undefined ? { status: u.status.toUpperCase() } : {}),
+            ...(u.paymentMethod !== undefined ? { paymentMethod: u.paymentMethod.toUpperCase() } : {}),
+            ...(u.notes !== undefined ? { notes: u.notes } : {}),
+        })
+        return data
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<Invoice>(KEYS.INVOICES)
-        const filtered = all.filter(i => i.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.INVOICES, filtered)
+    delete: async (id: string): Promise<boolean> => {
+        await adminApi.delete(`/admin/invoices/${id}`)
         return true
     },
 }
 
 // ─── Inventory ───────────────────────────────────────────────
 export const inventoryStore = {
-    getAll: (): InventoryItem[] => getAll(KEYS.INVENTORY),
+    getAll: (): Promise<InventoryItem[]> => items<InventoryItem>('/admin/inventory'),
 
-    getById: (id: string): InventoryItem | undefined =>
-        getAll<InventoryItem>(KEYS.INVENTORY).find(i => i.id === id),
-
-    create: (item: Omit<InventoryItem, 'id'>): InventoryItem => {
-        const all = getAll<InventoryItem>(KEYS.INVENTORY)
-        const newItem: InventoryItem = { ...item, id: `itm-${generateId()}` }
-        all.push(newItem)
-        saveAll(KEYS.INVENTORY, all)
-        return newItem
+    getById: async (id: string): Promise<InventoryItem | undefined> => {
+        const { data } = await adminApi.get(`/admin/inventory/${id}`)
+        return data
     },
 
-    update: (id: string, updates: Partial<InventoryItem>): InventoryItem | undefined => {
-        const all = getAll<InventoryItem>(KEYS.INVENTORY)
-        const idx = all.findIndex(i => i.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.INVENTORY, all)
-        return all[idx]
+    create: async (i: Omit<InventoryItem, 'id'>): Promise<InventoryItem> => {
+        const { data } = await adminApi.post('/admin/inventory', {
+            name: i.name,
+            brand: i.brand,
+            category: i.category,
+            sku: i.sku,
+            currentStock: i.currentStock,
+            minStock: i.minStock,
+            costPrice: i.costPrice,
+            retailPrice: i.retailPrice,
+            branchId: await branchIdFor(i.branch),
+            isActive: i.isActive,
+        })
+        return data
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<InventoryItem>(KEYS.INVENTORY)
-        const filtered = all.filter(i => i.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.INVENTORY, filtered)
+    update: async (id: string, u: Partial<InventoryItem>): Promise<InventoryItem | undefined> => {
+        const { data } = await adminApi.put(`/admin/inventory/${id}`, {
+            ...(u.name !== undefined ? { name: u.name } : {}),
+            ...(u.brand !== undefined ? { brand: u.brand } : {}),
+            ...(u.category !== undefined ? { category: u.category } : {}),
+            ...(u.currentStock !== undefined ? { currentStock: u.currentStock } : {}),
+            ...(u.minStock !== undefined ? { minStock: u.minStock } : {}),
+            ...(u.costPrice !== undefined ? { costPrice: u.costPrice } : {}),
+            ...(u.retailPrice !== undefined ? { retailPrice: u.retailPrice } : {}),
+            ...(u.isActive !== undefined ? { isActive: u.isActive } : {}),
+            ...(u.lastRestocked !== undefined ? { lastRestocked: u.lastRestocked } : {}),
+        })
+        return data
+    },
+
+    delete: async (id: string): Promise<boolean> => {
+        await adminApi.delete(`/admin/inventory/${id}`)
         return true
     },
 
-    getLowStock: (): InventoryItem[] =>
-        getAll<InventoryItem>(KEYS.INVENTORY).filter(i => i.isActive && i.currentStock <= i.minStock),
+    getLowStock: async (): Promise<InventoryItem[]> => {
+        const { data } = await adminApi.get('/admin/inventory/low-stock')
+        return data
+    },
 }
 
-// ─── Reset to defaults ──────────────────────────────────────
-export function resetStore() {
-    Object.values(KEYS).forEach(key => localStorage.removeItem(key))
-    initializeStore()
+// ─── Dashboard ───────────────────────────────────────────────
+export const dashboardStore = {
+    stats: async (): Promise<DashboardStats> => {
+        const { data } = await adminApi.get('/admin/dashboard/stats')
+        return data
+    },
+    alerts: async (): Promise<{ lowStockItems: InventoryItem[]; lowStockCount: number }> => {
+        const { data } = await adminApi.get('/admin/dashboard/alerts')
+        return data
+    },
 }
+
+/** No-op: data lives on the server now. Kept so App.tsx needs no change. */
+export function initializeStore() { /* server-backed */ }

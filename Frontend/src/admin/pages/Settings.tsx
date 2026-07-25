@@ -1,27 +1,38 @@
 import { useEffect, useState } from 'react'
-import { Save, RotateCcw } from 'lucide-react'
-import { settingsStore, resetStore } from '../data/store'
+import { Save } from 'lucide-react'
+import { settingsStore } from '../data/store'
+import { apiError } from '../../lib/api'
 import type { SalonSettings } from '../data/types'
 import { useToast } from '../components/Toast'
 import '../AdminShared.css'
 
+const emptySettings: SalonSettings = {
+    name: '', email: '', phone: '', hours: '', branches: [], socialLinks: {},
+}
+
 export default function SettingsPage() {
     const { showToast } = useToast()
-    const [settings, setSettings] = useState<SalonSettings>(settingsStore.get())
+    const [settings, setSettings] = useState<SalonSettings>(emptySettings)
 
-    useEffect(() => { setSettings(settingsStore.get()) }, [])
+    useEffect(() => {
+        settingsStore.get()
+            .then(s => setSettings(s ?? emptySettings))
+            .catch(e => showToast('error', apiError(e)))
+    }, [])
 
-    const handleSave = () => {
-        settingsStore.update(settings)
-        showToast('success', 'Settings saved successfully')
-    }
-
-    const handleReset = () => {
-        if (confirm('Reset all data to defaults? This will clear all appointments, clients, etc.')) {
-            resetStore()
-            setSettings(settingsStore.get())
+    const handleSave = async () => {
+        try {
+            const saved = await settingsStore.update(settings)
+            setSettings(saved ?? settings)
+            showToast('success', 'Settings saved successfully')
+        } catch (e) {
+            showToast('error', apiError(e))
         }
     }
+
+    // The "reset all data" button was removed with the localStorage store.
+    // Against a real database that is a destructive admin operation, not a
+    // settings toggle. Use `npx prisma migrate reset` in development instead.
 
     const updateBranch = (idx: number, field: string, value: string | boolean) => {
         const branches = [...settings.branches]
@@ -120,17 +131,6 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            {/* Danger Zone */}
-            <div className="admin-form-card" style={{ borderColor: 'rgba(232, 93, 93, 0.2)' }}>
-                <h3 style={{ color: 'var(--danger)' }}>Danger Zone</h3>
-                <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>
-                    Reset all admin data to mock defaults. This will clear all appointments, clients, services, and staff.
-                </p>
-                <button className="admin-btn admin-btn-danger" onClick={handleReset}>
-                    <RotateCcw size={14} />
-                    Reset All Data
-                </button>
-            </div>
         </div>
     )
 }

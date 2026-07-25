@@ -1,6 +1,8 @@
 import prisma from '../utils/prisma';
 import { NotFoundError, BadRequestError } from '../utils/errors';
 import { parsePagination, paginate } from '../utils/pagination';
+import { TokenPayload } from '../utils/jwt';
+import { branchScope, writeBranchId } from '../auth/scope';
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
@@ -30,10 +32,10 @@ function mapToFrontend(a: any) {
 }
 
 export const appointmentService = {
-  async list(query: { page?: string; limit?: string; branchId?: string; status?: string; search?: string }) {
+  async list(ctx: TokenPayload, query: { page?: string; limit?: string; branchId?: string; status?: string; search?: string }) {
     const p = parsePagination(query);
-    const where: any = {};
-    if (query.branchId) where.branchId = query.branchId;
+    const where: any = { ...branchScope(ctx) };
+    if (query.branchId && ctx.role === 'OWNER') where.branchId = query.branchId;
     if (query.status) where.status = query.status.toUpperCase();
     if (query.search) {
       where.OR = [
@@ -56,16 +58,16 @@ export const appointmentService = {
     return paginate(items.map(mapToFrontend), total, p);
   },
 
-  async getById(id: string) {
-    const a = await prisma.appointment.findUnique({
-      where: { id },
+  async getById(ctx: TokenPayload, id: string) {
+    const a = await prisma.appointment.findFirst({
+      where: { id, ...branchScope(ctx) },
       include: { branch: true },
     });
     if (!a) throw new NotFoundError('Appointment');
     return mapToFrontend(a);
   },
 
-  async create(data: any) {
+  async create(ctx: TokenPayload, data: any) {
     const apt = await prisma.appointment.create({
       data: {
         clientId: data.clientId || null,
@@ -80,15 +82,15 @@ export const appointmentService = {
         staffName: data.staffName,
         status: data.status || 'PENDING',
         notes: data.notes,
-        branchId: data.branchId,
+        branchId: writeBranchId(ctx, data.branchId),
       },
       include: { branch: true },
     });
     return mapToFrontend(apt);
   },
 
-  async update(id: string, data: any) {
-    const existing = await prisma.appointment.findUnique({ where: { id } });
+  async update(ctx: TokenPayload, id: string, data: any) {
+    const existing = await prisma.appointment.findFirst({ where: { id, ...branchScope(ctx) } });
     if (!existing) throw new NotFoundError('Appointment');
 
     // Enforce status transitions
@@ -102,8 +104,10 @@ export const appointmentService = {
       }
     }
 
-    const updateData: any = { ...data };
+    const { branchId, ...rest } = data;
+    const updateData: any = { ...rest };
     if (data.date) updateData.date = new Date(data.date);
+    if (branchId) updateData.branchId = writeBranchId(ctx, branchId);
 
     const apt = await prisma.appointment.update({
       where: { id },
@@ -113,8 +117,8 @@ export const appointmentService = {
     return mapToFrontend(apt);
   },
 
-  async remove(id: string) {
-    const existing = await prisma.appointment.findUnique({ where: { id } });
+  async remove(ctx: TokenPayload, id: string) {
+    const existing = await prisma.appointment.findFirst({ where: { id, ...branchScope(ctx) } });
     if (!existing) throw new NotFoundError('Appointment');
     return prisma.appointment.delete({ where: { id } });
   },

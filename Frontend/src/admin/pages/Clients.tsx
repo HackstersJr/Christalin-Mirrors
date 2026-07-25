@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit2, Trash2, Eye } from 'lucide-react'
 import { clientStore } from '../data/store'
+import { apiError } from '../../lib/api'
 import type { Client } from '../data/types'
 import '../AdminShared.css'
 
@@ -38,7 +39,9 @@ export default function Clients() {
     const [form, setForm] = useState(emptyForm)
     const [tagInput, setTagInput] = useState('')
 
-    const reload = () => setClients(clientStore.getAll())
+    const [error, setError] = useState('')
+
+    const reload = () => clientStore.getAll().then(setClients).catch(e => setError(apiError(e)))
     useEffect(() => { reload() }, [])
 
     const filtered = clients.filter(c => {
@@ -54,15 +57,15 @@ export default function Clients() {
         setShowForm(true)
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (editingId) {
-            clientStore.update(editingId, form)
-        } else {
-            clientStore.create(form)
-        }
-        resetForm()
-        reload()
+        setError('')
+        try {
+            if (editingId) await clientStore.update(editingId, form)
+            else await clientStore.create(form)
+            resetForm()
+            await reload()
+        } catch (err) { setError(apiError(err)) }
     }
 
     const resetForm = () => {
@@ -72,8 +75,10 @@ export default function Clients() {
         setTagInput('')
     }
 
-    const deleteClient = (id: string) => {
-        if (confirm('Delete this client?')) { clientStore.delete(id); reload() }
+    const deleteClient = async (id: string) => {
+        if (!confirm('Delete this client?')) return
+        try { await clientStore.delete(id); await reload() }
+        catch (err) { setError(apiError(err)) }
     }
 
     const addTag = () => {

@@ -1,12 +1,14 @@
 import prisma from '../utils/prisma';
 import { NotFoundError } from '../utils/errors';
 import { parsePagination, paginate } from '../utils/pagination';
+import { TokenPayload } from '../utils/jwt';
+import { branchScope, writeBranchId } from '../auth/scope';
 
 export const clientService = {
-  async list(query: { page?: string; limit?: string; branchId?: string; search?: string }) {
+  async list(ctx: TokenPayload, query: { page?: string; limit?: string; branchId?: string; search?: string }) {
     const p = parsePagination(query);
-    const where: any = {};
-    if (query.branchId) where.branchId = query.branchId;
+    const where: any = { ...branchScope(ctx) };
+    if (query.branchId && ctx.role === 'OWNER') where.branchId = query.branchId;
     if (query.search) {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
@@ -44,9 +46,9 @@ export const clientService = {
     return paginate(mapped, total, p);
   },
 
-  async getById(id: string) {
-    const c = await prisma.client.findUnique({
-      where: { id },
+  async getById(ctx: TokenPayload, id: string) {
+    const c = await prisma.client.findFirst({
+      where: { id, ...branchScope(ctx) },
       include: { branch: true },
     });
     if (!c) throw new NotFoundError('Client');
@@ -66,14 +68,14 @@ export const clientService = {
     };
   },
 
-  async create(data: any) {
+  async create(ctx: TokenPayload, data: any) {
     return prisma.client.create({
       data: {
         name: data.name,
         email: data.email,
         phone: data.phone,
         gender: data.gender,
-        branchId: data.branchId,
+        branchId: writeBranchId(ctx, data.branchId),
         joinedDate: data.joinedDate ? new Date(data.joinedDate) : new Date(),
         preferredStaffId: data.preferredStaffId,
         notes: data.notes,
@@ -82,13 +84,17 @@ export const clientService = {
     });
   },
 
-  async update(id: string, data: any) {
-    await this.getById(id);
-    return prisma.client.update({ where: { id }, data });
+  async update(ctx: TokenPayload, id: string, data: any) {
+    await this.getById(ctx, id);
+    const { branchId, ...rest } = data;
+    return prisma.client.update({
+      where: { id },
+      data: { ...rest, ...(branchId ? { branchId: writeBranchId(ctx, branchId) } : {}) },
+    });
   },
 
-  async remove(id: string) {
-    await this.getById(id);
+  async remove(ctx: TokenPayload, id: string) {
+    await this.getById(ctx, id);
     return prisma.client.delete({ where: { id } });
   },
 };

@@ -32,7 +32,7 @@ export default function Staff() {
     const [form, setForm] = useState(emptyForm)
     const [specInput, setSpecInput] = useState('')
 
-    const reload = () => setStaff(staffStore.getAll())
+    const reload = () => staffStore.getAll().then(setStaff).catch(() => {})
     useEffect(() => { reload() }, [])
 
     const filtered = staff.filter(s => {
@@ -51,18 +51,18 @@ export default function Staff() {
         setShowForm(true)
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (editingId) { staffStore.update(editingId, form) }
-        else { staffStore.create(form) }
+        if (editingId) await staffStore.update(editingId, form)
+        else await staffStore.create(form)
         resetForm()
-        reload()
+        await reload()
     }
 
     const resetForm = () => { setForm(emptyForm); setEditingId(null); setShowForm(false); setSpecInput('') }
 
-    const deleteStaff = (id: string) => {
-        if (confirm('Remove this staff member?')) { staffStore.delete(id); reload() }
+    const deleteStaff = async (id: string) => {
+        if (confirm('Remove this staff member?')) { await staffStore.delete(id); await reload() }
     }
 
     const addSpec = () => {

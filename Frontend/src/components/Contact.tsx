@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { CheckCircle, Send, Calendar, Clock } from 'lucide-react'
-import emailjs from '@emailjs/browser'
+import { publicApi } from '../lib/api'
 import { StaggerItem } from './Animations'
 import { CONTACT_IMAGE } from '../data/assets'
 import './Contact.css'
@@ -16,6 +16,7 @@ export default function Contact() {
     const formRef = useRef<HTMLFormElement>(null)
     const [sending, setSending] = useState(false)
     const [sent, setSent] = useState(false)
+    const [error, setError] = useState('')
 
     // Get tomorrow's date as minimum selectable date
     const getMinDate = () => {
@@ -29,16 +30,38 @@ export default function Contact() {
         if (!formRef.current) return
 
         setSending(true)
+        setError('')
+
+        // Booking request → backend contact submission. Date/time/note are folded
+        // into the message so no schema change is needed for v1.
+        const fd = new FormData(formRef.current)
+        const name = String(fd.get('user_name') ?? '')
+        const email = String(fd.get('user_email') ?? '')
+        const date = String(fd.get('preferred_date') ?? '')
+        const time = String(fd.get('preferred_time') ?? '')
+        const note = String(fd.get('note') ?? '')
+
+        const message = [
+            `Preferred date: ${date}`,
+            `Preferred time: ${time}`,
+            note ? `Note: ${note}` : null,
+        ].filter(Boolean).join('\n')
+
         try {
-            await emailjs.sendForm(
-                'YOUR_SERVICE_ID',    // TODO: Replace with actual EmailJS Service ID
-                'YOUR_TEMPLATE_ID',   // TODO: Replace with actual EmailJS Template ID
-                formRef.current,
-                'YOUR_PUBLIC_KEY'     // TODO: Replace with actual EmailJS Public Key
-            )
+            await publicApi.post('/public/contact', {
+                name,
+                email,
+                subject: 'Appointment request',
+                message,
+                website: String(fd.get('website') ?? ''), // honeypot
+            })
             setSent(true)
-        } catch {
-            alert('Something went wrong. Please try again.')
+        } catch (err: any) {
+            setError(
+                err?.response?.status === 429
+                    ? 'Too many requests. Please try again later.'
+                    : 'Something went wrong. Please try again.'
+            )
         } finally {
             setSending(false)
         }
@@ -151,6 +174,25 @@ export default function Contact() {
                                             rows={3}
                                         />
                                     </div>
+
+                                    {/* Honeypot — hidden from users, filled only by bots */}
+                                    <input
+                                        type="text"
+                                        name="website"
+                                        tabIndex={-1}
+                                        autoComplete="off"
+                                        aria-hidden="true"
+                                        style={{ position: 'absolute', left: '-9999px', width: 1, height: 1 }}
+                                    />
+
+                                    {error && (
+                                        <div style={{
+                                            color: '#f43f5e', fontSize: 14, marginBottom: 12,
+                                            background: 'rgba(244,63,94,0.1)', padding: '10px 12px', borderRadius: 8,
+                                        }}>
+                                            {error}
+                                        </div>
+                                    )}
 
                                     <button
                                         type="submit"

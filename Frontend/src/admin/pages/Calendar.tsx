@@ -12,7 +12,7 @@ export default function Calendar() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-    useEffect(() => { setAppointments(appointmentStore.getAll()) }, [])
+    useEffect(() => { appointmentStore.getAll().then(setAppointments).catch(() => {}) }, [])
 
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()

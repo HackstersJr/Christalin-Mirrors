@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Trash2 } from 'lucide-react'
 import { invoiceStore, clientStore, serviceStore } from '../data/store'
-import type { Invoice, InvoiceItem } from '../data/types'
+import { apiError } from '../../lib/api'
+import type { Invoice, InvoiceItem, Client, ServiceRecord } from '../data/types'
 import '../AdminShared.css'
 
 // ─── Invoice Detail View ────────────────────────────────────
@@ -12,7 +13,12 @@ function InvoiceDetail() {
     const [invoice, setInvoice] = useState<Invoice | null>(null)
 
     useEffect(() => {
-        if (invoiceId) { setInvoice(invoiceStore.getById(invoiceId) || null) }
+        if (!invoiceId) return
+        let alive = true
+        invoiceStore.getById(invoiceId)
+            .then(inv => { if (alive) setInvoice(inv || null) })
+            .catch(() => { if (alive) setInvoice(null) })
+        return () => { alive = false }
     }, [invoiceId])
 
     if (!invoice) {
@@ -24,9 +30,13 @@ function InvoiceDetail() {
 
     const handlePrint = () => { window.print() }
 
-    const updateStatus = (status: Invoice['status']) => {
-        invoiceStore.update(invoice.id, { status })
-        setInvoice({ ...invoice, status })
+    const updateStatus = async (status: Invoice['status']) => {
+        try {
+            // Marking PAID triggers stock decrement and visit counting server-side,
+            // so trust the returned invoice rather than patching local state.
+            const updated = await invoiceStore.update(invoice.id, { status })
+            setInvoice(updated ?? { ...invoice, status })
+        } catch (err) { alert(apiError(err)) }
     }
 
     const shareWhatsApp = () => {
@@ -165,11 +175,15 @@ function InvoiceList() {
     const [items, setItems] = useState<InvoiceItem[]>([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
     const [formData, setFormData] = useState({ clientId: '', discountPercent: 0, taxPercent: 18, paymentMethod: 'cash' as Invoice['paymentMethod'], branch: 'Bengaluru', stylist: '', notes: '' })
 
-    const reload = () => setInvoices(invoiceStore.getAll())
-    useEffect(() => { reload() }, [])
+    const [clients, setClients] = useState<Client[]>([])
+    const [services, setServices] = useState<ServiceRecord[]>([])
 
-    const clients = clientStore.getAll()
-    const services = serviceStore.getAll()
+    const reload = () => invoiceStore.getAll().then(setInvoices).catch(() => {})
+    useEffect(() => {
+        reload()
+        clientStore.getAll().then(setClients).catch(() => {})
+        serviceStore.getAll().then(setServices).catch(() => {})
+    }, [])
 
     const filtered = invoices.filter(inv => {
         const matchSearch = inv.clientName.toLowerCase().includes(search.toLowerCase()) || inv.invoiceNumber.toLowerCase().includes(search.toLowerCase())
@@ -185,7 +199,11 @@ function InvoiceList() {
         updated[idx] = { ...updated[idx], [field]: value }
         if (field === 'service') {
             const svc = services.find(s => s.name === value)
-            if (svc) { updated[idx].unitPrice = svc.price; updated[idx].total = svc.price * updated[idx].quantity }
+            if (svc) {
+                updated[idx].serviceId = svc.id   // server prices from this
+                updated[idx].unitPrice = svc.price
+                updated[idx].total = svc.price * updated[idx].quantity
+            }
         }
         if (field === 'quantity' || field === 'unitPrice') {
             updated[idx].total = updated[idx].unitPrice * updated[idx].quantity
@@ -193,32 +211,43 @@ function InvoiceList() {
         setItems(updated)
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         const client = clients.find(c => c.id === formData.clientId)
         if (!client || items.length === 0) return
-        const subtotal = items.reduce((s, i) => s + i.total, 0)
-        const discountAmount = Math.round(subtotal * formData.discountPercent / 100)
-        const taxable = subtotal - discountAmount
-        const taxAmount = Math.round(taxable * formData.taxPercent / 100)
-        const total = taxable + taxAmount
+        if (items.some(i => !i.serviceId)) { alert('Pick a service for every line'); return }
 
-        invoiceStore.create({
-            invoiceNumber: invoiceStore.getNextInvoiceNumber(),
-            clientId: client.id, clientName: client.name, clientEmail: client.email, clientPhone: client.phone,
-            date: new Date().toISOString().split('T')[0], items, subtotal,
-            discountPercent: formData.discountPercent, discountAmount,
-            taxPercent: formData.taxPercent, taxAmount, total, amountPaid: 0,
-            status: 'draft', paymentMethod: formData.paymentMethod,
-            branch: formData.branch, stylist: formData.stylist, notes: formData.notes,
-        })
+        try {
+            // Intent only — the server prices the lines and computes every total.
+            await invoiceStore.create({
+                clientId: client.id,
+                clientName: client.name,
+                clientEmail: client.email,
+                clientPhone: client.phone,
+                date: new Date().toISOString().split('T')[0],
+                items: items.map(i => ({ serviceId: i.serviceId, quantity: i.quantity })),
+                discount: formData.discountPercent > 0
+                    ? { type: 'percent', value: formData.discountPercent }
+                    : undefined,
+                status: 'DRAFT',
+                paymentMethod: formData.paymentMethod?.toUpperCase() as 'CASH' | 'CARD' | 'UPI' | 'OTHER',
+                staffName: formData.stylist,
+                branch: formData.branch,
+                notes: formData.notes,
+            })
+        } catch (err) { alert(apiError(err)); return }
+
         setShowForm(false)
         setItems([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
         setFormData({ clientId: '', discountPercent: 0, taxPercent: 18, paymentMethod: 'cash', branch: 'Bengaluru', stylist: '', notes: '' })
-        reload()
+        await reload()
     }
 
-    const deleteInv = (id: string) => { if (confirm('Delete this invoice?')) { invoiceStore.delete(id); reload() } }
+    const deleteInv = async (id: string) => {
+        if (!confirm('Delete this invoice?')) return
+        try { await invoiceStore.delete(id); await reload() }
+        catch (err) { alert(apiError(err)) }
+    }
 
     return (
         <div>

@@ -9,6 +9,7 @@ import {
     inventoryStore, invoiceStore, settingsStore
 } from '../data/store';
 import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice } from '../data/types';
+import { auth, apiError } from '../../lib/api';
 import { useToast } from '../components/Toast';
 import '../AdminShared.css';
 import './Billing.css';
@@ -24,19 +25,30 @@ export default function Billing() {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
-    useEffect(() => {
-        setClients(clientStore.getAll());
-        setServices(serviceStore.getAll().filter(s => s.isActive));
-        setStaff(staffStore.getAll().filter(s => s.isActive));
-        setInventory(inventoryStore.getAll().filter(i => i.isActive));
-        
-        const today = new Date().toISOString().split('T')[0];
-        setAppointments(appointmentStore.getAll().filter(a => a.date === today && a.status === 'confirmed'));
-    }, []);
+    const [branches, setBranches] = useState<{ name: string; isActive: boolean }[]>([]);
+    const [selectedBranch, setSelectedBranch] = useState<string>('');
 
-    // Branch selector (Fix 8)
-    const branches = settingsStore.get().branches.filter(b => b.isActive);
-    const [selectedBranch, setSelectedBranch] = useState<string>(branches[0]?.name || 'Bengaluru');
+    useEffect(() => {
+        clientStore.getAll().then(setClients).catch(() => {});
+        serviceStore.getAll().then(l => setServices(l.filter(s => s.isActive))).catch(() => {});
+        staffStore.getAll().then(l => setStaff(l.filter(s => s.isActive))).catch(() => {});
+        inventoryStore.getAll().then(l => setInventory(l.filter(i => i.isActive))).catch(() => {});
+
+        const today = new Date().toISOString().split('T')[0];
+        appointmentStore.getAll()
+            .then(l => setAppointments(l.filter(a => a.date === today && a.status === 'confirmed')))
+            .catch(() => {});
+
+        settingsStore.get()
+            .then(s => {
+                const active = (s?.branches ?? []).filter(b => b.isActive);
+                setBranches(active);
+                // Default to the logged-in user's own branch; the server enforces
+                // this anyway for non-owners.
+                setSelectedBranch(auth.user()?.branch || active[0]?.name || '');
+            })
+            .catch(() => {});
+    }, []);
 
     // Form State
     const [selectedClient, setSelectedClient] = useState<Client | null | 'walk-in'>(null);
@@ -82,20 +94,24 @@ export default function Billing() {
         return clients.filter(c => c.name.toLowerCase().includes(term) || c.phone.includes(term)).slice(0, 10);
     }, [clients, clientSearch]);
 
-    const handleCreateClient = (e: React.FormEvent) => {
+    const handleCreateClient = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newClient.name || !newClient.phone) return;
-        const created = clientStore.create({
-            name: newClient.name,
-            phone: newClient.phone,
-            gender: newClient.gender,
-            email: '',
-            branch: selectedBranch,
-            joinedDate: new Date().toISOString().split('T')[0],
-            totalVisits: 0,
-            tags: ['New']
-        });
-        setClients(clientStore.getAll());
+        let created: Client;
+        try {
+            created = await clientStore.create({
+                name: newClient.name,
+                phone: newClient.phone,
+                gender: newClient.gender,
+                // API requires a valid email; synthesise one for walk-ins who don't give one.
+                email: `${newClient.phone.replace(/\D/g, '')}@walkin.local`,
+                branch: selectedBranch,
+                joinedDate: new Date().toISOString().split('T')[0],
+                totalVisits: 0,
+                tags: ['New']
+            });
+        } catch (err) { showToast('error', apiError(err)); return; }
+        setClients(await clientStore.getAll());
         setSelectedClient(created);
         setShowNewClientForm(false);
         setNewClient({ name: '', phone: '', gender: 'female' });
@@ -115,10 +131,12 @@ export default function Billing() {
             if (svc) {
                 copy[idx].unitPrice = svc.price;
                 copy[idx].description = '';
+                copy[idx].serviceId = svc.id;   // the server prices from this
                 copy[idx].productId = undefined;
             } else if (prd) {
                 copy[idx].unitPrice = prd.retailPrice || 0;
                 copy[idx].description = 'Product';
+                copy[idx].serviceId = undefined;
                 copy[idx].productId = prd.id;
             }
         }
@@ -145,14 +163,19 @@ export default function Billing() {
         // Find service
         const svc = services.find(sv => sv.name === apt.service);
         if (svc) {
-            setItems([{ service: svc.name, quantity: 1, unitPrice: svc.price, total: svc.price }]);
+            setItems([{ service: svc.name, serviceId: svc.id, quantity: 1, unitPrice: svc.price, total: svc.price }]);
         }
 
         // Track the appointment ID so we can mark it completed (Fix 2)
         setSelectedAppointmentId(apt.id);
     };
 
-    const saveInvoice = (status: 'draft' | 'paid') => {
+    /**
+     * Sends INTENT only. The totals computed above are for the on-screen preview;
+     * the server re-prices every line from the catalogue and returns the
+     * authoritative invoice, which is what we display and store.
+     */
+    const saveInvoice = async (status: 'draft' | 'paid') => {
         let clientId = '';
         let clientName = 'Walk-in Guest';
         let clientEmail = '';
@@ -167,71 +190,64 @@ export default function Billing() {
 
         const stylistName = staff.find(s => s.id === selectedStaffId)?.name || '';
 
-        const inv = invoiceStore.create({
-            invoiceNumber: invoiceStore.getNextInvoiceNumber(),
-            clientId,
+        const inv = await invoiceStore.create({
+            clientId: clientId || undefined,
             clientName,
-            clientEmail,
+            clientEmail: clientEmail || 'walkin@christalinmirrors.com',
             clientPhone,
             date: new Date().toISOString().split('T')[0],
-            items,
-            subtotal,
-            discountPercent: discountType === 'percent' ? discountValue : 0,
-            discountAmount,
-            taxPercent,
-            taxAmount,
-            total,
-            amountPaid: status === 'paid' ? total : 0,
-            status,
-            paymentMethod,
+            items: items.map(i => ({
+                serviceId: i.serviceId,
+                productId: i.productId,
+                description: i.description,
+                quantity: i.quantity,
+            })),
+            discount: discountValue > 0 ? { type: discountType, value: discountValue } : undefined,
+            status: status === 'paid' ? 'PAID' : 'DRAFT',
+            paymentMethod: paymentMethod.toUpperCase() as 'CASH' | 'CARD' | 'UPI',
+            staffId: selectedStaffId || undefined,
+            staffName: stylistName,
             branch: selectedBranch,
-            stylist: stylistName,
             notes: notes + (paymentMethod === 'upi' ? ` (Ref: ${upiRef})` : '') + (paymentMethod === 'card' ? ` (Card: *${cardLast4})` : ''),
             appointmentId: selectedAppointmentId || undefined,
         });
 
-        if (status === 'paid' && selectedClient && selectedClient !== 'walk-in') {
-            clientStore.update(selectedClient.id, { 
-                totalVisits: selectedClient.totalVisits + 1,
-                lastVisit: new Date().toISOString().split('T')[0]
-            });
-        }
-
+        // No client-side side effects any more. The server owns stock decrement,
+        // client visit counts, the ServiceVisit record and appointment completion,
+        // all inside one transaction — see Backend/src/services/invoiceService.ts.
         return inv;
     };
 
-    const handleSaveDraft = () => {
+    const handleSaveDraft = async () => {
         if (!selectedClient || items.length === 0) { showToast('error', 'Select client and add items first'); return; }
         if (!selectedStaffId) { showToast('error', 'Please select a stylist/therapist'); return; }
-        saveInvoice('draft');
-        showToast('success', 'Draft saved successfully');
-        navigate('/admin/invoices');
+        if (items.some(i => !i.serviceId && !i.productId)) { showToast('error', 'Pick a service or product for every line'); return; }
+        try {
+            await saveInvoice('draft');
+            showToast('success', 'Draft saved successfully');
+            navigate('/admin/invoices');
+        } catch (err) { showToast('error', apiError(err)); }
     };
 
-    const confirmPayment = () => {
+    const confirmPayment = async () => {
         if (!selectedClient || items.length === 0) { showToast('error', 'Select client and add items first'); return; }
         if (!selectedStaffId) { showToast('error', 'Please select a stylist/therapist'); return; }
-        const inv = saveInvoice('paid');
+        if (items.some(i => !i.serviceId && !i.productId)) { showToast('error', 'Pick a service or product for every line'); return; }
+
+        let inv: Invoice;
+        try {
+            inv = await saveInvoice('paid');
+        } catch (err) {
+            // Insufficient stock and pricing failures surface here instead of
+            // silently corrupting inventory the way the old client-side path did.
+            showToast('error', apiError(err));
+            return;
+        }
+
         setLastInvoice(inv);
         setShowPayModal(false);
         setShowSuccess(true);
 
-        // Fix 1: Decrement inventory stock for retail product items
-        items.forEach(item => {
-            if (item.productId) {
-                const product = inventoryStore.getById(item.productId);
-                if (product) {
-                    const newStock = Math.max(0, product.currentStock - item.quantity);
-                    inventoryStore.update(item.productId, { currentStock: newStock });
-                }
-            }
-        });
-
-        // Fix 2: Mark appointment as completed if bill was from an appointment
-        if (selectedAppointmentId) {
-            appointmentStore.update(selectedAppointmentId, { status: 'completed' });
-        }
-        
         // Auto reset after 30 seconds
         setTimeout(() => {
             if (document.getElementById('success-screen')) {

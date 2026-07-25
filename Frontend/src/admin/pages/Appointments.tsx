@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Search, Check, X, Trash2, Clock } from 'lucide-react'
 import { appointmentStore, serviceStore, clientStore, staffStore } from '../data/store'
+import { apiError } from '../../lib/api'
 import type { Appointment, ServiceRecord, Client, StaffMember } from '../data/types'
 import '../AdminShared.css'
 
@@ -29,12 +30,12 @@ export default function Appointments() {
     const [clients, setClients] = useState<Client[]>([])
     const [staffList, setStaffList] = useState<StaffMember[]>([])
 
-    const reload = () => setAppointments(appointmentStore.getAll())
+    const reload = () => appointmentStore.getAll().then(setAppointments).catch(() => {})
     useEffect(() => {
         reload()
-        setServices(serviceStore.getAll().filter(s => s.isActive))
-        setClients(clientStore.getAll())
-        setStaffList(staffStore.getAll().filter(s => s.isActive))
+        serviceStore.getAll().then(list => setServices(list.filter(s => s.isActive))).catch(() => {})
+        clientStore.getAll().then(setClients).catch(() => {})
+        staffStore.getAll().then(list => setStaffList(list.filter(s => s.isActive))).catch(() => {})
     }, [])
 
     const filtered = appointments.filter(a => {
@@ -43,34 +44,37 @@ export default function Appointments() {
         return matchSearch && matchStatus
     }).sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         // Find entities to get IDs (Fix 7 / Task 1)
         const matchedClient = clients.find(c => c.name === form.clientName)
         const matchedStaff = staffList.find(s => s.name === form.stylist)
         const matchedService = services.find(s => s.name === form.service)
-        
-        appointmentStore.create({
-            ...form,
-            clientId: matchedClient?.id || '',
-            staffId: matchedStaff?.id || '',
-            serviceId: matchedService?.id || '',
-        })
-        setForm(emptyForm)
-        setShowForm(false)
-        reload()
+
+        try {
+            await appointmentStore.create({
+                ...form,
+                clientId: matchedClient?.id || '',
+                staffId: matchedStaff?.id || '',
+                serviceId: matchedService?.id || '',
+            })
+            setForm(emptyForm)
+            setShowForm(false)
+            await reload()
+        } catch (err) { alert(apiError(err)) }
     }
 
-    const updateStatus = (id: string, status: Appointment['status']) => {
-        appointmentStore.update(id, { status })
-        reload()
+    const updateStatus = async (id: string, status: Appointment['status']) => {
+        // The backend enforces the status machine (pending→confirmed→completed),
+        // so an invalid transition comes back as a 400 rather than being applied.
+        try { await appointmentStore.update(id, { status }); await reload() }
+        catch (err) { alert(apiError(err)) }
     }
 
-    const deleteApt = (id: string) => {
-        if (confirm('Delete this appointment?')) {
-            appointmentStore.delete(id)
-            reload()
-        }
+    const deleteApt = async (id: string) => {
+        if (!confirm('Delete this appointment?')) return
+        try { await appointmentStore.delete(id); await reload() }
+        catch (err) { alert(apiError(err)) }
     }
 
     return (

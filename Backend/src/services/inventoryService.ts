@@ -2,6 +2,8 @@ import prisma from '../utils/prisma';
 import { NotFoundError } from '../utils/errors';
 import { paisaToRupees, rupeesToPaisa } from '../utils/currency';
 import { parsePagination, paginate } from '../utils/pagination';
+import { TokenPayload } from '../utils/jwt';
+import { branchScope, writeBranchId } from '../auth/scope';
 
 const CATEGORY_MAP: Record<string, string> = {
   'hair-care': 'HAIRCARE',
@@ -37,10 +39,10 @@ function mapToFrontend(i: any) {
 }
 
 export const inventoryService = {
-  async list(query: { page?: string; limit?: string; branchId?: string; category?: string }) {
+  async list(ctx: TokenPayload, query: { page?: string; limit?: string; branchId?: string; category?: string }) {
     const p = parsePagination(query);
-    const where: any = {};
-    if (query.branchId) where.branchId = query.branchId;
+    const where: any = { ...branchScope(ctx) };
+    if (query.branchId && ctx.role === 'OWNER') where.branchId = query.branchId;
     if (query.category) where.category = CATEGORY_MAP[query.category] || query.category.toUpperCase();
 
     const [items, total] = await Promise.all([
@@ -57,16 +59,16 @@ export const inventoryService = {
     return paginate(items.map(mapToFrontend), total, p);
   },
 
-  async getById(id: string) {
-    const i = await prisma.inventoryItem.findUnique({
-      where: { id },
+  async getById(ctx: TokenPayload, id: string) {
+    const i = await prisma.inventoryItem.findFirst({
+      where: { id, ...branchScope(ctx) },
       include: { branch: true },
     });
     if (!i) throw new NotFoundError('InventoryItem');
     return mapToFrontend(i);
   },
 
-  async create(data: any) {
+  async create(ctx: TokenPayload, data: any) {
     const item = await prisma.inventoryItem.create({
       data: {
         name: data.name,
@@ -77,7 +79,7 @@ export const inventoryService = {
         minStock: data.minStock ?? 3,
         costPrice: rupeesToPaisa(data.costPrice),
         retailPrice: rupeesToPaisa(data.retailPrice ?? 0),
-        branchId: data.branchId,
+        branchId: writeBranchId(ctx, data.branchId),
         isActive: data.isActive ?? true,
       },
       include: { branch: true },
@@ -85,9 +87,10 @@ export const inventoryService = {
     return mapToFrontend(item);
   },
 
-  async update(id: string, data: any) {
-    await this.getById(id);
-    const updateData: any = { ...data };
+  async update(ctx: TokenPayload, id: string, data: any) {
+    await this.getById(ctx, id);
+    const { branchId: _ignored, ...rest } = data;
+    const updateData: any = { ...rest };
     if (data.costPrice !== undefined) updateData.costPrice = rupeesToPaisa(data.costPrice);
     if (data.retailPrice !== undefined) updateData.retailPrice = rupeesToPaisa(data.retailPrice);
     if (data.category) updateData.category = CATEGORY_MAP[data.category] || data.category;
@@ -101,19 +104,19 @@ export const inventoryService = {
     return mapToFrontend(item);
   },
 
-  async remove(id: string) {
-    await this.getById(id);
+  async remove(ctx: TokenPayload, id: string) {
+    await this.getById(ctx, id);
     return prisma.inventoryItem.delete({ where: { id } });
   },
 
-  async getLowStock(branchId?: string) {
-    const where: any = { isActive: true };
-    if (branchId) where.branchId = branchId;
-
+  /** Single source of truth for "low stock" — dashboardService calls this too. */
+  async getLowStock(ctx: TokenPayload) {
     const all = await prisma.inventoryItem.findMany({
-      where,
+      where: { isActive: true, ...branchScope(ctx) },
       include: { branch: true },
     });
+    // ponytail: filters in JS, O(all active items). upgrade: SQL predicate
+    // `WHERE current_stock <= min_stock` when the catalogue outgrows one page.
     return all.filter((i: any) => i.currentStock <= i.minStock).map(mapToFrontend);
   },
 };
