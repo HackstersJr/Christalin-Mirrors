@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search, Check, X, Trash2, Clock } from 'lucide-react'
+import { Plus, Search, Check, X, Trash2, Clock, LogIn } from 'lucide-react'
 import { appointmentStore, serviceStore, clientStore, staffStore } from '../data/store'
+import { getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Appointment, ServiceRecord, Client, StaffMember } from '../data/types'
 import '../AdminShared.css'
 
@@ -18,23 +19,25 @@ const emptyForm = {
 }
 
 export default function Appointments() {
+    const branchScope = getBranchScope()
+    const scopedEmptyForm = { ...emptyForm, branch: branchScope || 'Bengaluru' }
     const [appointments, setAppointments] = useState<Appointment[]>([])
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState<string>('all')
     const [showForm, setShowForm] = useState(false)
-    const [form, setForm] = useState(emptyForm)
+    const [form, setForm] = useState(scopedEmptyForm)
 
     // Data for dropdowns (Fix 7)
     const [services, setServices] = useState<ServiceRecord[]>([])
     const [clients, setClients] = useState<Client[]>([])
     const [staffList, setStaffList] = useState<StaffMember[]>([])
 
-    const reload = () => setAppointments(appointmentStore.getAll())
+    const reload = () => setAppointments(scopeByBranch(appointmentStore.getAll()))
     useEffect(() => {
         reload()
         setServices(serviceStore.getAll().filter(s => s.isActive))
-        setClients(clientStore.getAll())
-        setStaffList(staffStore.getAll().filter(s => s.isActive))
+        setClients(scopeByBranch(clientStore.getAll()))
+        setStaffList(scopeByBranch(staffStore.getAll().filter(s => s.isActive)))
     }, [])
 
     const filtered = appointments.filter(a => {
@@ -56,7 +59,7 @@ export default function Appointments() {
             staffId: matchedStaff?.id || '',
             serviceId: matchedService?.id || '',
         })
-        setForm(emptyForm)
+        setForm(scopedEmptyForm)
         setShowForm(false)
         reload()
     }
@@ -131,10 +134,14 @@ export default function Appointments() {
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Branch</label>
-                                <select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}>
-                                    <option value="Bengaluru">Bengaluru</option>
-                                    <option value="Kalaburagi">Kalaburagi</option>
-                                </select>
+                                {branchScope ? (
+                                    <input className="admin-form-input" value={branchScope} disabled />
+                                ) : (
+                                    <select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}>
+                                        <option value="Bengaluru">Bengaluru</option>
+                                        <option value="Kalaburagi">Kalaburagi</option>
+                                    </select>
+                                )}
                             </div>
                             <div className="admin-form-group full">
                                 <label className="admin-form-label">Notes</label>
@@ -142,7 +149,7 @@ export default function Appointments() {
                             </div>
                         </div>
                         <div className="admin-form-actions">
-                            <button type="button" className="admin-btn admin-btn-secondary" onClick={() => { setShowForm(false); setForm(emptyForm) }}>Cancel</button>
+                            <button type="button" className="admin-btn admin-btn-secondary" onClick={() => { setShowForm(false); setForm(scopedEmptyForm) }}>Cancel</button>
                             <button type="submit" className="admin-btn admin-btn-primary">Create Appointment</button>
                         </div>
                     </form>
@@ -156,6 +163,7 @@ export default function Appointments() {
                     <option value="all">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="confirmed">Confirmed</option>
+                    <option value="arrived">Arrived</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
                 </select>
@@ -215,6 +223,16 @@ export default function Appointments() {
                                             </>
                                         )}
                                         {apt.status === 'confirmed' && (
+                                            <>
+                                                <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Mark Arrived" onClick={() => updateStatus(apt.id, 'arrived')}>
+                                                    <LogIn size={14} style={{ color: 'var(--purple)' }} />
+                                                </button>
+                                                <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Cancel" onClick={() => updateStatus(apt.id, 'cancelled')}>
+                                                    <X size={14} style={{ color: 'var(--danger)' }} />
+                                                </button>
+                                            </>
+                                        )}
+                                        {apt.status === 'arrived' && (
                                             <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Mark Complete" onClick={() => updateStatus(apt.id, 'completed')}>
                                                 <Check size={14} style={{ color: 'var(--info)' }} />
                                             </button>

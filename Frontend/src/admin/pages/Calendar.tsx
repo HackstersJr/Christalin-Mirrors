@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { appointmentStore } from '../data/store'
+import { scopeByBranch } from '../data/authStore'
 import type { Appointment } from '../data/types'
 import '../AdminShared.css'
 import './Calendar.css'
@@ -12,7 +13,7 @@ export default function Calendar() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-    useEffect(() => { setAppointments(appointmentStore.getAll()) }, [])
+    useEffect(() => { setAppointments(scopeByBranch(appointmentStore.getAll())) }, [])
 
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
@@ -81,6 +82,7 @@ export default function Calendar() {
                             const isSelected = dateStr === selectedDate
                             const pending = dayApts.filter(a => a.status === 'pending').length
                             const confirmed = dayApts.filter(a => a.status === 'confirmed').length
+                            const arrived = dayApts.filter(a => a.status === 'arrived').length
 
                             return (
                                 <div
@@ -94,6 +96,7 @@ export default function Calendar() {
                                     {dayApts.length > 0 && (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                             {confirmed > 0 && <div className="calendar-apt-tag confirmed">{confirmed} confirmed</div>}
+                                            {arrived > 0 && <div className="calendar-apt-tag arrived">{arrived} arrived</div>}
                                             {pending > 0 && <div className="calendar-apt-tag pending">{pending} pending</div>}
                                         </div>
                                     )}
@@ -124,7 +127,13 @@ export default function Calendar() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {selectedApts.map(apt => (
                                 <div key={apt.id} className="calendar-apt-card" style={{
-                                    borderLeft: `3px solid ${apt.status === 'confirmed' ? 'var(--success-light)' : apt.status === 'pending' ? 'var(--warning-light)' : apt.status === 'completed' ? 'var(--info)' : 'var(--danger)'}`,
+                                    borderLeft: `3px solid ${{
+                                        confirmed: 'var(--success-light)',
+                                        pending: 'var(--warning-light)',
+                                        arrived: 'var(--purple)',
+                                        completed: 'var(--info)',
+                                        cancelled: 'var(--danger)',
+                                    }[apt.status]}`,
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                                         <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 13 }}>{apt.clientName}</span>

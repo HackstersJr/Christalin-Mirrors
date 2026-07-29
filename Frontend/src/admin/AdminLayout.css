@@ -5,9 +5,10 @@
 .admin-layout {
     display: flex;
     min-height: 100vh;
-    background: var(--input-bg);
+    background: var(--bg-primary);
     color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow-x: hidden;
 }
 
 /* ─── Sidebar ─────────────────────────────────────────────────── */
@@ -15,6 +16,7 @@
     width: 260px;
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
+    box-shadow: 1px 0 0 rgba(0, 0, 0, 0.02);
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -46,12 +48,16 @@
     flex-direction: column;
 }
 
-.admin-brand-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: 2px;
+.admin-brand-logo {
+    height: 26px;
+    width: auto;
+    margin-bottom: 6px;
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+}
+
+:root[data-theme="light"] .admin-brand-logo {
+    filter: brightness(0);
 }
 
 .admin-brand-sub {
@@ -76,9 +82,9 @@
     align-items: center;
     gap: 12px;
     padding: 10px 16px;
-    border-radius: 8px;
+    border-radius: 10px;
     font-size: 13px;
-    font-weight: 400;
+    font-weight: 500;
     color: var(--text-muted);
     text-decoration: none;
     transition: all 0.2s ease;
@@ -96,8 +102,8 @@
 
 .admin-nav-link.active {
     color: var(--accent);
-    background: rgba(193, 127, 89, 0.1);
-    font-weight: 500;
+    background: var(--accent-subtle);
+    font-weight: 600;
 }
 
 .admin-sidebar-footer {
@@ -128,10 +134,12 @@
 /* ─── Main Content ────────────────────────────────────────────── */
 .admin-main {
     flex: 1;
+    min-width: 0;
     margin-left: 260px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 .admin-topbar {
@@ -145,7 +153,7 @@
     position: sticky;
     top: 0;
     z-index: 50;
-    color: #E8E8E8;
+    color: var(--text-primary);
 }
 
 .admin-menu-btn {
@@ -158,12 +166,28 @@
 }
 
 .admin-topbar-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-family: 'Playfair Display', serif;
     font-size: 14px;
     font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
     color: var(--text-muted);
+}
+
+.admin-topbar-branch {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: none;
+    color: var(--accent);
+    background: var(--accent-subtle, rgba(212, 168, 71, 0.12));
+    border: 1px solid var(--border-color);
+    padding: 3px 10px;
+    border-radius: 999px;
 }
 
 .admin-topbar-user {
@@ -176,20 +200,22 @@
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), #a0694a);
+    background: linear-gradient(135deg, var(--accent), #8B5A3E);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 12px;
     font-weight: 600;
-    color: var(--text-bright);
+    color: #FFFFFF;
     letter-spacing: 1px;
 }
 
 .admin-content {
     flex: 1;
+    min-width: 0;
     padding: 28px;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* ─── Responsive ──────────────────────────────────────────────── */

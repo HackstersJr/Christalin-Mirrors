@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowDown } from 'lucide-react'
 import { HERO_IMAGE } from '../data/assets'
@@ -58,9 +59,9 @@ export default function Hero({ isAppLoading }: { isAppLoading?: boolean }) {
                     Refine &bull; Reflect &bull; Radiate
                 </p>
                 <div className="hero-cta-row">
-                    <a href="#contact" className="btn btn-primary" onClick={(e) => { e.preventDefault(); document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' }) }}>
+                    <Link to="/book" className="btn btn-primary">
                         Book Appointment
-                    </a>
+                    </Link>
                     <a href="#services" className="btn btn-outline" style={{ borderColor: 'rgba(250,250,250,0.3)', color: '#FAFAFA' }} onClick={(e) => { e.preventDefault(); document.querySelector('#services')?.scrollIntoView({ behavior: 'smooth' }) }}>
                         Explore Services
                     </a>

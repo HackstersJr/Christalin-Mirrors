@@ -82,6 +82,11 @@
     color: var(--warning-light);
 }
 
+.calendar-apt-tag.arrived {
+    background: rgba(167, 139, 250, 0.15);
+    color: var(--purple);
+}
+
 /* Side panel appointment card */
 .calendar-apt-card {
     padding: 12px 14px;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Plus, Edit2, Trash2, Search, ToggleLeft, ToggleRight } from 'lucide-react'
 import { serviceStore } from '../data/store'
 import type { ServiceRecord } from '../data/types'
@@ -12,10 +13,11 @@ const emptyForm: Omit<ServiceRecord, 'id'> = {
 }
 
 export default function Services() {
+    const location = useLocation()
     const [services, setServices] = useState<ServiceRecord[]>([])
     const [search, setSearch] = useState('')
     const [catFilter, setCatFilter] = useState('all')
-    const [showForm, setShowForm] = useState(false)
+    const [showForm, setShowForm] = useState(Boolean((location.state as { openForm?: boolean } | null)?.openForm))
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState(emptyForm)
 

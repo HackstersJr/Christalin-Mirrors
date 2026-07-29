@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Trash2 } from 'lucide-react'
 import { invoiceStore, clientStore, serviceStore } from '../data/store'
+import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Invoice, InvoiceItem } from '../data/types'
+import cmLogo from '../../assets/cm-logo-white.png'
 import '../AdminShared.css'
 
 // ─── Invoice Detail View ────────────────────────────────────
@@ -64,8 +66,8 @@ function InvoiceDetail() {
             <div className="admin-form-card" id="invoice-print">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 28 }}>
                     <div>
-                        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: 'var(--accent)', letterSpacing: 2 }}>CM</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Christalin Mirrors</div>
+                        <img src={cmLogo} alt="Christalin Mirrors" style={{ height: 24, width: 'auto', filter: 'brightness(0)' }} />
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Christalin Mirrors</div>
                         <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{invoice.branch}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -158,17 +160,19 @@ function InvoiceDetail() {
 // ─── Invoice List ───────────────────────────────────────────
 function InvoiceList() {
     const navigate = useNavigate()
+    const canDelete = authStore.getSession()?.role !== 'receptionist'
+    const branchScope = getBranchScope()
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
     const [showForm, setShowForm] = useState(false)
     const [items, setItems] = useState<InvoiceItem[]>([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
-    const [formData, setFormData] = useState({ clientId: '', discountPercent: 0, taxPercent: 18, paymentMethod: 'cash' as Invoice['paymentMethod'], branch: 'Bengaluru', stylist: '', notes: '' })
+    const [formData, setFormData] = useState({ clientId: '', discountPercent: 0, taxPercent: 18, paymentMethod: 'cash' as Invoice['paymentMethod'], branch: branchScope || 'Bengaluru', stylist: '', notes: '' })
 
-    const reload = () => setInvoices(invoiceStore.getAll())
+    const reload = () => setInvoices(scopeByBranch(invoiceStore.getAll()))
     useEffect(() => { reload() }, [])
 
-    const clients = clientStore.getAll()
+    const clients = scopeByBranch(clientStore.getAll())
     const services = serviceStore.getAll()
 
     const filtered = invoices.filter(inv => {
@@ -254,9 +258,13 @@ function InvoiceList() {
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Branch</label>
-                                <select className="admin-form-select" value={formData.branch} onChange={e => setFormData({ ...formData, branch: e.target.value })}>
-                                    <option value="Bengaluru">Bengaluru</option><option value="Kalaburagi">Kalaburagi</option>
-                                </select>
+                                {branchScope ? (
+                                    <input className="admin-form-input" value={branchScope} disabled />
+                                ) : (
+                                    <select className="admin-form-select" value={formData.branch} onChange={e => setFormData({ ...formData, branch: e.target.value })}>
+                                        <option value="Bengaluru">Bengaluru</option><option value="Kalaburagi">Kalaburagi</option>
+                                    </select>
+                                )}
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Stylist</label>
@@ -347,7 +355,9 @@ function InvoiceList() {
                                 <td>
                                     <div className="admin-actions">
                                         <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate(`/admin/invoices/${inv.id}`)}><Eye size={14} /></button>
-                                        <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => deleteInv(inv.id)}><Trash2 size={14} /></button>
+                                        {canDelete && (
+                                            <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => deleteInv(inv.id)}><Trash2 size={14} /></button>
+                                        )}
                                     </div>
                                 </td>
                             </tr>

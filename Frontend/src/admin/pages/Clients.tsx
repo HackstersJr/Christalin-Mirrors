@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit2, Trash2, Eye } from 'lucide-react'
 import { clientStore } from '../data/store'
+import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Client } from '../data/types'
 import '../AdminShared.css'
 
@@ -30,15 +31,19 @@ const getTagStyle = (tag: string) => {
 
 export default function Clients() {
     const navigate = useNavigate()
+    const location = useLocation()
+    const branchScope = getBranchScope()
+    const canDelete = authStore.getSession()?.role === 'owner'
+    const scopedEmptyForm = { ...emptyForm, branch: branchScope || 'Bengaluru' }
     const [clients, setClients] = useState<Client[]>([])
     const [search, setSearch] = useState('')
     const [branchFilter, setBranchFilter] = useState('all')
-    const [showForm, setShowForm] = useState(false)
+    const [showForm, setShowForm] = useState(Boolean((location.state as { openForm?: boolean } | null)?.openForm))
     const [editingId, setEditingId] = useState<string | null>(null)
-    const [form, setForm] = useState(emptyForm)
+    const [form, setForm] = useState(scopedEmptyForm)
     const [tagInput, setTagInput] = useState('')
 
-    const reload = () => setClients(clientStore.getAll())
+    const reload = () => setClients(scopeByBranch(clientStore.getAll()))
     useEffect(() => { reload() }, [])
 
     const filtered = clients.filter(c => {
@@ -66,7 +71,7 @@ export default function Clients() {
     }
 
     const resetForm = () => {
-        setForm(emptyForm)
+        setForm(scopedEmptyForm)
         setEditingId(null)
         setShowForm(false)
         setTagInput('')
@@ -128,10 +133,14 @@ export default function Clients() {
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Branch</label>
-                                <select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}>
-                                    <option value="Bengaluru">Bengaluru</option>
-                                    <option value="Kalaburagi">Kalaburagi</option>
-                                </select>
+                                {branchScope ? (
+                                    <input className="admin-form-input" value={branchScope} disabled />
+                                ) : (
+                                    <select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}>
+                                        <option value="Bengaluru">Bengaluru</option>
+                                        <option value="Kalaburagi">Kalaburagi</option>
+                                    </select>
+                                )}
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Preferred Stylist</label>
@@ -165,11 +174,13 @@ export default function Clients() {
             {/* Filters */}
             <div className="admin-toolbar">
                 <input className="admin-search" placeholder="Search by name, email, or phone..." value={search} onChange={e => setSearch(e.target.value)} />
-                <select className="admin-filter-select" value={branchFilter} onChange={e => setBranchFilter(e.target.value)}>
-                    <option value="all">All Branches</option>
-                    <option value="Bengaluru">Bengaluru</option>
-                    <option value="Kalaburagi">Kalaburagi</option>
-                </select>
+                {!branchScope && (
+                    <select className="admin-filter-select" value={branchFilter} onChange={e => setBranchFilter(e.target.value)}>
+                        <option value="all">All Branches</option>
+                        <option value="Bengaluru">Bengaluru</option>
+                        <option value="Kalaburagi">Kalaburagi</option>
+                    </select>
+                )}
             </div>
 
             {/* Table */}
@@ -218,7 +229,9 @@ export default function Clients() {
                                     <div className="admin-actions">
                                         <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate(`/admin/clients/${client.id}`)}><Eye size={14} /></button>
                                         <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => startEdit(client)}><Edit2 size={14} /></button>
-                                        <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => deleteClient(client.id)}><Trash2 size={14} /></button>
+                                        {canDelete && (
+                                            <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => deleteClient(client.id)}><Trash2 size={14} /></button>
+                                        )}
                                     </div>
                                 </td>
                             </tr>

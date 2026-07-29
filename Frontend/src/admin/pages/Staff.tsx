@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Edit2, Trash2, Search } from 'lucide-react'
 import { staffStore } from '../data/store'
+import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
 import type { StaffMember } from '../data/types'
 import '../AdminShared.css'
 
@@ -24,15 +25,18 @@ const getRoleAvatarColor = (role: string) => {
 };
 
 export default function Staff() {
+    const isOwner = authStore.getSession()?.role === 'owner'
+    const branchScope = getBranchScope()
+    const scopedEmptyForm = { ...emptyForm, branch: branchScope || 'Bengaluru' }
     const [staff, setStaff] = useState<StaffMember[]>([])
     const [search, setSearch] = useState('')
     const [branchFilter, setBranchFilter] = useState('all')
     const [showForm, setShowForm] = useState(false)
     const [editingId, setEditingId] = useState<string | null>(null)
-    const [form, setForm] = useState(emptyForm)
+    const [form, setForm] = useState(scopedEmptyForm)
     const [specInput, setSpecInput] = useState('')
 
-    const reload = () => setStaff(staffStore.getAll())
+    const reload = () => setStaff(scopeByBranch(staffStore.getAll()))
     useEffect(() => { reload() }, [])
 
     const filtered = staff.filter(s => {
@@ -59,7 +63,7 @@ export default function Staff() {
         reload()
     }
 
-    const resetForm = () => { setForm(emptyForm); setEditingId(null); setShowForm(false); setSpecInput('') }
+    const resetForm = () => { setForm(scopedEmptyForm); setEditingId(null); setShowForm(false); setSpecInput('') }
 
     const deleteStaff = (id: string) => {
         if (confirm('Remove this staff member?')) { staffStore.delete(id); reload() }
@@ -79,23 +83,33 @@ export default function Staff() {
                     <h1 className="admin-page-title">Staff</h1>
                     <p className="admin-page-sub">Manage your team members</p>
                 </div>
-                <button className="admin-btn admin-btn-primary" onClick={() => { resetForm(); setShowForm(!showForm) }}>
-                    <Plus size={14} />
-                    Add Staff
-                </button>
+                {isOwner && (
+                    <button className="admin-btn admin-btn-primary" onClick={() => { resetForm(); setShowForm(!showForm) }}>
+                        <Plus size={14} />
+                        Add Staff
+                    </button>
+                )}
             </div>
 
             {/* Branch Counts */}
-            <div className="admin-stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-                <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'all' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('all')}>
-                    <div className="stat-label">All Staff</div><div className="stat-value">{staff.length}</div>
-                </div>
-                <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'Bengaluru' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('Bengaluru')}>
-                    <div className="stat-label">Bengaluru</div><div className="stat-value accent">{bengaluruCount}</div>
-                </div>
-                <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'Kalaburagi' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('Kalaburagi')}>
-                    <div className="stat-label">Kalaburagi</div><div className="stat-value accent">{kalaburagiCount}</div>
-                </div>
+            <div className="admin-stats-grid" style={{ gridTemplateColumns: branchScope ? '1fr' : 'repeat(3, 1fr)' }}>
+                {branchScope ? (
+                    <div className="admin-stat-card">
+                        <div className="stat-label">{branchScope} Staff</div><div className="stat-value">{staff.length}</div>
+                    </div>
+                ) : (
+                    <>
+                        <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'all' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('all')}>
+                            <div className="stat-label">All Staff</div><div className="stat-value">{staff.length}</div>
+                        </div>
+                        <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'Bengaluru' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('Bengaluru')}>
+                            <div className="stat-label">Bengaluru</div><div className="stat-value accent">{bengaluruCount}</div>
+                        </div>
+                        <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'Kalaburagi' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('Kalaburagi')}>
+                            <div className="stat-label">Kalaburagi</div><div className="stat-value accent">{kalaburagiCount}</div>
+                        </div>
+                    </>
+                )}
             </div>
 
             {showForm && (
@@ -123,10 +137,14 @@ export default function Staff() {
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Branch</label>
-                                <select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}>
-                                    <option value="Bengaluru">Bengaluru</option>
-                                    <option value="Kalaburagi">Kalaburagi</option>
-                                </select>
+                                {branchScope ? (
+                                    <input className="admin-form-input" value={branchScope} disabled />
+                                ) : (
+                                    <select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}>
+                                        <option value="Bengaluru">Bengaluru</option>
+                                        <option value="Kalaburagi">Kalaburagi</option>
+                                    </select>
+                                )}
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Joined Date</label>
@@ -155,11 +173,13 @@ export default function Staff() {
 
             <div className="admin-toolbar">
                 <input className="admin-search" placeholder="Search staff..." value={search} onChange={e => setSearch(e.target.value)} />
-                <select className="admin-filter-select" value={branchFilter} onChange={e => setBranchFilter(e.target.value)}>
-                    <option value="all">All Branches</option>
-                    <option value="Bengaluru">Bengaluru</option>
-                    <option value="Kalaburagi">Kalaburagi</option>
-                </select>
+                {!branchScope && (
+                    <select className="admin-filter-select" value={branchFilter} onChange={e => setBranchFilter(e.target.value)}>
+                        <option value="all">All Branches</option>
+                        <option value="Bengaluru">Bengaluru</option>
+                        <option value="Kalaburagi">Kalaburagi</option>
+                    </select>
+                )}
             </div>
 
             <div className="admin-table-wrapper">

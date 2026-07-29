@@ -8,14 +8,17 @@ import {
     clientStore, serviceStore, staffStore, appointmentStore,
     inventoryStore, invoiceStore, settingsStore
 } from '../data/store';
+import { getBranchScope, scopeByBranch } from '../data/authStore';
 import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice } from '../data/types';
 import { useToast } from '../components/Toast';
+import cmLogo from '../../assets/cm-logo-white.png';
 import '../AdminShared.css';
 import './Billing.css';
 
 export default function Billing() {
     const navigate = useNavigate();
     const { showToast } = useToast();
+    const branchScope = getBranchScope();
 
     // Data Sources
     const [clients, setClients] = useState<Client[]>([]);
@@ -25,18 +28,20 @@ export default function Billing() {
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
     useEffect(() => {
-        setClients(clientStore.getAll());
+        setClients(scopeByBranch(clientStore.getAll()));
         setServices(serviceStore.getAll().filter(s => s.isActive));
-        setStaff(staffStore.getAll().filter(s => s.isActive));
+        setStaff(scopeByBranch(staffStore.getAll().filter(s => s.isActive)));
         setInventory(inventoryStore.getAll().filter(i => i.isActive));
-        
+
         const today = new Date().toISOString().split('T')[0];
-        setAppointments(appointmentStore.getAll().filter(a => a.date === today && a.status === 'confirmed'));
+        setAppointments(scopeByBranch(appointmentStore.getAll().filter(a => a.date === today && (a.status === 'confirmed' || a.status === 'arrived'))));
     }, []);
 
-    // Branch selector (Fix 8)
-    const branches = settingsStore.get().branches.filter(b => b.isActive);
-    const [selectedBranch, setSelectedBranch] = useState<string>(branches[0]?.name || 'Bengaluru');
+    // Branch selector (Fix 8) — option values are the plain branch name
+    // ("Bengaluru"), matching Client/Appointment/Invoice.branch everywhere
+    // else; settingsStore's display names carry a "CM — " prefix.
+    const branches = settingsStore.get().branches.filter(b => b.isActive).map(b => ({ ...b, name: b.name.replace('CM — ', '') }));
+    const [selectedBranch, setSelectedBranch] = useState<string>(branchScope || branches[0]?.name || 'Bengaluru');
 
     // Form State
     const [selectedClient, setSelectedClient] = useState<Client | null | 'walk-in'>(null);
@@ -308,16 +313,20 @@ export default function Billing() {
                 {/* Branch Selector (Fix 8) */}
                 <div className="billing-section" style={{ paddingBottom: 10 }}>
                     <div className="billing-section-header"><h3>Branch</h3></div>
-                    <select className="admin-form-select" value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}>
-                        {branches.length > 0 ? branches.map(b => (
-                            <option key={b.name} value={b.name}>{b.name}</option>
-                        )) : (
-                            <>
-                                <option value="Bengaluru">Bengaluru</option>
-                                <option value="Kalaburagi">Kalaburagi</option>
-                            </>
-                        )}
-                    </select>
+                    {branchScope ? (
+                        <input className="admin-form-input" value={branchScope} disabled />
+                    ) : (
+                        <select className="admin-form-select" value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}>
+                            {branches.length > 0 ? branches.map(b => (
+                                <option key={b.name} value={b.name}>{b.name}</option>
+                            )) : (
+                                <>
+                                    <option value="Bengaluru">Bengaluru</option>
+                                    <option value="Kalaburagi">Kalaburagi</option>
+                                </>
+                            )}
+                        </select>
+                    )}
                 </div>
 
                 {/* Section 1: Client */}
@@ -546,8 +555,8 @@ export default function Billing() {
             <div className="billing-preview">
                 <div className="preview-receipt">
                     <div className="preview-header">Bill Preview</div>
-                    
-                    <div className="preview-brand">CM</div>
+
+                    <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
                     <div className="preview-salon-name">Christalin Mirrors</div>
                     
                     <div className="preview-meta">

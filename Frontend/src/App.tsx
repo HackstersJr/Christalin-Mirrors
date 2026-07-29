@@ -27,10 +27,11 @@ import Staff from './admin/pages/Staff'
 import Settings from './admin/pages/Settings'
 import Billing from './admin/pages/Billing'
 import { InvoiceList, InvoiceDetail } from './admin/pages/Invoices'
-import Inventory from './admin/pages/Inventory'
 import Calendar from './admin/pages/Calendar'
+import Attendance from './admin/pages/Attendance'
 import Login from './admin/pages/Login'
 import ProtectedRoute from './admin/components/ProtectedRoute'
+import RoleRoute from './admin/components/RoleRoute'
 
 // Initialize admin store with mock data on first load
 initializeStore()
@@ -92,11 +93,13 @@ function LandingPage() {
 import Privacy from './components/Privacy'
 import Terms from './components/Terms'
 import NotFound from './components/NotFound'
+import BookAppointment from './components/booking/BookAppointment'
 
 function App() {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/book" element={<BookAppointment />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/admin/login" element={<Login />} />
@@ -115,10 +118,10 @@ function App() {
                 <Route path="clients/:clientId" element={<ClientDetail />} />
                 <Route path="invoices" element={<InvoiceList />} />
                 <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
-                <Route path="services" element={<AdminServices />} />
-                <Route path="staff" element={<Staff />} />
-                <Route path="inventory" element={<Inventory />} />
-                <Route path="settings" element={<Settings />} />
+                <Route path="services" element={<RoleRoute allow={['owner']}><AdminServices /></RoleRoute>} />
+                <Route path="staff" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Staff /></RoleRoute>} />
+                <Route path="attendance" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Attendance /></RoleRoute>} />
+                <Route path="settings" element={<RoleRoute allow={['owner']}><Settings /></RoleRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
         </Routes>

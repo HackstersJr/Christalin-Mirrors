@@ -1,38 +1,9 @@
 import { MapPin, Clock, Phone, ExternalLink, Navigation, Globe } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { StaggerContainer, StaggerItem } from './Animations'
 import { cld, cldSrcSet } from '../lib/cld'
-const branchBengaluru = "https://res.cloudinary.com/djrtoihj8/image/upload/v1780593536/WhatsApp_Image_2026-03-26_at_9.24.34_PM_w3eof8.jpg"
-const branchKalaburagi = "https://res.cloudinary.com/djrtoihj8/image/upload/v1780593844/WhatsApp_Image_2026-06-04_at_2.56.43_PM_1_xatxwk.jpg"
+import { branches, comingSoonBranches } from '../data/branches'
 import './Branches.css'
-
-const branches = [
-    {
-        name: 'CM — Bengaluru',
-        city: 'Bengaluru, Karnataka',
-        address: 'Century Ethos Club House, Bellary Rd, Bengaluru 560092',
-        hours: 'Everyday: 10:00 AM – 9:00 PM',
-        phone: '+91 7204236981',
-        mapUrl: 'https://maps.google.com/?q=Century+Ethos+Club+House+Bellary+Road+Bengaluru',
-        image: branchBengaluru,
-    },
-    {
-        name: 'CM — Kalaburagi',
-        city: 'Kalaburagi, Karnataka',
-        address: 'Orchid Mall, Mahaveer Nagar, Khuba Plot, Brahmpur, Kalaburagi 585105',
-        hours: 'Everyday: 10:00 AM – 9:00 PM',
-        phone: '+91 918715909',
-        mapUrl: 'https://maps.google.com/?q=Orchid+Mall+Kalaburagi',
-        image: branchKalaburagi,
-    },
-]
-
-const comingSoonBranches = [
-    { name: 'CM — Yelahanka', city: 'Yelahanka Phase 1, Bengaluru' },
-    { name: 'CM — Hassan', city: 'Hassan, Karnataka' },
-    { name: 'CM — Hubballi', city: 'Hubballi, Karnataka' },
-    { name: 'CM — Belagavi', city: 'Belagavi, Karnataka' },
-    { name: 'CM — Dubai', city: 'Dubai, UAE' },
-]
 
 export default function Branches() {
     return (
@@ -96,10 +67,10 @@ export default function Branches() {
                                             <Phone size={14} />
                                             Call
                                         </a>
-                                        <a href="#contact" className="branch-link" onClick={(e) => { e.preventDefault(); document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' }) }}>
+                                        <Link to="/book" state={{ branchId: branch.id }} className="branch-link">
                                             <ExternalLink size={14} />
                                             Book
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
                             </div>

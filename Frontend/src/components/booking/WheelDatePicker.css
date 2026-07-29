@@ -1,0 +1,84 @@
+/* ═══════════════════════════════════════════════════════════════
+   Wheel Date Picker — rotating day / month / year spinners
+   ═══════════════════════════════════════════════════════════════ */
+
+.wheel-picker {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+}
+
+.wheel-labels {
+    display: flex;
+    margin-bottom: 4px;
+}
+
+.wheel-labels span {
+    flex: 1;
+    text-align: center;
+    font-family: var(--font-heading);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.wheel-picker-row {
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+}
+
+.wheel-highlight-band {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 28px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.wheel-scroll {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    height: 84px;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+    outline: none;
+    background: transparent;
+}
+
+.wheel-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.wheel-item {
+    scroll-snap-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+    user-select: none;
+}
+
+.wheel-item.active {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.wheel-scroll:focus-visible {
+    box-shadow: inset 0 0 0 1px var(--accent);
+}

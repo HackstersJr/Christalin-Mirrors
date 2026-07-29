@@ -3,7 +3,7 @@
 //  Replace these functions with API calls when backend is ready
 // ═══════════════════════════════════════════════════════════════
 
-import type { Appointment, Client, ServiceRecord, StaffMember, SalonSettings, ServiceVisit, Invoice, InventoryItem } from './types'
+import type { Appointment, Client, ServiceRecord, StaffMember, SalonSettings, ServiceVisit, Invoice, InventoryItem, AttendanceRecord } from './types'
 import { mockAppointments, mockClients, mockServices, mockStaff, defaultSettings, mockVisits, mockInvoices, mockInventory } from './mockData'
 
 const KEYS = {
@@ -15,7 +15,30 @@ const KEYS = {
     VISITS: 'cm_admin_visits',
     INVOICES: 'cm_admin_invoices',
     INVENTORY: 'cm_admin_inventory',
-    INITIALIZED: 'cm_admin_initialized_v2',
+    ATTENDANCE: 'cm_admin_attendance',
+    // Bumped so existing installs (already initialized under v2, before
+    // attendance existed) pick up the new seeded attendance data.
+    INITIALIZED: 'cm_admin_initialized_v3',
+}
+
+/** Seeds attendance from the 1st of the current month through today, for every active staff member. */
+function generateMockAttendance(): AttendanceRecord[] {
+    const records: AttendanceRecord[] = []
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    const todayDate = now.getDate()
+
+    for (const staff of mockStaff.filter(s => s.isActive)) {
+        for (let day = 1; day <= todayDate; day++) {
+            const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+            const roll = Math.random()
+            const status: AttendanceRecord['status'] =
+                roll < 0.86 ? 'present' : roll < 0.92 ? 'half-day' : roll < 0.97 ? 'leave' : 'absent'
+            records.push({ id: `att-${staff.id}-${date}`, staffId: staff.id, staffName: staff.name, branch: staff.branch, date, status })
+        }
+    }
+    return records
 }
 
 // ─── Initialize with mock data if first load ─────────────────
@@ -29,6 +52,7 @@ export function initializeStore() {
     localStorage.setItem(KEYS.VISITS, JSON.stringify(mockVisits))
     localStorage.setItem(KEYS.INVOICES, JSON.stringify(mockInvoices))
     localStorage.setItem(KEYS.INVENTORY, JSON.stringify(mockInventory))
+    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(generateMockAttendance()))
     localStorage.setItem(KEYS.INITIALIZED, 'true')
 }
 
@@ -299,6 +323,32 @@ export const inventoryStore = {
 
     getLowStock: (): InventoryItem[] =>
         getAll<InventoryItem>(KEYS.INVENTORY).filter(i => i.isActive && i.currentStock <= i.minStock),
+}
+
+// ─── Staff Attendance ────────────────────────────────────────
+export const attendanceStore = {
+    getAll: (): AttendanceRecord[] => getAll(KEYS.ATTENDANCE),
+
+    getByDate: (date: string): AttendanceRecord[] =>
+        getAll<AttendanceRecord>(KEYS.ATTENDANCE).filter(a => a.date === date),
+
+    getByStaffId: (staffId: string): AttendanceRecord[] =>
+        getAll<AttendanceRecord>(KEYS.ATTENDANCE).filter(a => a.staffId === staffId),
+
+    /** Upserts a staff member's attendance for a given date. */
+    mark: (staffId: string, staffName: string, branch: string, date: string, status: AttendanceRecord['status']): AttendanceRecord => {
+        const all = getAll<AttendanceRecord>(KEYS.ATTENDANCE)
+        const idx = all.findIndex(a => a.staffId === staffId && a.date === date)
+        if (idx >= 0) {
+            all[idx] = { ...all[idx], status }
+            saveAll(KEYS.ATTENDANCE, all)
+            return all[idx]
+        }
+        const record: AttendanceRecord = { id: `att-${generateId()}`, staffId, staffName, branch, date, status }
+        all.push(record)
+        saveAll(KEYS.ATTENDANCE, all)
+        return record
+    },
 }
 
 // ─── Reset to defaults ──────────────────────────────────────

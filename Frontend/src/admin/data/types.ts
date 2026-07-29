@@ -14,7 +14,7 @@ export interface Appointment {
     time: string          // e.g. "10:00 AM"
     service: string
     stylist?: string
-    status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
+    status: 'pending' | 'confirmed' | 'arrived' | 'completed' | 'cancelled'
     notes?: string
     branch: string
     createdAt: string
@@ -156,4 +156,14 @@ export interface InventoryItem {
     branch: string
     lastRestocked?: string
     isActive: boolean
+}
+
+// ─── Staff Attendance ────────────────────────────────────────
+export interface AttendanceRecord {
+    id: string
+    staffId: string
+    staffName: string
+    branch: string
+    date: string           // ISO date string YYYY-MM-DD
+    status: 'present' | 'absent' | 'half-day' | 'leave'
 }

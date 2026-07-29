@@ -1,5 +1,155 @@
 /* ─── Dashboard Specific Styles ──────────────────────────── */
 
+.dashboard-quick-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+/* ─── Owner Branch Overview ──────────────────────────────── */
+.dashboard-branch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+.dashboard-branch-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 150px;
+    min-width: 0;
+    padding: 22px 24px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dashboard-branch-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+}
+
+.dashboard-branch-card-img {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 42%;
+    object-fit: cover;
+    z-index: 0;
+}
+
+/* Fade only where the photo meets the text (left edge) — the rest of
+   the photo (top/right/bottom) stays crisp and fully visible. */
+.dashboard-branch-card-fade {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(to right,
+        var(--bg-card) 38%,
+        color-mix(in srgb, var(--bg-card) 65%, transparent) 52%,
+        transparent 68%);
+}
+
+.dashboard-branch-card-content {
+    position: relative;
+    z-index: 2;
+    max-width: 70%;
+}
+
+.dashboard-branch-card-content h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.dashboard-branch-card-content h3 svg {
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.dashboard-branch-metrics {
+    display: flex;
+    gap: 24px;
+    margin-top: 18px;
+}
+
+.dashboard-branch-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.dashboard-branch-metric .value {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.dashboard-branch-metric .label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+    .dashboard-branch-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-branch-card {
+        padding: 18px 20px;
+        min-height: 130px;
+    }
+
+    .dashboard-branch-card-img {
+        width: 34%;
+    }
+
+    .dashboard-branch-card-fade {
+        background: linear-gradient(to right,
+            var(--bg-card) 45%,
+            color-mix(in srgb, var(--bg-card) 65%, transparent) 60%,
+            transparent 78%);
+    }
+
+    .dashboard-branch-card-content {
+        max-width: 100%;
+    }
+
+    .dashboard-branch-card-content h3 {
+        font-size: 16px;
+    }
+
+    .dashboard-branch-metrics {
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+    }
+
+    .dashboard-branch-metric .value {
+        font-size: 17px;
+    }
+
+    .dashboard-branch-metric .label {
+        font-size: 9px;
+        white-space: nowrap;
+    }
+}
+
 .dashboard-grid {
     display: grid;
     grid-template-columns: 1fr 340px;

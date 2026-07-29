@@ -1,0 +1,66 @@
+/* ─── Staff Attendance Page ──────────────────────────────── */
+.attendance-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--bg-card-alt);
+    border: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.attendance-staff {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 140px;
+}
+
+.attendance-toggles {
+    display: flex;
+    gap: 6px;
+}
+
+.attendance-toggle {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.attendance-toggle:hover {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+}
+
+.attendance-toggle.attendance-present.active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: var(--success);
+    color: var(--success);
+}
+
+.attendance-toggle.attendance-half-day.active {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: var(--warning);
+    color: var(--warning);
+}
+
+.attendance-toggle.attendance-leave.active {
+    background: rgba(96, 165, 250, 0.15);
+    border-color: var(--info);
+    color: var(--info);
+}
+
+.attendance-toggle.attendance-absent.active {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+}

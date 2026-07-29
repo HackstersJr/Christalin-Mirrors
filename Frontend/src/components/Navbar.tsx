@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sun, Moon, Menu, X } from 'lucide-react'
 import cmLogo from '../assets/cm-logo-white.png'
@@ -136,9 +136,9 @@ export default function Navbar({ theme, toggleTheme, isAppLoading }: NavbarProps
                                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                             </button>
 
-                            <a href="#contact" className="navbar-cta desktop-only" onClick={(e) => { e.preventDefault(); scrollTo('#contact') }}>
+                            <Link to="/book" className="navbar-cta desktop-only" onClick={() => setMobileOpen(false)}>
                                 Book Appointment
-                            </a>
+                            </Link>
 
                             <button
                                 className="navbar-menu-btn"
@@ -177,16 +177,15 @@ export default function Navbar({ theme, toggleTheme, isAppLoading }: NavbarProps
                                 {link.label}
                             </motion.a>
                         ))}
-                        <motion.a
-                            href="#contact"
-                            className="navbar-cta"
-                            onClick={(e) => { e.preventDefault(); scrollTo('#contact') }}
+                        <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.4, duration: 0.4 }}
                         >
-                            Book Appointment
-                        </motion.a>
+                            <Link to="/book" className="navbar-cta" onClick={() => setMobileOpen(false)}>
+                                Book Appointment
+                            </Link>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

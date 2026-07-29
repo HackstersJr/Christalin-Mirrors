@@ -387,13 +387,16 @@
     margin-bottom: 24px;
 }
 
-.preview-brand {
-    font-family: 'Playfair Display', serif;
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--accent);
-    text-align: center;
-    letter-spacing: 2px;
+.preview-brand-logo {
+    display: block;
+    height: 34px;
+    width: auto;
+    margin: 0 auto;
+    filter: brightness(0) invert(1);
+}
+
+:root[data-theme="light"] .preview-brand-logo {
+    filter: brightness(0);
 }
 
 .preview-salon-name {
