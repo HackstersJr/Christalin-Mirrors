@@ -1,2 +1,6 @@
 .DS_Store
 **/.DS_Store
+
+# Large catalog PDFs — exceed GitHub's file size limits, kept local-only
+Catalogs/Christalin men.pdf
+Catalogs/Christalin mirrors womens.pdf
