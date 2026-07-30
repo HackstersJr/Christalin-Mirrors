@@ -21,7 +21,7 @@ export default function Attendance() {
 
     useEffect(() => {
         setAttendance(attendanceStore.getAll())
-        setBranchStaff(scopeByBranch(staffStore.getAll().filter(s => s.isActive)))
+        staffStore.getAll().then(stfs => setBranchStaff(scopeByBranch(stfs.filter(s => s.isActive && s.role.toLowerCase() !== 'owner'))))
     }, [])
 
     const markAttendance = (staff: StaffMember, status: AttendanceRecord['status']) => {

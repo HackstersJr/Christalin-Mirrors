@@ -17,7 +17,9 @@ export default function Revenue() {
     const [branchFilter, setBranchFilter] = useState(initialBranch)
     const [invoices, setInvoices] = useState<Invoice[]>([])
 
-    useEffect(() => { setInvoices(invoiceStore.getAll()) }, [])
+    useEffect(() => {
+        invoiceStore.getAll().then(data => setInvoices(data))
+    }, [])
 
     const today = new Date().toISOString().split('T')[0]
     const thisMonth = today.slice(0, 7)

@@ -38,7 +38,7 @@ export interface Client {
 export interface ServiceRecord {
     id: string
     name: string
-    category: 'hair' | 'skin' | 'korean' | 'womens' | 'mens'
+    category: 'hair' | 'skin' | 'korean' | 'womens' | 'mens' | 'colours_studio'
     duration: number      // minutes
     price: number
     isActive: boolean
@@ -46,10 +46,22 @@ export interface ServiceRecord {
     description: string
 }
 
+export type StaffRole =
+    | 'hairstylist'
+    | 'beautician'
+    | 'unisex_hairstylist'
+    | 'unisex_beautician'
+    | 'housekeeping'
+    | 'manager'
+    | 'owner'
+    | 'stylist'
+    | 'therapist'
+    | 'receptionist'
+
 export interface StaffMember {
     id: string
     name: string
-    role: 'stylist' | 'therapist' | 'manager' | 'receptionist'
+    role: StaffRole
     branch: string
     phone: string
     email: string

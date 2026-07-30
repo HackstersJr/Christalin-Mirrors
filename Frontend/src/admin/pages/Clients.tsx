@@ -45,7 +45,10 @@ export default function Clients() {
 
     // Clients are shared across branches — a client may visit any branch, so
     // managers/receptionists can see clients regardless of their home branch.
-    const reload = () => setClients(clientStore.getAll())
+    const reload = async () => {
+        const data = await clientStore.getAll()
+        setClients(data)
+    }
     useEffect(() => { reload() }, [])
 
     const filtered = clients.filter(c => {
@@ -61,15 +64,15 @@ export default function Clients() {
         setShowForm(true)
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (editingId) {
-            clientStore.update(editingId, form)
+            await clientStore.update(editingId, form)
         } else {
-            clientStore.create(form)
+            await clientStore.create(form)
         }
         resetForm()
-        reload()
+        await reload()
     }
 
     const resetForm = () => {
@@ -79,8 +82,11 @@ export default function Clients() {
         setTagInput('')
     }
 
-    const deleteClient = (id: string) => {
-        if (confirm('Delete this client?')) { clientStore.delete(id); reload() }
+    const deleteClient = async (id: string) => {
+        if (confirm('Delete this client?')) {
+            await clientStore.delete(id)
+            await reload()
+        }
     }
 
     const addTag = () => {

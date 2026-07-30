@@ -12,16 +12,34 @@ import './Dashboard.css'
 export default function Dashboard() {
     const navigate = useNavigate()
     const [appointments, setAppointments] = useState<Appointment[]>([])
+    const [clients, setClients] = useState<any[]>([])
+    const [invoices, setInvoices] = useState<any[]>([])
+    const [visits, setVisits] = useState<any[]>([])
+    const [staffList, setStaffList] = useState<any[]>([])
+
     const today = new Date().toISOString().split('T')[0]
     const session = authStore.getSession()
     const branchScope = getBranchScope()
     const isReceptionist = session?.role === 'receptionist'
 
-    useEffect(() => { setAppointments(appointmentStore.getAll()) }, [])
+    useEffect(() => {
+        const loadAll = async () => {
+            const [apts, cls, invs, vsts, stfs] = await Promise.all([
+                appointmentStore.getAll(),
+                clientStore.getAll(),
+                invoiceStore.getAll(),
+                visitStore.getAll(),
+                staffStore.getAll(),
+            ])
+            setAppointments(apts)
+            setClients(scopeByBranch(cls))
+            setInvoices(scopeByBranch(invs))
+            setVisits(scopeByBranch(vsts))
+            setStaffList(stfs)
+        }
+        loadAll()
+    }, [])
 
-    const clients = scopeByBranch(clientStore.getAll())
-    const invoices = scopeByBranch(invoiceStore.getAll())
-    const visits = scopeByBranch(visitStore.getAll())
     const scopedAppointments = scopeByBranch(appointments)
 
     const todayApts = scopedAppointments.filter(a => a.date === today)
@@ -36,7 +54,7 @@ export default function Dashboard() {
 
     // Top services by frequency
     const serviceCount: Record<string, number> = {}
-    visits.forEach(v => v.services.forEach(s => { serviceCount[s.name] = (serviceCount[s.name] || 0) + 1 }))
+    visits.forEach(v => (v.services || []).forEach((s: any) => { serviceCount[s.name] = (serviceCount[s.name] || 0) + 1 }))
     const topServices = Object.entries(serviceCount).sort((a, b) => b[1] - a[1]).slice(0, 5)
 
     // Recent invoices
@@ -55,7 +73,7 @@ export default function Dashboard() {
         const bookingsToday = scopedAppointments.filter((a) => a.branch === name && a.date === today).length
         const monthAppointments = scopedAppointments.filter((a) => a.branch === name && a.date.startsWith(thisMonth)).length
         const totalClients = clients.filter((c) => c.branch === name).length
-        const staffCount = staffStore.getAll().filter((s) => s.branch === name && s.isActive).length
+        const staffCount = staffList.filter((s) => s.branch === name && s.isActive).length
         return { name, image: b.image, todayRevenue, monthRevenueForBranch, completedToday, bookingsToday, monthAppointments, totalClients, staffCount }
     }) : []
 

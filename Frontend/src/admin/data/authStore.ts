@@ -1,7 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
-//  Admin Auth — mock login + session (Backend-Ready)
-//  Replace validate() with a real POST /api/auth/login call later.
-// ═══════════════════════════════════════════════════════════════
+import { supabase } from '../../lib/supabase'
 
 export type AdminRole = 'owner' | 'manager' | 'receptionist'
 
@@ -20,9 +17,8 @@ export interface AdminSession {
     branch: string | null
 }
 
-// Demo accounts — OWNER sees every branch, MANAGER / RECEPTIONIST are
-// pinned to the one branch they work at.
 export const mockAdminUsers: AdminUser[] = [
+    { email: 'christalinmirrors.admin@gmail.com', password: 'Admin@1234', name: 'Sushmitha Cristalin A.', role: 'owner', branch: null },
     { email: 'owner@christalinmirrors.com', password: 'Admin@1234', name: 'Sushmitha Cristalin A.', role: 'owner', branch: null },
     { email: 'manager.bengaluru@christalinmirrors.com', password: 'Manager@123', name: 'Rohit Bhandari', role: 'manager', branch: 'Bengaluru' },
     { email: 'manager.kalaburagi@christalinmirrors.com', password: 'Manager@123', name: 'Divya Menon', role: 'manager', branch: 'Kalaburagi' },
@@ -32,10 +28,38 @@ export const mockAdminUsers: AdminUser[] = [
 const SESSION_KEY = 'cm_admin_session'
 
 export const authStore = {
-    /** Validates credentials against the mock user list. Returns the session on success. */
-    login(email: string, password: string): AdminSession | null {
+    /** Validates credentials against Supabase / fallback demo accounts. */
+    async login(email: string, password: string): Promise<AdminSession | null> {
+        const cleanEmail = email.trim().toLowerCase()
+
+        // 1. Check Supabase DB first
+        try {
+            const { data: dbUser } = await supabase
+                .from('User')
+                .select('*, staff:Staff(*, branch:Branch(*))')
+                .eq('email', cleanEmail)
+                .single()
+
+            if (dbUser && dbUser.isActive) {
+                const roleLower = String(dbUser.role).toLowerCase() as AdminRole
+                const branchName = dbUser.staff?.branch?.name ? dbUser.staff.branch.name.replace('CM — ', '') : null
+                const session: AdminSession = {
+                    email: dbUser.email,
+                    name: dbUser.staff?.name || dbUser.email,
+                    role: roleLower === ('owner' as any) ? 'owner' : roleLower,
+                    branch: roleLower === 'owner' ? null : branchName,
+                }
+                localStorage.setItem('adminToken', dbUser.id)
+                localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+                return session
+            }
+        } catch {
+            // fallback below if db error or missing table entry
+        }
+
+        // 2. Demo fallback
         const user = mockAdminUsers.find(
-            (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
+            (u) => u.email.toLowerCase() === cleanEmail && u.password === password
         )
         if (!user) return null
 
@@ -56,12 +80,10 @@ export const authStore = {
     },
 }
 
-/** The logged-in user's branch, or null for owner (every branch). */
 export function getBranchScope(): string | null {
     return authStore.getSession()?.branch || null
 }
 
-/** Filters a branch-tagged list down to the current session's branch. Owner sees everything. */
 export function scopeByBranch<T extends { branch: string }>(items: T[]): T[] {
     const scope = getBranchScope()
     return scope ? items.filter((i) => i.branch === scope) : items

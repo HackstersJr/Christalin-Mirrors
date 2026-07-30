@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import {
     clientStore, serviceStore, staffStore, appointmentStore,
-    inventoryStore, invoiceStore, settingsStore
+    inventoryStore, invoiceStore, settingsStore, visitStore
 } from '../data/store';
 import { getBranchScope, scopeByBranch } from '../data/authStore';
 import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice } from '../data/types';
@@ -21,27 +21,55 @@ export default function Billing() {
     const branchScope = getBranchScope();
 
     // Data Sources
-    const [clients, setClients] = useState<Client[]>([]);
+    // Data Sources
+    const [allClients, setAllClients] = useState<Client[]>([]);
     const [services, setServices] = useState<ServiceRecord[]>([]);
-    const [staff, setStaff] = useState<StaffMember[]>([]);
-    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [allStaff, setAllStaff] = useState<StaffMember[]>([]);
+    const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
+    const [branches, setBranches] = useState<{ name: string; isActive: boolean }[]>([]);
+    const [selectedBranch, setSelectedBranch] = useState<string>('Bengaluru');
 
     useEffect(() => {
-        setClients(scopeByBranch(clientStore.getAll()));
-        setServices(serviceStore.getAll().filter(s => s.isActive));
-        setStaff(scopeByBranch(staffStore.getAll().filter(s => s.isActive)));
-        setInventory(inventoryStore.getAll().filter(i => i.isActive));
+        const loadAll = async () => {
+            const [cls, svcs, stfs, invs, apts, st] = await Promise.all([
+                clientStore.getAll(),
+                serviceStore.getAll(),
+                staffStore.getAll(),
+                inventoryStore.getAll(),
+                appointmentStore.getAll(),
+                settingsStore.get(),
+            ])
+            setAllClients(cls)
+            setServices(svcs.filter(s => s.isActive))
+            setAllStaff(stfs.filter(s => s.isActive))
+            setInventory(invs.filter(i => i.isActive))
+            setAllAppointments(apts)
 
-        const today = new Date().toISOString().split('T')[0];
-        setAppointments(scopeByBranch(appointmentStore.getAll().filter(a => a.date === today && (a.status === 'confirmed' || a.status === 'arrived'))));
-    }, []);
+            const activeBranches = st.branches.filter(b => b.isActive).map(b => ({ ...b, name: b.name.replace('CM — ', '') }))
+            setBranches(activeBranches)
+            if (branchScope) {
+                setSelectedBranch(branchScope)
+            } else if (activeBranches.length > 0) {
+                setSelectedBranch(activeBranches[0].name)
+            }
+        }
+        loadAll()
+    }, [branchScope])
 
-    // Branch selector (Fix 8) — option values are the plain branch name
-    // ("Bengaluru"), matching Client/Appointment/Invoice.branch everywhere
-    // else; settingsStore's display names carry a "CM — " prefix.
-    const branches = settingsStore.get().branches.filter(b => b.isActive).map(b => ({ ...b, name: b.name.replace('CM — ', '') }));
-    const [selectedBranch, setSelectedBranch] = useState<string>(branchScope || branches[0]?.name || 'Bengaluru');
+    // Branch-scoped staff
+    const staff = useMemo(() => {
+        return allStaff.filter(s => !selectedBranch || s.branch === selectedBranch || !s.branch)
+    }, [allStaff, selectedBranch])
+
+    // Branch-scoped appointments (Today's or Pending/Confirmed/Arrived)
+    const appointments = useMemo(() => {
+        const today = new Date().toISOString().split('T')[0]
+        return allAppointments.filter(a =>
+            (!selectedBranch || a.branch === selectedBranch) &&
+            (a.date === today || a.status === 'pending' || a.status === 'confirmed' || a.status === 'arrived')
+        )
+    }, [allAppointments, selectedBranch])
 
     // Form State
     const [selectedClient, setSelectedClient] = useState<Client | null | 'walk-in'>(null);
@@ -80,17 +108,23 @@ export default function Billing() {
     const total = taxableAmount + taxAmount;
     const changeToReturn = amountReceived - total;
 
-    // Derived Client Search
+    // Derived Client Search (Searches ALL clients if query entered, or branch clients if empty)
     const filteredClients = useMemo(() => {
-        if (!clientSearch) return clients.slice(0, 5); // Show top 5 normally
+        if (!clientSearch) {
+            return allClients.filter(c => !selectedBranch || c.branch === selectedBranch || !c.branch).slice(0, 10);
+        }
         const term = clientSearch.toLowerCase();
-        return clients.filter(c => c.name.toLowerCase().includes(term) || c.phone.includes(term)).slice(0, 10);
-    }, [clients, clientSearch]);
+        return allClients.filter(c => 
+            c.name.toLowerCase().includes(term) || 
+            c.phone.includes(term) || 
+            c.email.toLowerCase().includes(term)
+        ).slice(0, 10);
+    }, [allClients, selectedBranch, clientSearch]);
 
-    const handleCreateClient = (e: React.FormEvent) => {
+    const handleCreateClient = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newClient.name || !newClient.phone) return;
-        const created = clientStore.create({
+        const created = await clientStore.create({
             name: newClient.name,
             phone: newClient.phone,
             gender: newClient.gender,
@@ -100,7 +134,8 @@ export default function Billing() {
             totalVisits: 0,
             tags: ['New']
         });
-        setClients(clientStore.getAll());
+        const cls = await clientStore.getAll();
+        setAllClients(cls);
         setSelectedClient(created);
         setShowNewClientForm(false);
         setNewClient({ name: '', phone: '', gender: 'female' });
@@ -140,7 +175,7 @@ export default function Billing() {
 
     const applyAppointment = (apt: Appointment) => {
         // Find existing client or set walk-in logic
-        const c = clients.find(cl => cl.name === apt.clientName);
+        const c = allClients.find(cl => cl.name === apt.clientName || (cl.phone && apt.clientPhone && cl.phone === apt.clientPhone));
         setSelectedClient(c ? c : 'walk-in');
         
         // Find stylist
@@ -157,7 +192,7 @@ export default function Billing() {
         setSelectedAppointmentId(apt.id);
     };
 
-    const saveInvoice = (status: 'draft' | 'paid') => {
+    const saveInvoice = async (status: 'draft' | 'paid') => {
         let clientId = '';
         let clientName = 'Walk-in Guest';
         let clientEmail = '';
@@ -171,9 +206,10 @@ export default function Billing() {
         }
 
         const stylistName = staff.find(s => s.id === selectedStaffId)?.name || '';
+        const invNum = await invoiceStore.getNextInvoiceNumber();
 
-        const inv = invoiceStore.create({
-            invoiceNumber: invoiceStore.getNextInvoiceNumber(),
+        const inv = await invoiceStore.create({
+            invoiceNumber: invNum,
             clientId,
             clientName,
             clientEmail,
@@ -196,45 +232,60 @@ export default function Billing() {
         });
 
         if (status === 'paid' && selectedClient && selectedClient !== 'walk-in') {
-            clientStore.update(selectedClient.id, { 
+            await clientStore.update(selectedClient.id, { 
                 totalVisits: selectedClient.totalVisits + 1,
                 lastVisit: new Date().toISOString().split('T')[0]
+            });
+            await visitStore.create({
+                clientId: selectedClient.id,
+                clientName: selectedClient.name,
+                date: new Date().toISOString().split('T')[0],
+                services: items.map(i => ({ name: i.service, price: i.total })),
+                stylist: stylistName,
+                branch: selectedBranch,
+                subtotal,
+                discount: discountAmount,
+                tax: taxAmount,
+                total,
+                paymentMethod: (paymentMethod || 'other') as any,
+                notes: notes || undefined,
+                invoiceId: inv.id,
             });
         }
 
         return inv;
     };
 
-    const handleSaveDraft = () => {
+    const handleSaveDraft = async () => {
         if (!selectedClient || items.length === 0) { showToast('error', 'Select client and add items first'); return; }
         if (!selectedStaffId) { showToast('error', 'Please select a stylist/therapist'); return; }
-        saveInvoice('draft');
+        await saveInvoice('draft');
         showToast('success', 'Draft saved successfully');
         navigate('/admin/invoices');
     };
 
-    const confirmPayment = () => {
+    const confirmPayment = async () => {
         if (!selectedClient || items.length === 0) { showToast('error', 'Select client and add items first'); return; }
         if (!selectedStaffId) { showToast('error', 'Please select a stylist/therapist'); return; }
-        const inv = saveInvoice('paid');
+        const inv = await saveInvoice('paid');
         setLastInvoice(inv);
         setShowPayModal(false);
         setShowSuccess(true);
 
         // Fix 1: Decrement inventory stock for retail product items
-        items.forEach(item => {
+        for (const item of items) {
             if (item.productId) {
-                const product = inventoryStore.getById(item.productId);
+                const product = inventory.find(p => p.id === item.productId);
                 if (product) {
                     const newStock = Math.max(0, product.currentStock - item.quantity);
-                    inventoryStore.update(item.productId, { currentStock: newStock });
+                    await inventoryStore.update(item.productId, { currentStock: newStock });
                 }
             }
-        });
+        }
 
         // Fix 2: Mark appointment as completed if bill was from an appointment
         if (selectedAppointmentId) {
-            appointmentStore.update(selectedAppointmentId, { status: 'completed' });
+            await appointmentStore.update(selectedAppointmentId, { status: 'completed' });
         }
         
         // Auto reset after 30 seconds

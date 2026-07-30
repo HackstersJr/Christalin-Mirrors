@@ -5,18 +5,47 @@ import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
 import type { StaffMember } from '../data/types'
 import '../AdminShared.css'
 
-const roles = ['stylist', 'therapist', 'manager', 'receptionist'] as const
-const roleLabels: Record<string, string> = { stylist: 'Stylist', therapist: 'Therapist', manager: 'Manager', receptionist: 'Receptionist' }
+const roles = [
+    'hairstylist',
+    'beautician',
+    'unisex_hairstylist',
+    'unisex_beautician',
+    'housekeeping',
+    'manager',
+    'owner',
+    'stylist',
+    'therapist',
+    'receptionist'
+] as const
+
+const roleLabels: Record<string, string> = {
+    hairstylist: 'Hairstylist',
+    beautician: 'Beautician',
+    unisex_hairstylist: 'Unisex Hairstylist',
+    unisex_beautician: 'Unisex Beautician',
+    housekeeping: 'Housekeeping',
+    manager: 'Manager',
+    owner: 'Owner',
+    stylist: 'Stylist',
+    therapist: 'Therapist',
+    receptionist: 'Receptionist'
+}
 
 const emptyForm: Omit<StaffMember, 'id'> = {
-    name: '', role: 'stylist', branch: 'Bengaluru', phone: '', email: '',
+    name: '', role: 'hairstylist', branch: 'Bengaluru', phone: '', email: '',
     specialties: [], isActive: true, joinedDate: new Date().toISOString().split('T')[0],
 }
 
 const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
 const getRoleAvatarColor = (role: string) => {
     switch(role) {
+        case 'owner': return '#e11d48';
         case 'manager': return 'var(--accent-alt)';
+        case 'hairstylist': return '#3b82f6';
+        case 'beautician': return '#ec4899';
+        case 'unisex_hairstylist': return '#0284c7';
+        case 'unisex_beautician': return '#d946ef';
+        case 'housekeeping': return '#64748b';
         case 'stylist': return '#3b82f6';
         case 'therapist': return '#8b5cf6';
         case 'receptionist': return '#14b8a6';
@@ -36,12 +65,15 @@ export default function Staff() {
     const [form, setForm] = useState(scopedEmptyForm)
     const [specInput, setSpecInput] = useState('')
 
-    const reload = () => setStaff(scopeByBranch(staffStore.getAll()))
+    const reload = async () => {
+        const data = await staffStore.getAll()
+        setStaff(scopeByBranch(data))
+    }
     useEffect(() => { reload() }, [])
 
     const filtered = staff.filter(s => {
         const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.role.includes(search.toLowerCase())
-        const matchBranch = branchFilter === 'all' || s.branch === branchFilter
+        const matchBranch = branchFilter === 'all' || s.branch === 'All Branches' || s.role.toLowerCase() === 'owner' || s.branch === branchFilter
         return matchSearch && matchBranch
     })
 
@@ -55,18 +87,21 @@ export default function Staff() {
         setShowForm(true)
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (editingId) { staffStore.update(editingId, form) }
-        else { staffStore.create(form) }
+        if (editingId) { await staffStore.update(editingId, form) }
+        else { await staffStore.create(form) }
         resetForm()
-        reload()
+        await reload()
     }
 
     const resetForm = () => { setForm(scopedEmptyForm); setEditingId(null); setShowForm(false); setSpecInput('') }
 
-    const deleteStaff = (id: string) => {
-        if (confirm('Remove this staff member?')) { staffStore.delete(id); reload() }
+    const deleteStaff = async (id: string) => {
+        if (confirm('Remove this staff member?')) {
+            await staffStore.delete(id)
+            await reload()
+        }
     }
 
     const addSpec = () => {

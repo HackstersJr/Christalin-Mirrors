@@ -13,7 +13,9 @@ export default function Calendar() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-    useEffect(() => { setAppointments(scopeByBranch(appointmentStore.getAll())) }, [])
+    useEffect(() => {
+        appointmentStore.getAll().then(data => setAppointments(scopeByBranch(data)))
+    }, [])
 
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()

@@ -51,13 +51,15 @@ export default function Appointments() {
     const [clients, setClients] = useState<Client[]>([])
     const [staffList, setStaffList] = useState<StaffMember[]>([])
 
-    const reload = () => setAppointments(scopeByBranch(appointmentStore.getAll()))
+    const reload = async () => {
+        const data = await appointmentStore.getAll()
+        setAppointments(scopeByBranch(data))
+    }
     useEffect(() => {
         reload()
-        setServices(serviceStore.getAll().filter(s => s.isActive))
-        // Clients are shared across branches; staff stays branch-scoped.
-        setClients(clientStore.getAll())
-        setStaffList(scopeByBranch(staffStore.getAll().filter(s => s.isActive)))
+        serviceStore.getAll().then(svcs => setServices(svcs.filter(s => s.isActive)))
+        clientStore.getAll().then(cls => setClients(cls))
+        staffStore.getAll().then(stfs => setStaffList(scopeByBranch(stfs.filter(s => s.isActive))))
     }, [])
 
     const filtered = appointments.filter(a => {
@@ -66,7 +68,7 @@ export default function Appointments() {
         return matchSearch && matchStatus
     }).sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         // Service & Time use the custom Dropdown (no native `required`),
         // so validate them explicitly before creating the appointment.
@@ -79,7 +81,7 @@ export default function Appointments() {
         const matchedStaff = staffList.find(s => s.name === form.stylist)
         const matchedService = services.find(s => s.name === form.service)
         
-        appointmentStore.create({
+        await appointmentStore.create({
             ...form,
             clientId: matchedClient?.id || '',
             staffId: matchedStaff?.id || '',
@@ -87,12 +89,12 @@ export default function Appointments() {
         })
         setForm(scopedEmptyForm)
         setShowForm(false)
-        reload()
+        await reload()
     }
 
-    const updateStatus = (id: string, status: Appointment['status']) => {
-        appointmentStore.update(id, { status })
-        reload()
+    const updateStatus = async (id: string, status: Appointment['status']) => {
+        await appointmentStore.update(id, { status })
+        await reload()
     }
 
     // Resolve the client record linked to an appointment by id, name, or email
@@ -123,15 +125,15 @@ export default function Appointments() {
         setReTime('')
     }
 
-    const saveReschedule = () => {
+    const saveReschedule = async () => {
         if (!rescheduleId) return
         if (!reDate || !reTime) {
             alert('Please choose a new date and time.')
             return
         }
-        appointmentStore.update(rescheduleId, { date: reDate, time: reTime })
+        await appointmentStore.update(rescheduleId, { date: reDate, time: reTime })
         cancelReschedule()
-        reload()
+        await reload()
     }
 
     const renderActions = (apt: Appointment) => (

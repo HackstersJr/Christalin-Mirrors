@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight, Phone, X } from 'lucide-react'
 import cmLogo from '../../assets/cm-logo-white.png'
 import { emptyBookingData, STEP_LABELS, type BookingData } from './types'
+import { appointmentStore } from '../../admin/data/store'
 import {
     StepAbout, StepBranch, StepServices, StepDateTime, StepConfirm,
     BookingSuccess, isStepValid,
@@ -29,6 +30,7 @@ export default function BookAppointment() {
         branchId: preselectBranch || '',
     })
     const [submitted, setSubmitted] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     useEffect(() => {
         window.scrollTo(0, 0)
@@ -46,10 +48,29 @@ export default function BookAppointment() {
         goTo(step - 1)
     }
 
-    const handleContinue = (e: React.FormEvent) => {
+    const handleContinue = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (isSubmitting) return
         if (!isStepValid(step, data)) return
         if (step === STEP_LABELS.length - 1) {
+            setIsSubmitting(true)
+            try {
+                await appointmentStore.create({
+                    clientId: '',
+                    staffId: '',
+                    serviceId: '',
+                    clientName: data.name,
+                    clientEmail: data.email,
+                    clientPhone: data.phone,
+                    date: data.date,
+                    time: data.time,
+                    service: data.serviceNames.join(', '),
+                    status: 'pending',
+                    notes: data.notes,
+                    branch: (data.branchId === 'kalaburagi' || data.branchId === 'branch_klb') ? 'Kalaburagi' : 'Bengaluru',
+                })
+            } catch {}
+            setIsSubmitting(false)
             setSubmitted(true)
             return
         }
@@ -141,9 +162,9 @@ export default function BookAppointment() {
                                 <button
                                     type="submit"
                                     className="booking-btn booking-btn-primary"
-                                    disabled={!valid}
+                                    disabled={!valid || isSubmitting}
                                 >
-                                    {isLastStep ? 'Confirm Booking' : 'Continue'}
+                                    {isLastStep ? (isSubmitting ? 'Confirming...' : 'Confirm Booking') : 'Continue'}
                                     {!isLastStep && <ArrowRight size={16} />}
                                 </button>
                             </div>

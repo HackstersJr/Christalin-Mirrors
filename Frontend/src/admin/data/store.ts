@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
-//  Admin Store — localStorage CRUD (Backend-Ready)
-//  Replace these functions with API calls when backend is ready
+//  Admin Store — Live Supabase Integration (Serverless 2-Tier)
 // ═══════════════════════════════════════════════════════════════
 
+import { supabase } from '../../lib/supabase'
 import type { Appointment, Client, ServiceRecord, StaffMember, SalonSettings, ServiceVisit, Invoice, InventoryItem, AttendanceRecord } from './types'
 import { mockAppointments, mockClients, mockServices, mockStaff, defaultSettings, mockVisits, mockInvoices, mockInventory } from './mockData'
 
@@ -16,342 +16,1055 @@ const KEYS = {
     INVOICES: 'cm_admin_invoices',
     INVENTORY: 'cm_admin_inventory',
     ATTENDANCE: 'cm_admin_attendance',
-    // Bumped so existing installs (already initialized under v2, before
-    // attendance existed) pick up the new seeded attendance data.
     INITIALIZED: 'cm_admin_initialized_v3',
 }
 
-/** Seeds attendance from the 1st of the current month through today, for every active staff member. */
-function generateMockAttendance(): AttendanceRecord[] {
-    const records: AttendanceRecord[] = []
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth()
-    const todayDate = now.getDate()
-
-    for (const staff of mockStaff.filter(s => s.isActive)) {
-        for (let day = 1; day <= todayDate; day++) {
-            const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-            const roll = Math.random()
-            const status: AttendanceRecord['status'] =
-                roll < 0.86 ? 'present' : roll < 0.92 ? 'half-day' : roll < 0.97 ? 'leave' : 'absent'
-            records.push({ id: `att-${staff.id}-${date}`, staffId: staff.id, staffName: staff.name, branch: staff.branch, date, status })
-        }
-    }
-    return records
+function paisaToRupees(paisa: number): number {
+    return Math.round(paisa / 100)
 }
 
-// ─── Initialize with mock data if first load ─────────────────
+function rupeesToPaisa(rupees: number): number {
+    return Math.round(rupees * 100)
+}
+
+// Branch name helper
+function mapBranch(nameOrId: string): string {
+    if (!nameOrId) return 'Bengaluru'
+    const lower = nameOrId.toLowerCase()
+    if (lower.includes('kalaburagi') || lower.includes('kalburgi') || lower.includes('klb')) return 'Kalaburagi'
+    return 'Bengaluru'
+}
+
+function getBranchId(branchName: string): string {
+    if (!branchName) return 'branch_blr'
+    const lower = branchName.toLowerCase()
+    if (lower.includes('kalaburagi') || lower.includes('kalburgi') || lower.includes('klb')) return 'branch_klb'
+    return 'branch_blr'
+}
+
+// ─── Initialize local cache fallback ─────────────────────────
 export function initializeStore() {
-    if (localStorage.getItem(KEYS.INITIALIZED)) return
-    localStorage.setItem(KEYS.APPOINTMENTS, JSON.stringify(mockAppointments))
-    localStorage.setItem(KEYS.CLIENTS, JSON.stringify(mockClients))
-    localStorage.setItem(KEYS.SERVICES, JSON.stringify(mockServices))
-    localStorage.setItem(KEYS.STAFF, JSON.stringify(mockStaff))
-    localStorage.setItem(KEYS.SETTINGS, JSON.stringify(defaultSettings))
-    localStorage.setItem(KEYS.VISITS, JSON.stringify(mockVisits))
-    localStorage.setItem(KEYS.INVOICES, JSON.stringify(mockInvoices))
-    localStorage.setItem(KEYS.INVENTORY, JSON.stringify(mockInventory))
-    localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(generateMockAttendance()))
-    localStorage.setItem(KEYS.INITIALIZED, 'true')
-}
-
-// ─── Generic helpers ─────────────────────────────────────────
-function getAll<T>(key: string): T[] {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : []
-}
-
-function saveAll<T>(key: string, data: T[]) {
-    localStorage.setItem(key, JSON.stringify(data))
-}
-
-function generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+    // Force purge stale local storage caches from earlier mock sessions
+    localStorage.removeItem(KEYS.APPOINTMENTS)
+    localStorage.removeItem(KEYS.CLIENTS)
+    localStorage.removeItem(KEYS.SERVICES)
+    localStorage.removeItem(KEYS.VISITS)
+    localStorage.removeItem(KEYS.INVOICES)
+    localStorage.removeItem('cm_admin_initialized')
+    localStorage.removeItem('cm_admin_initialized_v2')
+    localStorage.removeItem('cm_admin_initialized_v3')
+    localStorage.setItem(KEYS.INITIALIZED, 'true_v5')
 }
 
 // ─── Appointments ────────────────────────────────────────────
 export const appointmentStore = {
-    getAll: (): Appointment[] => getAll(KEYS.APPOINTMENTS),
+    getAll: async (): Promise<Appointment[]> => {
+        try {
+            const { data, error } = await supabase
+                .from('Appointment')
+                .select('*')
+                .order('date', { ascending: false })
 
-    getById: (id: string): Appointment | undefined =>
-        getAll<Appointment>(KEYS.APPOINTMENTS).find(a => a.id === id),
+            if (error || !data) return []
 
-    create: (apt: Omit<Appointment, 'id' | 'createdAt'>): Appointment => {
-        const all = getAll<Appointment>(KEYS.APPOINTMENTS)
-        const newApt: Appointment = { ...apt, id: `apt-${generateId()}`, createdAt: new Date().toISOString() }
-        all.unshift(newApt)
-        saveAll(KEYS.APPOINTMENTS, all)
+            return data.map((a: any) => ({
+                id: a.id,
+                clientId: a.clientId || '',
+                staffId: a.staffId || '',
+                serviceId: a.serviceId || '',
+                clientName: a.clientName,
+                clientEmail: a.clientEmail,
+                clientPhone: a.clientPhone || undefined,
+                date: a.date ? String(a.date).split('T')[0] : '',
+                time: a.time,
+                service: a.serviceName,
+                stylist: a.staffName || undefined,
+                status: a.status ? a.status.toLowerCase() as any : 'pending',
+                notes: a.notes || undefined,
+                branch: a.branch?.name ? mapBranch(a.branch.name) : mapBranch(a.branchId),
+                createdAt: a.createdAt || new Date().toISOString(),
+            }))
+        } catch {
+            return []
+        }
+    },
+
+    create: async (apt: Omit<Appointment, 'id' | 'createdAt'>): Promise<Appointment> => {
+        const branchId = getBranchId(apt.branch)
+        let clientId = apt.clientId || null
+
+        // Auto-link or auto-create Client in Supabase database when booking
+        if (apt.clientName) {
+            try {
+                let query = supabase.from('Client').select('id')
+                if (apt.clientEmail && apt.clientPhone) {
+                    query = query.or(`email.eq.${apt.clientEmail},phone.eq.${apt.clientPhone}`)
+                } else if (apt.clientEmail) {
+                    query = query.eq('email', apt.clientEmail)
+                } else if (apt.clientPhone) {
+                    query = query.eq('phone', apt.clientPhone)
+                } else {
+                    query = query.eq('name', apt.clientName)
+                }
+
+                const { data: existingClients } = await query
+                if (existingClients && existingClients.length > 0) {
+                    clientId = existingClients[0].id
+                } else {
+                    // Create new Client record so client appears in Clients list immediately
+                    const newClientId = crypto.randomUUID()
+                    const nowIso = new Date().toISOString()
+                    const clientPayload = {
+                        id: newClientId,
+                        name: apt.clientName,
+                        email: apt.clientEmail || `${apt.clientPhone || Date.now()}@guest.com`,
+                        phone: apt.clientPhone || '',
+                        gender: 'FEMALE',
+                        branchId: branchId,
+                        joinedDate: nowIso,
+                        totalVisits: 0,
+                        tags: ['Online Booking'],
+                        createdAt: nowIso,
+                        updatedAt: nowIso,
+                    }
+                    const { data: createdClient, error: clientErr } = await supabase
+                        .from('Client')
+                        .insert(clientPayload)
+                        .select('id')
+                        .single()
+
+                    if (!clientErr && createdClient) {
+                        clientId = createdClient.id
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to sync client record on booking:', err)
+            }
+        }
+
+        const aptId = crypto.randomUUID()
+        const nowIso = new Date().toISOString()
+        const payload = {
+            id: aptId,
+            clientId: clientId,
+            clientName: apt.clientName,
+            clientEmail: apt.clientEmail,
+            clientPhone: apt.clientPhone || null,
+            date: apt.date,
+            time: apt.time,
+            serviceId: apt.serviceId || null,
+            serviceName: apt.service,
+            staffId: apt.staffId || null,
+            staffName: apt.stylist || null,
+            status: (apt.status || 'pending').toUpperCase(),
+            notes: apt.notes || null,
+            branchId: branchId,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('Appointment')
+                .insert(payload)
+                .select('*')
+                .single()
+
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    clientId: data.clientId || '',
+                    staffId: data.staffId || '',
+                    serviceId: data.serviceId || '',
+                    clientName: data.clientName,
+                    clientEmail: data.clientEmail,
+                    clientPhone: data.clientPhone || undefined,
+                    date: String(data.date).split('T')[0],
+                    time: data.time,
+                    service: data.serviceName,
+                    stylist: data.staffName || undefined,
+                    status: data.status.toLowerCase() as any,
+                    notes: data.notes || undefined,
+                    branch: mapBranch(data.branch?.name || data.branchId),
+                    createdAt: data.createdAt || new Date().toISOString(),
+                }
+            }
+        } catch {
+            // Fallback
+        }
+
+        const newApt: Appointment = { ...apt, id: `apt-${Date.now()}`, createdAt: new Date().toISOString() }
+        const current = JSON.parse(localStorage.getItem(KEYS.APPOINTMENTS) || '[]')
+        current.unshift(newApt)
+        localStorage.setItem(KEYS.APPOINTMENTS, JSON.stringify(current))
         return newApt
     },
 
-    update: (id: string, updates: Partial<Appointment>): Appointment | undefined => {
-        const all = getAll<Appointment>(KEYS.APPOINTMENTS)
-        const idx = all.findIndex(a => a.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.APPOINTMENTS, all)
-        return all[idx]
+    update: async (id: string, updates: Partial<Appointment>): Promise<Appointment | undefined> => {
+        const payload: any = { updatedAt: new Date().toISOString() }
+        if (updates.status) payload.status = updates.status.toUpperCase()
+        if (updates.date) payload.date = updates.date
+        if (updates.time) payload.time = updates.time
+        if (updates.stylist !== undefined) payload.staffName = updates.stylist
+        if (updates.notes !== undefined) payload.notes = updates.notes
+
+        // Auto-update Client totalVisits and lastVisit when status changes to arrived or completed
+        if (updates.status && (updates.status.toLowerCase() === 'arrived' || updates.status.toLowerCase() === 'completed')) {
+            try {
+                const { data: currentApt } = await supabase.from('Appointment').select('*').eq('id', id).single()
+                if (currentApt) {
+                    let cId = currentApt.clientId
+                    if (!cId && (currentApt.clientEmail || currentApt.clientPhone)) {
+                        let query = supabase.from('Client').select('id')
+                        if (currentApt.clientEmail && currentApt.clientPhone) {
+                            query = query.or(`email.eq.${currentApt.clientEmail},phone.eq.${currentApt.clientPhone}`)
+                        } else if (currentApt.clientEmail) {
+                            query = query.eq('email', currentApt.clientEmail)
+                        } else {
+                            query = query.eq('phone', currentApt.clientPhone)
+                        }
+                        const { data: cls } = await query
+                        if (cls && cls.length > 0) cId = cls[0].id
+                    }
+
+                    if (cId) {
+                        const { data: arrivedApts } = await supabase
+                            .from('Appointment')
+                            .select('id')
+                            .eq('clientId', cId)
+                            .in('status', ['ARRIVED', 'COMPLETED', 'arrived', 'completed'])
+
+                        const count = Math.max(1, arrivedApts ? arrivedApts.length : 1)
+                        const lastVisitDate = currentApt.date ? String(currentApt.date).split('T')[0] : new Date().toISOString().split('T')[0]
+
+                        await supabase
+                            .from('Client')
+                            .update({
+                                totalVisits: count,
+                                lastVisit: lastVisitDate,
+                                updatedAt: new Date().toISOString(),
+                            })
+                            .eq('id', cId)
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to sync client visits on status update:', err)
+            }
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('Appointment')
+                .update(payload)
+                .eq('id', id)
+                .select('*')
+                .single()
+
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    clientId: data.clientId || '',
+                    staffId: data.staffId || '',
+                    serviceId: data.serviceId || '',
+                    clientName: data.clientName,
+                    clientEmail: data.clientEmail,
+                    clientPhone: data.clientPhone || undefined,
+                    date: String(data.date).split('T')[0],
+                    time: data.time,
+                    service: data.serviceName,
+                    stylist: data.staffName || undefined,
+                    status: data.status.toLowerCase() as any,
+                    notes: data.notes || undefined,
+                    branch: mapBranch(data.branch?.name || data.branchId),
+                    createdAt: data.createdAt || new Date().toISOString(),
+                }
+            }
+        } catch {
+            // Fallback
+        }
+
+        const current: Appointment[] = JSON.parse(localStorage.getItem(KEYS.APPOINTMENTS) || '[]')
+        const idx = current.findIndex(a => a.id === id)
+        if (idx >= 0) {
+            current[idx] = { ...current[idx], ...updates }
+            localStorage.setItem(KEYS.APPOINTMENTS, JSON.stringify(current))
+            return current[idx]
+        }
+        return undefined
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<Appointment>(KEYS.APPOINTMENTS)
-        const filtered = all.filter(a => a.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.APPOINTMENTS, filtered)
+    delete: async (id: string): Promise<boolean> => {
+        try {
+            await supabase.from('Appointment').delete().eq('id', id)
+        } catch {}
+        const current: Appointment[] = JSON.parse(localStorage.getItem(KEYS.APPOINTMENTS) || '[]')
+        const filtered = current.filter(a => a.id !== id)
+        localStorage.setItem(KEYS.APPOINTMENTS, JSON.stringify(filtered))
         return true
     },
 }
 
 // ─── Clients ─────────────────────────────────────────────────
 export const clientStore = {
-    getAll: (): Client[] => getAll(KEYS.CLIENTS),
+    getAll: async (): Promise<Client[]> => {
+        try {
+            const { data, error } = await supabase
+                .from('Client')
+                .select('*')
+                .order('name', { ascending: true })
 
-    getById: (id: string): Client | undefined =>
-        getAll<Client>(KEYS.CLIENTS).find(c => c.id === id),
+            if (error || !data) return []
 
-    create: (client: Omit<Client, 'id'>): Client => {
-        const all = getAll<Client>(KEYS.CLIENTS)
-        const newClient: Client = { ...client, id: `cli-${generateId()}` }
-        all.unshift(newClient)
-        saveAll(KEYS.CLIENTS, all)
+            return data.map((c: any) => ({
+                id: c.id,
+                name: c.name,
+                email: c.email,
+                phone: c.phone,
+                gender: c.gender ? c.gender.toLowerCase() as any : 'female',
+                branch: mapBranch(c.branch?.name || c.branchId),
+                joinedDate: c.joinedDate ? String(c.joinedDate).split('T')[0] : '',
+                totalVisits: c.totalVisits || 0,
+                lastVisit: c.lastVisit ? String(c.lastVisit).split('T')[0] : undefined,
+                preferredStylist: c.preferredStaffId || undefined,
+                notes: c.notes || undefined,
+                tags: c.tags || [],
+            }))
+        } catch {
+            return []
+        }
+    },
+
+    create: async (client: Omit<Client, 'id'>): Promise<Client> => {
+        const id = crypto.randomUUID()
+        const nowIso = new Date().toISOString()
+        const payload = {
+            id,
+            name: client.name,
+            email: client.email,
+            phone: client.phone,
+            gender: (client.gender || 'FEMALE').toUpperCase(),
+            branchId: getBranchId(client.branch),
+            joinedDate: client.joinedDate || nowIso,
+            preferredStaffId: client.preferredStylist || null,
+            notes: client.notes || null,
+            tags: client.tags || [],
+            totalVisits: client.totalVisits || 0,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+        }
+
+        try {
+            const { data, error } = await supabase.from('Client').insert(payload).select('*').single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    name: data.name,
+                    email: data.email,
+                    phone: data.phone,
+                    gender: data.gender.toLowerCase() as any,
+                    branch: mapBranch(data.branch?.name || data.branchId),
+                    joinedDate: String(data.joinedDate).split('T')[0],
+                    totalVisits: data.totalVisits || 0,
+                    lastVisit: data.lastVisit ? String(data.lastVisit).split('T')[0] : undefined,
+                    preferredStylist: data.preferredStaffId || undefined,
+                    notes: data.notes || undefined,
+                    tags: data.tags || [],
+                }
+            }
+        } catch {}
+
+        const newClient: Client = { ...client, id: `cli-${Date.now()}` }
+        const current = JSON.parse(localStorage.getItem(KEYS.CLIENTS) || '[]')
+        current.unshift(newClient)
+        localStorage.setItem(KEYS.CLIENTS, JSON.stringify(current))
         return newClient
     },
 
-    update: (id: string, updates: Partial<Client>): Client | undefined => {
-        const all = getAll<Client>(KEYS.CLIENTS)
-        const idx = all.findIndex(c => c.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.CLIENTS, all)
-        return all[idx]
+    update: async (id: string, updates: Partial<Client>): Promise<Client | undefined> => {
+        const payload: any = { updatedAt: new Date().toISOString() }
+        if (updates.name !== undefined) payload.name = updates.name
+        if (updates.email !== undefined) payload.email = updates.email
+        if (updates.phone !== undefined) payload.phone = updates.phone
+        if (updates.gender !== undefined) payload.gender = updates.gender.toUpperCase()
+        if (updates.branch !== undefined) payload.branchId = getBranchId(updates.branch)
+        if (updates.joinedDate !== undefined) payload.joinedDate = updates.joinedDate
+        if (updates.preferredStylist !== undefined) payload.preferredStaffId = updates.preferredStylist
+        if (updates.notes !== undefined) payload.notes = updates.notes
+        if (updates.tags !== undefined) payload.tags = updates.tags
+        if (updates.totalVisits !== undefined) payload.totalVisits = updates.totalVisits
+        if (updates.lastVisit !== undefined) payload.lastVisit = updates.lastVisit
+
+        try {
+            const { data, error } = await supabase.from('Client').update(payload).eq('id', id).select('*').single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    name: data.name,
+                    email: data.email,
+                    phone: data.phone,
+                    gender: data.gender.toLowerCase() as any,
+                    branch: mapBranch(data.branch?.name || data.branchId),
+                    joinedDate: String(data.joinedDate).split('T')[0],
+                    totalVisits: data.totalVisits || 0,
+                    lastVisit: data.lastVisit ? String(data.lastVisit).split('T')[0] : undefined,
+                    preferredStylist: data.preferredStaffId || undefined,
+                    notes: data.notes || undefined,
+                    tags: data.tags || [],
+                }
+            }
+        } catch (err) {
+            console.error('Failed to update client:', err)
+        }
+
+        const current: Client[] = JSON.parse(localStorage.getItem(KEYS.CLIENTS) || '[]')
+        const idx = current.findIndex(c => c.id === id)
+        if (idx >= 0) {
+            current[idx] = { ...current[idx], ...updates }
+            localStorage.setItem(KEYS.CLIENTS, JSON.stringify(current))
+            return current[idx]
+        }
+        return undefined
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<Client>(KEYS.CLIENTS)
-        const filtered = all.filter(c => c.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.CLIENTS, filtered)
+    delete: async (id: string): Promise<boolean> => {
+        try { await supabase.from('Client').delete().eq('id', id) } catch {}
+        const current: Client[] = JSON.parse(localStorage.getItem(KEYS.CLIENTS) || '[]')
+        const filtered = current.filter(c => c.id !== id)
+        localStorage.setItem(KEYS.CLIENTS, JSON.stringify(filtered))
         return true
     },
 }
 
 // ─── Services ────────────────────────────────────────────────
 export const serviceStore = {
-    getAll: (): ServiceRecord[] => getAll(KEYS.SERVICES),
+    getAll: async (): Promise<ServiceRecord[]> => {
+        try {
+            const { data, error } = await supabase.from('Service').select('*').order('name', { ascending: true })
+            if (!error && data) {
+                return data.map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    category: s.category ? s.category.toLowerCase() as any : 'hair',
+                    duration: s.duration,
+                    price: paisaToRupees(s.price),
+                    isActive: s.isActive,
+                    isKorean: s.isKorean,
+                    description: s.description,
+                }))
+            }
+        } catch {}
 
-    create: (svc: Omit<ServiceRecord, 'id'>): ServiceRecord => {
-        const all = getAll<ServiceRecord>(KEYS.SERVICES)
-        const newSvc: ServiceRecord = { ...svc, id: `svc-${generateId()}` }
-        all.push(newSvc)
-        saveAll(KEYS.SERVICES, all)
+        return []
+    },
+
+    create: async (svc: Omit<ServiceRecord, 'id'>): Promise<ServiceRecord> => {
+        const payload = {
+            name: svc.name,
+            category: svc.category.toUpperCase(),
+            duration: svc.duration,
+            price: rupeesToPaisa(svc.price),
+            isActive: svc.isActive,
+            isKorean: svc.isKorean || false,
+            description: svc.description,
+        }
+        try {
+            const { data, error } = await supabase.from('Service').insert(payload).select().single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    name: data.name,
+                    category: data.category.toLowerCase() as any,
+                    duration: data.duration,
+                    price: paisaToRupees(data.price),
+                    isActive: data.isActive,
+                    isKorean: data.isKorean,
+                    description: data.description,
+                }
+            }
+        } catch {}
+
+        const newSvc: ServiceRecord = { ...svc, id: `svc-${Date.now()}` }
+        const current = JSON.parse(localStorage.getItem(KEYS.SERVICES) || '[]')
+        current.push(newSvc)
+        localStorage.setItem(KEYS.SERVICES, JSON.stringify(current))
         return newSvc
     },
 
-    update: (id: string, updates: Partial<ServiceRecord>): ServiceRecord | undefined => {
-        const all = getAll<ServiceRecord>(KEYS.SERVICES)
-        const idx = all.findIndex(s => s.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.SERVICES, all)
-        return all[idx]
+    update: async (id: string, updates: Partial<ServiceRecord>): Promise<ServiceRecord | undefined> => {
+        const payload: any = { ...updates }
+        if (updates.price !== undefined) payload.price = rupeesToPaisa(updates.price)
+        if (updates.category) payload.category = updates.category.toUpperCase()
+
+        try {
+            const { data, error } = await supabase.from('Service').update(payload).eq('id', id).select().single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    name: data.name,
+                    category: data.category.toLowerCase() as any,
+                    duration: data.duration,
+                    price: paisaToRupees(data.price),
+                    isActive: data.isActive,
+                    isKorean: data.isKorean,
+                    description: data.description,
+                }
+            }
+        } catch {}
+
+        const current: ServiceRecord[] = JSON.parse(localStorage.getItem(KEYS.SERVICES) || '[]')
+        const idx = current.findIndex(s => s.id === id)
+        if (idx >= 0) {
+            current[idx] = { ...current[idx], ...updates }
+            localStorage.setItem(KEYS.SERVICES, JSON.stringify(current))
+            return current[idx]
+        }
+        return undefined
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<ServiceRecord>(KEYS.SERVICES)
-        const filtered = all.filter(s => s.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.SERVICES, filtered)
+    delete: async (id: string): Promise<boolean> => {
+        try { await supabase.from('Service').delete().eq('id', id) } catch {}
+        const current: ServiceRecord[] = JSON.parse(localStorage.getItem(KEYS.SERVICES) || '[]')
+        const filtered = current.filter(s => s.id !== id)
+        localStorage.setItem(KEYS.SERVICES, JSON.stringify(filtered))
         return true
     },
 }
 
 // ─── Staff ───────────────────────────────────────────────────
 export const staffStore = {
-    getAll: (): StaffMember[] => getAll(KEYS.STAFF),
+    getAll: async (): Promise<StaffMember[]> => {
+        try {
+            const { data, error } = await supabase.from('Staff').select('*').order('name', { ascending: true })
+            if (!error && data) {
+                return data.map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    role: s.role ? s.role.toLowerCase() as any : 'hairstylist',
+                    branch: (s.role?.toLowerCase() === 'owner') ? 'All Branches' : mapBranch(s.branch?.name || s.branchId),
+                    phone: s.phone,
+                    email: s.email,
+                    specialties: s.specialties || [],
+                    isActive: s.isActive,
+                    joinedDate: s.joinedDate ? String(s.joinedDate).split('T')[0] : '',
+                    avatar: s.avatarUrl || undefined,
+                }))
+            }
+        } catch {}
 
-    create: (member: Omit<StaffMember, 'id'>): StaffMember => {
-        const all = getAll<StaffMember>(KEYS.STAFF)
-        const newMember: StaffMember = { ...member, id: `stf-${generateId()}` }
-        all.push(newMember)
-        saveAll(KEYS.STAFF, all)
-        return newMember
+        return mockStaff.map(s => s.role.toLowerCase() === 'owner' ? { ...s, branch: 'All Branches' } : s)
     },
 
-    update: (id: string, updates: Partial<StaffMember>): StaffMember | undefined => {
-        const all = getAll<StaffMember>(KEYS.STAFF)
-        const idx = all.findIndex(s => s.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.STAFF, all)
-        return all[idx]
+    create: async (member: Omit<StaffMember, 'id'>): Promise<StaffMember> => {
+        const id = crypto.randomUUID()
+        const nowIso = new Date().toISOString()
+        const payload = {
+            id,
+            name: member.name,
+            role: member.role.toUpperCase(),
+            branchId: getBranchId(member.branch),
+            phone: member.phone,
+            email: member.email,
+            specialties: member.specialties || [],
+            isActive: member.isActive ?? true,
+            joinedDate: member.joinedDate || nowIso,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+        }
+        try {
+            const { data, error } = await supabase.from('Staff').insert(payload).select('*').single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    name: data.name,
+                    role: data.role.toLowerCase() as any,
+                    branch: mapBranch(data.branch?.name || data.branchId),
+                    phone: data.phone,
+                    email: data.email,
+                    specialties: data.specialties || [],
+                    isActive: data.isActive,
+                    joinedDate: String(data.joinedDate).split('T')[0],
+                    avatar: data.avatarUrl || undefined,
+                }
+            }
+        } catch {}
+
+        const newStaff: StaffMember = { ...member, id: `stf-${Date.now()}` }
+        const current = JSON.parse(localStorage.getItem(KEYS.STAFF) || '[]')
+        current.push(newStaff)
+        localStorage.setItem(KEYS.STAFF, JSON.stringify(current))
+        return newStaff
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<StaffMember>(KEYS.STAFF)
-        const filtered = all.filter(s => s.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.STAFF, filtered)
+    update: async (id: string, updates: Partial<StaffMember>): Promise<StaffMember | undefined> => {
+        const payload: any = { updatedAt: new Date().toISOString() }
+        if (updates.name !== undefined) payload.name = updates.name
+        if (updates.role !== undefined) payload.role = String(updates.role).toUpperCase()
+        if (updates.branch !== undefined) payload.branchId = getBranchId(updates.branch)
+        if (updates.phone !== undefined) payload.phone = updates.phone
+        if (updates.email !== undefined) payload.email = updates.email
+        if (updates.specialties !== undefined) payload.specialties = updates.specialties
+        if (updates.isActive !== undefined) payload.isActive = updates.isActive
+        if (updates.joinedDate !== undefined) payload.joinedDate = updates.joinedDate
+
+        try {
+            const { data, error } = await supabase.from('Staff').update(payload).eq('id', id).select('*').single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    name: data.name,
+                    role: data.role.toLowerCase() as any,
+                    branch: mapBranch(data.branch?.name || data.branchId),
+                    phone: data.phone,
+                    email: data.email,
+                    specialties: data.specialties || [],
+                    isActive: data.isActive,
+                    joinedDate: String(data.joinedDate).split('T')[0],
+                    avatar: data.avatarUrl || undefined,
+                }
+            }
+        } catch (err) {
+            console.error('Failed to update staff member:', err)
+        }
+
+        const current: StaffMember[] = JSON.parse(localStorage.getItem(KEYS.STAFF) || '[]')
+        const idx = current.findIndex(s => s.id === id)
+        if (idx >= 0) {
+            current[idx] = { ...current[idx], ...updates }
+            localStorage.setItem(KEYS.STAFF, JSON.stringify(current))
+            return current[idx]
+        }
+        return undefined
+    },
+
+    delete: async (id: string): Promise<boolean> => {
+        try { await supabase.from('Staff').delete().eq('id', id) } catch {}
+        const current: StaffMember[] = JSON.parse(localStorage.getItem(KEYS.STAFF) || '[]')
+        const filtered = current.filter(s => s.id !== id)
+        localStorage.setItem(KEYS.STAFF, JSON.stringify(filtered))
         return true
     },
 }
 
 // ─── Settings ────────────────────────────────────────────────
 export const settingsStore = {
-    get: (): SalonSettings => {
+    get: async (): Promise<SalonSettings> => {
+        try {
+            const { data: s } = await supabase.from('SalonSettings').select('*').eq('id', 'singleton').single()
+            const { data: branches } = await supabase.from('Branch').select('*').order('name', { ascending: true })
+
+            if (s) {
+                return {
+                    name: s.name,
+                    email: s.email,
+                    phone: s.phone,
+                    hours: s.hours,
+                    branches: (branches || []).map((b: any) => ({
+                        name: mapBranch(b.name),
+                        city: b.city,
+                        address: b.address,
+                        phone: b.phone,
+                        isActive: b.isActive,
+                    })),
+                    socialLinks: {
+                        instagram: s.instagram || undefined,
+                        facebook: s.facebook || undefined,
+                        website: s.website || undefined,
+                    },
+                }
+            }
+        } catch {}
+
         const raw = localStorage.getItem(KEYS.SETTINGS)
         return raw ? JSON.parse(raw) : defaultSettings
     },
 
-    update: (updates: Partial<SalonSettings>): SalonSettings => {
-        const current = settingsStore.get()
-        const updated = { ...current, ...updates }
-        localStorage.setItem(KEYS.SETTINGS, JSON.stringify(updated))
-        return updated
-    },
-}
-
-// ─── Service Visits (History) ────────────────────────────────
-export const visitStore = {
-    getAll: (): ServiceVisit[] => getAll(KEYS.VISITS),
-
-    getByClientId: (clientId: string): ServiceVisit[] =>
-        getAll<ServiceVisit>(KEYS.VISITS).filter(v => v.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date)),
-
-    create: (visit: Omit<ServiceVisit, 'id'>): ServiceVisit => {
-        const all = getAll<ServiceVisit>(KEYS.VISITS)
-        const newVisit: ServiceVisit = { ...visit, id: `vis-${generateId()}` }
-        all.unshift(newVisit)
-        saveAll(KEYS.VISITS, all)
-        return newVisit
-    },
-
-    update: (id: string, updates: Partial<ServiceVisit>): ServiceVisit | undefined => {
-        const all = getAll<ServiceVisit>(KEYS.VISITS)
-        const idx = all.findIndex(v => v.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.VISITS, all)
-        return all[idx]
-    },
-
-    delete: (id: string): boolean => {
-        const all = getAll<ServiceVisit>(KEYS.VISITS)
-        const filtered = all.filter(v => v.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.VISITS, filtered)
-        return true
-    },
-}
-
-// ─── Invoices ────────────────────────────────────────────────
-export const invoiceStore = {
-    getAll: (): Invoice[] => getAll(KEYS.INVOICES),
-
-    getById: (id: string): Invoice | undefined =>
-        getAll<Invoice>(KEYS.INVOICES).find(i => i.id === id),
-
-    getByClientId: (clientId: string): Invoice[] =>
-        getAll<Invoice>(KEYS.INVOICES).filter(i => i.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date)),
-
-    getNextInvoiceNumber: (): string => {
-        const all = getAll<Invoice>(KEYS.INVOICES)
-        const max = all.reduce((m, inv) => {
-            const num = parseInt(inv.invoiceNumber.replace('CM-INV-', ''))
-            return num > m ? num : m
-        }, 0)
-        return `CM-INV-${String(max + 1).padStart(4, '0')}`
-    },
-
-    create: (inv: Omit<Invoice, 'id' | 'createdAt'>): Invoice => {
-        const all = getAll<Invoice>(KEYS.INVOICES)
-        const newInv: Invoice = { ...inv, id: `inv-${generateId()}`, createdAt: new Date().toISOString() }
-        all.unshift(newInv)
-        saveAll(KEYS.INVOICES, all)
-        return newInv
-    },
-
-    update: (id: string, updates: Partial<Invoice>): Invoice | undefined => {
-        const all = getAll<Invoice>(KEYS.INVOICES)
-        const idx = all.findIndex(i => i.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.INVOICES, all)
-        return all[idx]
-    },
-
-    delete: (id: string): boolean => {
-        const all = getAll<Invoice>(KEYS.INVOICES)
-        const filtered = all.filter(i => i.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.INVOICES, filtered)
-        return true
+    update: async (updates: Partial<SalonSettings>): Promise<SalonSettings> => {
+        try {
+            await supabase.from('SalonSettings').update(updates).eq('id', 'singleton')
+        } catch {}
+        return settingsStore.get()
     },
 }
 
 // ─── Inventory ───────────────────────────────────────────────
 export const inventoryStore = {
-    getAll: (): InventoryItem[] => getAll(KEYS.INVENTORY),
+    getAll: async (): Promise<InventoryItem[]> => {
+        try {
+            const { data, error } = await supabase.from('InventoryItem').select('*').order('name', { ascending: true })
+            if (!error && data && data.length > 0) {
+                return data.map((i: any) => ({
+                    id: i.id,
+                    name: i.name,
+                    brand: i.brand,
+                    category: i.category ? i.category.toLowerCase() as any : 'hair-care',
+                    sku: i.sku,
+                    currentStock: i.currentStock,
+                    minStock: i.minStock,
+                    costPrice: paisaToRupees(i.costPrice),
+                    retailPrice: paisaToRupees(i.retailPrice),
+                    branch: mapBranch(i.branch?.name || i.branchId),
+                    lastRestocked: i.lastRestocked ? String(i.lastRestocked).split('T')[0] : undefined,
+                    isActive: i.isActive,
+                }))
+            }
+        } catch {}
 
-    getById: (id: string): InventoryItem | undefined =>
-        getAll<InventoryItem>(KEYS.INVENTORY).find(i => i.id === id),
+        const raw = localStorage.getItem(KEYS.INVENTORY)
+        return raw ? JSON.parse(raw) : mockInventory
+    },
 
-    create: (item: Omit<InventoryItem, 'id'>): InventoryItem => {
-        const all = getAll<InventoryItem>(KEYS.INVENTORY)
-        const newItem: InventoryItem = { ...item, id: `itm-${generateId()}` }
-        all.push(newItem)
-        saveAll(KEYS.INVENTORY, all)
+    getById: async (id: string): Promise<InventoryItem | undefined> => {
+        const all = await inventoryStore.getAll()
+        return all.find(i => i.id === id)
+    },
+
+    create: async (item: Omit<InventoryItem, 'id'>): Promise<InventoryItem> => {
+        const payload = {
+            name: item.name,
+            brand: item.brand,
+            category: item.category.toUpperCase().replace('-', ''),
+            sku: item.sku,
+            currentStock: item.currentStock,
+            minStock: item.minStock,
+            costPrice: rupeesToPaisa(item.costPrice),
+            retailPrice: rupeesToPaisa(item.retailPrice),
+            branchId: getBranchId(item.branch),
+            isActive: item.isActive,
+        }
+        try {
+            const { data, error } = await supabase.from('InventoryItem').insert(payload).select('*').single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    name: data.name,
+                    brand: data.brand,
+                    category: data.category.toLowerCase() as any,
+                    sku: data.sku,
+                    currentStock: data.currentStock,
+                    minStock: data.minStock,
+                    costPrice: paisaToRupees(data.costPrice),
+                    retailPrice: paisaToRupees(data.retailPrice),
+                    branch: mapBranch(data.branch?.name || data.branchId),
+                    lastRestocked: data.lastRestocked ? String(data.lastRestocked).split('T')[0] : undefined,
+                    isActive: data.isActive,
+                }
+            }
+        } catch {}
+
+        const newItem: InventoryItem = { ...item, id: `itm-${Date.now()}` }
+        const current = JSON.parse(localStorage.getItem(KEYS.INVENTORY) || '[]')
+        current.push(newItem)
+        localStorage.setItem(KEYS.INVENTORY, JSON.stringify(current))
         return newItem
     },
 
-    update: (id: string, updates: Partial<InventoryItem>): InventoryItem | undefined => {
-        const all = getAll<InventoryItem>(KEYS.INVENTORY)
-        const idx = all.findIndex(i => i.id === id)
-        if (idx === -1) return undefined
-        all[idx] = { ...all[idx], ...updates }
-        saveAll(KEYS.INVENTORY, all)
-        return all[idx]
+    update: async (id: string, updates: Partial<InventoryItem>): Promise<InventoryItem | undefined> => {
+        try {
+            const { data, error } = await supabase.from('InventoryItem').update(updates).eq('id', id).select('*').single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    name: data.name,
+                    brand: data.brand,
+                    category: data.category.toLowerCase() as any,
+                    sku: data.sku,
+                    currentStock: data.currentStock,
+                    minStock: data.minStock,
+                    costPrice: paisaToRupees(data.costPrice),
+                    retailPrice: paisaToRupees(data.retailPrice),
+                    branch: mapBranch(data.branch?.name || data.branchId),
+                    lastRestocked: data.lastRestocked ? String(data.lastRestocked).split('T')[0] : undefined,
+                    isActive: data.isActive,
+                }
+            }
+        } catch {}
+
+        const current: InventoryItem[] = JSON.parse(localStorage.getItem(KEYS.INVENTORY) || '[]')
+        const idx = current.findIndex(i => i.id === id)
+        if (idx >= 0) {
+            current[idx] = { ...current[idx], ...updates }
+            localStorage.setItem(KEYS.INVENTORY, JSON.stringify(current))
+            return current[idx]
+        }
+        return undefined
     },
 
-    delete: (id: string): boolean => {
-        const all = getAll<InventoryItem>(KEYS.INVENTORY)
-        const filtered = all.filter(i => i.id !== id)
-        if (filtered.length === all.length) return false
-        saveAll(KEYS.INVENTORY, filtered)
+    delete: async (id: string): Promise<boolean> => {
+        try { await supabase.from('InventoryItem').delete().eq('id', id) } catch {}
+        const current: InventoryItem[] = JSON.parse(localStorage.getItem(KEYS.INVENTORY) || '[]')
+        const filtered = current.filter(i => i.id !== id)
+        localStorage.setItem(KEYS.INVENTORY, JSON.stringify(filtered))
         return true
     },
 
-    getLowStock: (): InventoryItem[] =>
-        getAll<InventoryItem>(KEYS.INVENTORY).filter(i => i.isActive && i.currentStock <= i.minStock),
+    getLowStock: async (): Promise<InventoryItem[]> => {
+        const all = await inventoryStore.getAll()
+        return all.filter(i => i.isActive && i.currentStock <= i.minStock)
+    },
+}
+
+// ─── Service Visits (History) ────────────────────────────────
+export const visitStore = {
+    getAll: async (): Promise<ServiceVisit[]> => {
+        try {
+            const { data, error } = await supabase.from('ServiceVisit').select('*').order('date', { ascending: false })
+            if (!error && data) {
+                return data.map((v: any) => ({
+                    id: v.id,
+                    clientId: v.clientId,
+                    clientName: v.clientName,
+                    date: String(v.date).split('T')[0],
+                    services: v.services || [],
+                    stylist: v.staffName || '',
+                    branch: mapBranch(v.branchId),
+                    subtotal: paisaToRupees(v.subtotal),
+                    discount: paisaToRupees(v.discount),
+                    tax: paisaToRupees(v.tax),
+                    total: paisaToRupees(v.total),
+                    paymentMethod: v.paymentMethod?.toLowerCase() as any || 'other',
+                    notes: v.notes || undefined,
+                    rating: v.rating || undefined,
+                    invoiceId: v.invoiceId || undefined,
+                }))
+            }
+        } catch {}
+
+        return []
+    },
+
+    getByClientId: async (clientId: string): Promise<ServiceVisit[]> => {
+        // 1. Fetch direct visits
+        const allVisits = await visitStore.getAll()
+        const directVisits = allVisits.filter(v => v.clientId === clientId)
+
+        // 2. Fetch client details to check matching emails/phones
+        const clients = await clientStore.getAll()
+        const client = clients.find(c => c.id === clientId)
+        if (!client) return directVisits
+
+        // 3. Synthesize visits from invoices
+        const invoices = await invoiceStore.getByClientId(clientId)
+        const invoiceVisits: ServiceVisit[] = invoices.map(inv => ({
+            id: `inv-visit-${inv.id}`,
+            clientId: client.id,
+            clientName: client.name,
+            date: inv.date,
+            services: inv.items.map(item => ({
+                name: item.service,
+                price: item.total,
+            })),
+            stylist: inv.stylist || '—',
+            branch: inv.branch,
+            subtotal: inv.subtotal,
+            discount: inv.discountAmount,
+            tax: inv.taxAmount,
+            total: inv.total,
+            paymentMethod: inv.paymentMethod || 'other',
+            notes: inv.notes,
+            invoiceId: inv.id,
+        }))
+
+        // Deduplicate
+        const directInvoiceIds = new Set(directVisits.map(v => v.invoiceId).filter(Boolean))
+        const filteredInvoiceVisits = invoiceVisits.filter(v => !directInvoiceIds.has(v.invoiceId))
+
+        return [...directVisits, ...filteredInvoiceVisits].sort((a, b) => b.date.localeCompare(a.date))
+    },
+
+    create: async (visit: Omit<ServiceVisit, 'id'>): Promise<ServiceVisit> => {
+        const nowIso = new Date().toISOString()
+        const payload = {
+            id: crypto.randomUUID(),
+            clientId: visit.clientId || null,
+            clientName: visit.clientName,
+            date: visit.date || nowIso.split('T')[0],
+            staffName: visit.stylist || null,
+            branchId: getBranchId(visit.branch),
+            subtotal: rupeesToPaisa(visit.subtotal),
+            discount: rupeesToPaisa(visit.discount),
+            tax: rupeesToPaisa(visit.tax),
+            total: rupeesToPaisa(visit.total),
+            paymentMethod: (visit.paymentMethod || 'OTHER').toUpperCase(),
+            notes: visit.notes || null,
+            rating: visit.rating || null,
+            invoiceId: visit.invoiceId || null,
+            services: visit.services,
+            createdAt: nowIso,
+        }
+
+        try {
+            await supabase.from('ServiceVisit').insert(payload)
+        } catch (err) {
+            console.error('Failed to create ServiceVisit in Supabase:', err)
+        }
+
+        return { ...visit, id: `vis-${Date.now()}` }
+    },
+}
+
+// ─── Invoices ────────────────────────────────────────────────
+export const invoiceStore = {
+    getAll: async (): Promise<Invoice[]> => {
+        try {
+            const { data, error } = await supabase.from('Invoice').select('*, items:InvoiceItem(*)').order('createdAt', { ascending: false })
+            if (!error && data) {
+                return data.map((inv: any) => ({
+                    id: inv.id,
+                    invoiceNumber: inv.invoiceNumber,
+                    clientId: inv.clientId || '',
+                    clientName: inv.clientName,
+                    clientEmail: inv.clientEmail,
+                    clientPhone: inv.clientPhone || undefined,
+                    date: String(inv.date).split('T')[0],
+                    items: (inv.items || []).map((it: any) => ({
+                        service: it.serviceName,
+                        description: it.description || undefined,
+                        quantity: it.quantity,
+                        unitPrice: paisaToRupees(it.unitPrice),
+                        total: paisaToRupees(it.total),
+                        productId: it.productId || undefined,
+                    })),
+                    subtotal: paisaToRupees(inv.subtotal),
+                    discountPercent: Number(inv.discountPercent || 0),
+                    discountAmount: paisaToRupees(inv.discountAmount || 0),
+                    taxPercent: Number(inv.taxPercent || 18),
+                    taxAmount: paisaToRupees(inv.taxAmount || 0),
+                    total: paisaToRupees(inv.total),
+                    amountPaid: paisaToRupees(inv.amountPaid || 0),
+                    status: inv.status ? inv.status.toLowerCase() as any : 'draft',
+                    paymentMethod: inv.paymentMethod ? inv.paymentMethod.toLowerCase() as any : undefined,
+                    branch: mapBranch(inv.branch?.name || inv.branchId),
+                    stylist: inv.staffName || undefined,
+                    notes: inv.notes || undefined,
+                    createdAt: inv.createdAt || new Date().toISOString(),
+                    appointmentId: inv.appointmentId || undefined,
+                }))
+            }
+        } catch {}
+
+        return []
+    },
+
+    getById: async (id: string): Promise<Invoice | undefined> => {
+        const all = await invoiceStore.getAll()
+        return all.find(i => i.id === id)
+    },
+
+    getByClientId: async (clientId: string): Promise<Invoice[]> => {
+        const all = await invoiceStore.getAll()
+        return all.filter(i => i.clientId === clientId)
+    },
+
+    getNextInvoiceNumber: async (): Promise<string> => {
+        const all = await invoiceStore.getAll()
+        const max = all.reduce((m, inv) => {
+            const num = parseInt(inv.invoiceNumber.replace('CM-INV-', ''))
+            return !isNaN(num) && num > m ? num : m
+        }, 0)
+        return `CM-INV-${String(max + 1).padStart(4, '0')}`
+    },
+
+    create: async (inv: Omit<Invoice, 'id' | 'createdAt'>): Promise<Invoice> => {
+        const payload = {
+            invoiceNumber: inv.invoiceNumber,
+            clientId: inv.clientId || null,
+            clientName: inv.clientName,
+            clientEmail: inv.clientEmail,
+            clientPhone: inv.clientPhone || null,
+            date: inv.date,
+            subtotal: rupeesToPaisa(inv.subtotal),
+            discountPercent: inv.discountPercent || 0,
+            discountAmount: rupeesToPaisa(inv.discountAmount || 0),
+            taxPercent: inv.taxPercent || 18,
+            taxAmount: rupeesToPaisa(inv.taxAmount || 0),
+            total: rupeesToPaisa(inv.total),
+            amountPaid: rupeesToPaisa(inv.amountPaid || 0),
+            status: (inv.status || 'draft').toUpperCase(),
+            paymentMethod: inv.paymentMethod ? inv.paymentMethod.toUpperCase() : null,
+            branchId: getBranchId(inv.branch),
+            staffName: inv.stylist || null,
+            appointmentId: inv.appointmentId || null,
+            notes: inv.notes || null,
+        }
+
+        try {
+            const { data: invoice, error } = await supabase.from('Invoice').insert(payload).select('*').single()
+            if (!error && invoice) {
+                if (inv.items && inv.items.length > 0) {
+                    const itemsPayload = inv.items.map(it => ({
+                        invoiceId: invoice.id,
+                        serviceName: it.service,
+                        description: it.description || null,
+                        quantity: it.quantity,
+                        unitPrice: rupeesToPaisa(it.unitPrice),
+                        total: rupeesToPaisa(it.total),
+                        productId: it.productId || null,
+                    }))
+                    await supabase.from('InvoiceItem').insert(itemsPayload)
+                }
+
+                // Update linked appointment to completed if paid
+                if (inv.appointmentId && (inv.status === 'paid' || inv.status === ('PAID' as any))) {
+                    await supabase.from('Appointment').update({ status: 'COMPLETED' }).eq('id', inv.appointmentId)
+                }
+
+                return { ...inv, id: invoice.id, createdAt: invoice.createdAt || new Date().toISOString() }
+            }
+        } catch {}
+
+        const newInv: Invoice = { ...inv, id: `inv-${Date.now()}`, createdAt: new Date().toISOString() }
+        const current = JSON.parse(localStorage.getItem(KEYS.INVOICES) || '[]')
+        current.unshift(newInv)
+        localStorage.setItem(KEYS.INVOICES, JSON.stringify(current))
+        return newInv
+    },
+
+    update: async (id: string, updates: Partial<Invoice>): Promise<Invoice | undefined> => {
+        try {
+            const payload: any = { ...updates }
+            if (updates.status) payload.status = updates.status.toUpperCase()
+            await supabase.from('Invoice').update(payload).eq('id', id)
+        } catch {}
+
+        const current: Invoice[] = JSON.parse(localStorage.getItem(KEYS.INVOICES) || '[]')
+        const idx = current.findIndex(i => i.id === id)
+        if (idx >= 0) {
+            current[idx] = { ...current[idx], ...updates }
+            localStorage.setItem(KEYS.INVOICES, JSON.stringify(current))
+            return current[idx]
+        }
+        return undefined
+    },
+
+    delete: async (id: string): Promise<boolean> => {
+        try { await supabase.from('Invoice').delete().eq('id', id) } catch {}
+        const current: Invoice[] = JSON.parse(localStorage.getItem(KEYS.INVOICES) || '[]')
+        const filtered = current.filter(i => i.id !== id)
+        localStorage.setItem(KEYS.INVOICES, JSON.stringify(filtered))
+        return true
+    },
 }
 
 // ─── Staff Attendance ────────────────────────────────────────
 export const attendanceStore = {
-    getAll: (): AttendanceRecord[] => getAll(KEYS.ATTENDANCE),
-
-    getByDate: (date: string): AttendanceRecord[] =>
-        getAll<AttendanceRecord>(KEYS.ATTENDANCE).filter(a => a.date === date),
-
-    getByStaffId: (staffId: string): AttendanceRecord[] =>
-        getAll<AttendanceRecord>(KEYS.ATTENDANCE).filter(a => a.staffId === staffId),
-
-    /** Upserts a staff member's attendance for a given date. */
+    getAll: (): AttendanceRecord[] => JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]'),
+    getByDate: (date: string): AttendanceRecord[] => attendanceStore.getAll().filter(a => a.date === date),
+    getByStaffId: (staffId: string): AttendanceRecord[] => attendanceStore.getAll().filter(a => a.staffId === staffId),
     mark: (staffId: string, staffName: string, branch: string, date: string, status: AttendanceRecord['status']): AttendanceRecord => {
-        const all = getAll<AttendanceRecord>(KEYS.ATTENDANCE)
+        const all = attendanceStore.getAll()
         const idx = all.findIndex(a => a.staffId === staffId && a.date === date)
         if (idx >= 0) {
             all[idx] = { ...all[idx], status }
-            saveAll(KEYS.ATTENDANCE, all)
+            localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(all))
             return all[idx]
         }
-        const record: AttendanceRecord = { id: `att-${generateId()}`, staffId, staffName, branch, date, status }
+        const record: AttendanceRecord = { id: `att-${Date.now()}`, staffId, staffName, branch, date, status }
         all.push(record)
-        saveAll(KEYS.ATTENDANCE, all)
+        localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(all))
         return record
     },
 }
 
-// ─── Reset to defaults ──────────────────────────────────────
 export function resetStore() {
     Object.values(KEYS).forEach(key => localStorage.removeItem(key))
     initializeStore()

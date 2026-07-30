@@ -14,7 +14,9 @@ function InvoiceDetail() {
     const [invoice, setInvoice] = useState<Invoice | null>(null)
 
     useEffect(() => {
-        if (invoiceId) { setInvoice(invoiceStore.getById(invoiceId) || null) }
+        if (invoiceId) {
+            invoiceStore.getById(invoiceId).then(inv => setInvoice(inv || null))
+        }
     }, [invoiceId])
 
     if (!invoice) {
@@ -26,8 +28,8 @@ function InvoiceDetail() {
 
     const handlePrint = () => { window.print() }
 
-    const updateStatus = (status: Invoice['status']) => {
-        invoiceStore.update(invoice.id, { status })
+    const updateStatus = async (status: Invoice['status']) => {
+        await invoiceStore.update(invoice.id, { status })
         setInvoice({ ...invoice, status })
     }
 
@@ -167,17 +169,23 @@ function InvoiceList() {
     const canDelete = authStore.getSession()?.role !== 'receptionist'
     const branchScope = getBranchScope()
     const [invoices, setInvoices] = useState<Invoice[]>([])
+    const [clients, setClients] = useState<any[]>([])
+    const [services, setServices] = useState<any[]>([])
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
     const [showForm, setShowForm] = useState(false)
     const [items, setItems] = useState<InvoiceItem[]>([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
     const [formData, setFormData] = useState({ clientId: '', discountPercent: 0, taxPercent: 18, paymentMethod: 'cash' as Invoice['paymentMethod'], branch: branchScope || 'Bengaluru', stylist: '', notes: '' })
 
-    const reload = () => setInvoices(scopeByBranch(invoiceStore.getAll()))
-    useEffect(() => { reload() }, [])
-
-    const clients = scopeByBranch(clientStore.getAll())
-    const services = serviceStore.getAll()
+    const reload = async () => {
+        const data = await invoiceStore.getAll()
+        setInvoices(scopeByBranch(data))
+    }
+    useEffect(() => {
+        reload()
+        clientStore.getAll().then(cls => setClients(scopeByBranch(cls)))
+        serviceStore.getAll().then(svcs => setServices(svcs))
+    }, [])
 
     const filtered = invoices.filter(inv => {
         const matchSearch = inv.clientName.toLowerCase().includes(search.toLowerCase()) || inv.invoiceNumber.toLowerCase().includes(search.toLowerCase())
@@ -201,7 +209,7 @@ function InvoiceList() {
         setItems(updated)
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         const client = clients.find(c => c.id === formData.clientId)
         if (!client || items.length === 0) return
@@ -211,8 +219,9 @@ function InvoiceList() {
         const taxAmount = Math.round(taxable * formData.taxPercent / 100)
         const total = taxable + taxAmount
 
-        invoiceStore.create({
-            invoiceNumber: invoiceStore.getNextInvoiceNumber(),
+        const invNum = await invoiceStore.getNextInvoiceNumber()
+        await invoiceStore.create({
+            invoiceNumber: invNum,
             clientId: client.id, clientName: client.name, clientEmail: client.email, clientPhone: client.phone,
             date: new Date().toISOString().split('T')[0], items, subtotal,
             discountPercent: formData.discountPercent, discountAmount,
@@ -223,10 +232,15 @@ function InvoiceList() {
         setShowForm(false)
         setItems([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
         setFormData({ clientId: '', discountPercent: 0, taxPercent: 18, paymentMethod: 'cash', branch: 'Bengaluru', stylist: '', notes: '' })
-        reload()
+        await reload()
     }
 
-    const deleteInv = (id: string) => { if (confirm('Delete this invoice?')) { invoiceStore.delete(id); reload() } }
+    const deleteInv = async (id: string) => {
+        if (confirm('Delete this invoice?')) {
+            await invoiceStore.delete(id)
+            await reload()
+        }
+    }
 
     return (
         <div>

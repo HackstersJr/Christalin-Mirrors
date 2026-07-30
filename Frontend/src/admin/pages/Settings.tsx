@@ -7,19 +7,29 @@ import '../AdminShared.css'
 
 export default function SettingsPage() {
     const { showToast } = useToast()
-    const [settings, setSettings] = useState<SalonSettings>(settingsStore.get())
+    const [settings, setSettings] = useState<SalonSettings>({
+        name: 'Christalin Mirrors',
+        email: '',
+        phone: '',
+        hours: '',
+        branches: [],
+        socialLinks: {},
+    })
 
-    useEffect(() => { setSettings(settingsStore.get()) }, [])
+    useEffect(() => {
+        settingsStore.get().then(s => setSettings(s))
+    }, [])
 
-    const handleSave = () => {
-        settingsStore.update(settings)
+    const handleSave = async () => {
+        await settingsStore.update(settings)
         showToast('success', 'Settings saved successfully')
     }
 
-    const handleReset = () => {
+    const handleReset = async () => {
         if (confirm('Reset all data to defaults? This will clear all appointments, clients, etc.')) {
             resetStore()
-            setSettings(settingsStore.get())
+            const s = await settingsStore.get()
+            setSettings(s)
         }
     }
 
@@ -118,18 +128,6 @@ export default function SettingsPage() {
                         <input className="admin-form-input" value={settings.socialLinks.website || ''} onChange={e => setSettings({ ...settings, socialLinks: { ...settings.socialLinks, website: e.target.value } })} placeholder="https://..." />
                     </div>
                 </div>
-            </div>
-
-            {/* Danger Zone */}
-            <div className="admin-form-card" style={{ borderColor: 'rgba(232, 93, 93, 0.2)' }}>
-                <h3 style={{ color: 'var(--danger)' }}>Danger Zone</h3>
-                <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>
-                    Reset all admin data to mock defaults. This will clear all appointments, clients, services, and staff.
-                </p>
-                <button className="admin-btn admin-btn-danger" onClick={handleReset}>
-                    <RotateCcw size={14} />
-                    Reset All Data
-                </button>
             </div>
         </div>
     )

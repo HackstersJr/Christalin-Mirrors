@@ -5,11 +5,11 @@ import { serviceStore } from '../data/store'
 import type { ServiceRecord } from '../data/types'
 import '../AdminShared.css'
 
-const categories = ['hair', 'skin', 'korean', 'womens', 'mens'] as const
-const categoryLabels: Record<string, string> = { hair: 'Hair', skin: 'Skin & Beauty', korean: 'Korean Rituals', womens: "Women's", mens: "Men's" }
+const categories = ['hair', 'colours_studio', 'skin', 'korean', 'womens', 'mens'] as const
+const categoryLabels: Record<string, string> = { hair: 'Hair', colours_studio: 'Colours Studio', skin: 'Skin & Beauty', korean: 'Korean Rituals', womens: "Women's", mens: "Men's" }
 
 const emptyForm: Omit<ServiceRecord, 'id'> = {
-    name: '', category: 'hair', duration: 30, price: 0, isActive: true, description: '',
+    name: '', category: 'colours_studio', duration: 30, price: 0, isActive: true, description: '',
 }
 
 export default function Services() {
@@ -21,7 +21,10 @@ export default function Services() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState(emptyForm)
 
-    const reload = () => setServices(serviceStore.getAll())
+    const reload = async () => {
+        const data = await serviceStore.getAll()
+        setServices(data)
+    }
     useEffect(() => { reload() }, [])
 
     const filtered = services.filter(s => {
@@ -37,23 +40,26 @@ export default function Services() {
         setShowForm(true)
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (editingId) { serviceStore.update(editingId, form) }
-        else { serviceStore.create(form) }
+        if (editingId) { await serviceStore.update(editingId, form) }
+        else { await serviceStore.create(form) }
         resetForm()
-        reload()
+        await reload()
     }
 
     const resetForm = () => { setForm(emptyForm); setEditingId(null); setShowForm(false) }
 
-    const toggleActive = (id: string, current: boolean) => {
-        serviceStore.update(id, { isActive: !current })
-        reload()
+    const toggleActive = async (id: string, current: boolean) => {
+        await serviceStore.update(id, { isActive: !current })
+        await reload()
     }
 
-    const deleteSvc = (id: string) => {
-        if (confirm('Delete this service?')) { serviceStore.delete(id); reload() }
+    const deleteSvc = async (id: string) => {
+        if (confirm('Delete this service?')) {
+            await serviceStore.delete(id)
+            await reload()
+        }
     }
 
     return (

@@ -18,17 +18,25 @@ export default function ClientDetail() {
 
     useEffect(() => {
         if (!clientId) return
-        const c = clientStore.getById(clientId)
-        if (c) {
-            setClient(c)
-            setVisits(visitStore.getByClientId(clientId))
-            setInvoices(invoiceStore.getByClientId(clientId))
-            setAppointments(
-                appointmentStore.getAll()
-                    .filter(a => a.clientEmail === c.email)
+        const load = async () => {
+            const cls = await clientStore.getAll()
+            const c = cls.find(x => x.id === clientId)
+            if (c) {
+                setClient(c)
+                const [vsts, invs, apts] = await Promise.all([
+                    visitStore.getByClientId(clientId),
+                    invoiceStore.getByClientId(clientId),
+                    appointmentStore.getAll(),
+                ])
+                setVisits(vsts)
+                setInvoices(invs)
+                const clientApts = apts
+                    .filter(a => (a.clientId && a.clientId === c.id) || a.clientEmail === c.email || (a.clientPhone && c.phone && a.clientPhone === c.phone))
                     .sort((a, b) => b.date.localeCompare(a.date))
-            )
+                setAppointments(clientApts)
+            }
         }
+        load()
     }, [clientId])
 
     if (!client) {
@@ -39,6 +47,10 @@ export default function ClientDetail() {
             </div>
         )
     }
+
+    const arrivedOrCompleted = appointments.filter(a => a.status === 'arrived' || a.status === 'completed')
+    const totalVisitsCount = Math.max(client.totalVisits || 0, visits.length, arrivedOrCompleted.length)
+    const lastVisitStr = client.lastVisit || (arrivedOrCompleted.length > 0 ? arrivedOrCompleted[0].date : (visits.length > 0 ? visits[0].date : undefined))
 
     const totalSpent = visits.reduce((sum, v) => sum + v.total, 0)
     const avgSpend = visits.length > 0 ? Math.round(totalSpent / visits.length) : 0
@@ -100,7 +112,7 @@ export default function ClientDetail() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div className="admin-stat-card">
                         <div className="stat-label">Total Visits</div>
-                        <div className="stat-value accent">{client.totalVisits}</div>
+                        <div className="stat-value accent">{totalVisitsCount}</div>
                     </div>
                     <div className="admin-stat-card">
                         <div className="stat-label">Total Spent</div>
@@ -113,7 +125,7 @@ export default function ClientDetail() {
                     <div className="admin-stat-card">
                         <div className="stat-label">Last Visit</div>
                         <div className="stat-value" style={{ fontSize: 18 }}>
-                            {client.lastVisit ? new Date(client.lastVisit + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                            {lastVisitStr ? new Date(lastVisitStr + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
                         </div>
                     </div>
                 </div>
