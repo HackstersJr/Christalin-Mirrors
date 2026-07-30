@@ -88,14 +88,20 @@ export function getBranchScope(): string | null {
     return authStore.getSession()?.branch || null
 }
 
-export function scopeByBranch<T extends { branch?: string; branchId?: string }>(items: T[]): T[] {
+export function scopeByBranch<T extends { branch?: string; branchId?: string; role?: string }>(items: T[]): T[] {
     const scope = getBranchScope()
     if (!scope) return items
     const cleanScope = scope.toLowerCase()
 
     return items.filter((i) => {
+        const roleStr = String((i as any).role || '').toLowerCase()
         const b = (i.branch || '').toLowerCase()
         const bId = (i.branchId || '').toLowerCase()
+
+        // Owner role or 'All Branches' items are visible in every branch scope
+        if (roleStr === 'owner' || b.includes('all branches') || b === 'all') {
+            return true
+        }
 
         if (cleanScope.includes('bengaluru') || cleanScope.includes('blr')) {
             return b.includes('bengaluru') || b.includes('blr') || bId.includes('blr')
