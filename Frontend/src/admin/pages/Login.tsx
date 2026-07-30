@@ -10,15 +10,24 @@ export default function Login() {
     const [error, setError] = useState('')
     const navigate = useNavigate()
 
-    const handleLogin = (e: React.FormEvent) => {
+    const [submitting, setSubmitting] = useState(false)
+
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
-        // TODO: Replace with real POST /api/auth/login call
-        const session = authStore.login(email, password)
-        if (!session) {
-            setError('Invalid email or password.')
-            return
+        setError('')
+        setSubmitting(true)
+        try {
+            const session = await authStore.login(email, password)
+            if (!session) {
+                setError('Invalid email or password.')
+                return
+            }
+            navigate('/admin')
+        } catch {
+            setError('Could not sign in. Please try again.')
+        } finally {
+            setSubmitting(false)
         }
-        navigate('/admin')
     }
 
     return (
@@ -55,8 +64,8 @@ export default function Login() {
 
                     {error && <div className="login-error">{error}</div>}
 
-                    <button type="submit" className="login-submit">
-                        Sign In
+                    <button type="submit" className="login-submit" disabled={submitting}>
+                        {submitting ? 'Signing In…' : 'Sign In'}
                     </button>
                 </form>
 

@@ -69,7 +69,7 @@ export default function ClientDetail() {
             </div>
 
             {/* Profile + Stats Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 28 }}>
+            <div className="detail-two-col" style={{ marginBottom: 28 }}>
                 {/* Profile Card */}
                 <div className="admin-form-card" style={{ margin: 0 }}>
                     <h3 style={{ marginBottom: 16, fontSize: 14 }}>Profile</h3>
@@ -132,7 +132,7 @@ export default function ClientDetail() {
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
                 {(['history', 'invoices', 'appointments'] as Tab[]).map(t => (
                     <button key={t} className={`admin-btn ${tab === t ? 'admin-btn-primary' : 'admin-btn-secondary'}`}
                         onClick={() => setTab(t)} style={{ textTransform: 'capitalize' }}>

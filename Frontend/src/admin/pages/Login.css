@@ -78,13 +78,21 @@
 
 .login-logo h2 {
     font-family: 'Colabero', 'Playfair Display', serif;
-    font-size: 26px;
+    font-size: clamp(20px, 6vw, 26px);
     font-weight: 700;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #1A1614;
     margin: 0;
-    line-height: 1.6;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+@media (max-width: 400px) {
+    .login-logo h2 {
+        white-space: normal;
+        letter-spacing: 0.08em;
+    }
 }
 
 .login-form {

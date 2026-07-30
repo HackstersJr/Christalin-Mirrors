@@ -17,6 +17,12 @@ export interface AdminSession {
     branch: string | null
 }
 
+/**
+ * Demo credentials shown on the login screen for convenience only.
+ * These are NOT the source of truth — authentication is performed by
+ * Supabase Auth (see login()). Each of these emails must exist as a
+ * Supabase Auth user (see supabase/create_admin_auth_users.sql).
+ */
 export const mockAdminUsers: AdminUser[] = [
     { email: 'christalinmirrors.admin@gmail.com', password: 'Admin@1234', name: 'Sushmitha Cristalin A.', role: 'owner', branch: null },
     { email: 'owner@christalinmirrors.com', password: 'Admin@1234', name: 'Sushmitha Cristalin A.', role: 'owner', branch: null },
@@ -27,44 +33,42 @@ export const mockAdminUsers: AdminUser[] = [
 
 const SESSION_KEY = 'cm_admin_session'
 
+function normalizeRole(role: unknown): AdminRole {
+    const r = String(role || '').toLowerCase()
+    if (r === 'owner' || r === 'manager' || r === 'receptionist') return r
+    return 'receptionist'
+}
+
 export const authStore = {
-    /** Validates credentials against Supabase / fallback demo accounts. */
+    /**
+     * Authenticates against Supabase Auth. The signed-in session's JWT is
+     * automatically attached by the supabase-js client to every subsequent
+     * query, which is what RLS policies use to grant admin access.
+     * Role/branch/name are read from the user's metadata.
+     */
     async login(email: string, password: string): Promise<AdminSession | null> {
         const cleanEmail = email.trim().toLowerCase()
 
-        // 1. Check Supabase DB first
-        try {
-            const { data: dbUser } = await supabase
-                .from('User')
-                .select('*, staff:Staff(*, branch:Branch(*))')
-                .eq('email', cleanEmail)
-                .single()
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+        })
 
-            if (dbUser && dbUser.isActive) {
-                const roleLower = String(dbUser.role).toLowerCase() as AdminRole
-                const branchName = dbUser.staff?.branch?.name ? dbUser.staff.branch.name.replace('CM — ', '') : null
-                const session: AdminSession = {
-                    email: dbUser.email,
-                    name: dbUser.staff?.name || dbUser.email,
-                    role: roleLower === ('owner' as any) ? 'owner' : roleLower,
-                    branch: roleLower === 'owner' ? null : branchName,
-                }
-                localStorage.setItem('adminToken', dbUser.id)
-                localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-                return session
-            }
-        } catch {
-            // fallback below if db error or missing table entry
+        if (error || !data.user || !data.session) return null
+
+        const meta = { ...data.user.app_metadata, ...data.user.user_metadata } as Record<string, unknown>
+        const role = normalizeRole(meta.role)
+        const branch = role === 'owner' ? null : ((meta.branch as string) || null)
+
+        const session: AdminSession = {
+            email: data.user.email || cleanEmail,
+            name: (meta.name as string) || data.user.email || cleanEmail,
+            role,
+            branch,
         }
 
-        // 2. Demo fallback
-        const user = mockAdminUsers.find(
-            (u) => u.email.toLowerCase() === cleanEmail && u.password === password
-        )
-        if (!user) return null
-
-        const session: AdminSession = { email: user.email, name: user.name, role: user.role, branch: user.branch }
-        localStorage.setItem('adminToken', 'dev-token')
+        // Kept for backward-compat with existing route guards.
+        localStorage.setItem('adminToken', data.session.access_token)
         localStorage.setItem(SESSION_KEY, JSON.stringify(session))
         return session
     },
@@ -74,7 +78,8 @@ export const authStore = {
         return raw ? JSON.parse(raw) : null
     },
 
-    logout() {
+    async logout() {
+        try { await supabase.auth.signOut() } catch { /* ignore */ }
         localStorage.removeItem('adminToken')
         localStorage.removeItem(SESSION_KEY)
     },

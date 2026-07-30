@@ -164,29 +164,19 @@ export const appointmentStore = {
         }
 
         try {
-            const { data, error } = await supabase
-                .from('Appointment')
-                .insert(payload)
-                .select('*')
-                .single()
+            // Public bookings run as the anon role, which has INSERT-only access
+            // to Appointment (no SELECT, to keep other clients' data private).
+            // So we must NOT read the row back — build the result from the
+            // payload we already constructed.
+            const { error } = await supabase.from('Appointment').insert(payload)
 
-            if (!error && data) {
+            if (!error) {
                 return {
-                    id: data.id,
-                    clientId: data.clientId || '',
-                    staffId: data.staffId || '',
-                    serviceId: data.serviceId || '',
-                    clientName: data.clientName,
-                    clientEmail: data.clientEmail,
-                    clientPhone: data.clientPhone || undefined,
-                    date: String(data.date).split('T')[0],
-                    time: data.time,
-                    service: data.serviceName,
-                    stylist: data.staffName || undefined,
-                    status: data.status.toLowerCase() as any,
-                    notes: data.notes || undefined,
-                    branch: mapBranch(data.branch?.name || data.branchId),
-                    createdAt: data.createdAt || new Date().toISOString(),
+                    ...apt,
+                    id: aptId,
+                    clientId: clientId || apt.clientId || '',
+                    status: apt.status || 'pending',
+                    createdAt: nowIso,
                 }
             }
         } catch {

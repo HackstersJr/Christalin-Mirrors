@@ -843,6 +843,42 @@
     height: 40px;
 }
 
+/* ─── Two-column detail layout (profile + stats etc.) ──────────── */
+.detail-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* Horizontal scroll safety wrapper for on-screen invoice/print tables */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Invoice/billing line-item row — service, qty, price, total, remove */
+.invoice-item-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+@media (max-width: 600px) {
+    .invoice-item-row {
+        grid-template-columns: 1fr 1fr auto auto;
+        gap: 8px 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed var(--border-light);
+    }
+    /* The service selector takes the full first row */
+    .invoice-item-row > .admin-form-select:first-child,
+    .invoice-item-row > .dd:first-child {
+        grid-column: 1 / -1;
+    }
+}
+
 /* ─── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .admin-stats-grid {
@@ -876,6 +912,11 @@
         justify-content: center;
     }
 
+    /* Two-column detail layouts stack */
+    .detail-two-col {
+        grid-template-columns: 1fr;
+    }
+
     /* Swap wide data tables for stacked cards */
     .mobile-table-wrapper {
         display: none;
@@ -884,6 +925,23 @@
     .mobile-cards {
         display: flex;
     }
+}
+
+@media (max-width: 600px) {
+    /* Tighter table cells so on-screen tables fit narrow phones */
+    .admin-table th {
+        padding: 10px 10px;
+        font-size: 10px;
+    }
+
+    .admin-table td {
+        padding: 14px 10px;
+        font-size: 12px;
+    }
+
+    /* Stat values shrink slightly so big rupee figures don't clip */
+    .admin-stat-card { padding: 16px; }
+    .admin-stat-card .stat-value { font-size: 26px; }
 }
 
 /* ─── WhatsApp Button Shared (Fix 11) ──────────── */

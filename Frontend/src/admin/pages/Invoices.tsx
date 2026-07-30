@@ -52,11 +52,11 @@ function InvoiceDetail() {
 
     return (
         <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
                 <button className="admin-btn admin-btn-ghost" onClick={() => navigate('/admin/invoices')}>
                     <ArrowLeft size={18} />
                 </button>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 140 }}>
                     <h1 className="admin-page-title" style={{ marginBottom: 0 }}>{invoice.invoiceNumber}</h1>
                     <p className="admin-page-sub">Invoice for {invoice.clientName}</p>
                 </div>
@@ -96,28 +96,30 @@ function InvoiceDetail() {
                 </div>
 
                 {/* Items Table */}
-                <table className="admin-table" style={{ marginBottom: 20 }}>
-                    <thead>
-                        <tr><th>Service</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Unit Price</th><th style={{ textAlign: 'right' }}>Total</th></tr>
-                    </thead>
-                    <tbody>
-                        {invoice.items.map((item, i) => (
-                            <tr key={i}>
-                                <td>
-                                    <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item.service}</div>
-                                    {item.description && <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{item.description}</div>}
-                                </td>
-                                <td style={{ textAlign: 'right' }}>{item.quantity}</td>
-                                <td style={{ textAlign: 'right' }}>₹{item.unitPrice.toLocaleString()}</td>
-                                <td style={{ textAlign: 'right', fontWeight: 500 }}>₹{item.total.toLocaleString()}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <div className="table-scroll" style={{ marginBottom: 20 }}>
+                    <table className="admin-table" style={{ minWidth: 340 }}>
+                        <thead>
+                            <tr><th>Service</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Unit Price</th><th style={{ textAlign: 'right' }}>Total</th></tr>
+                        </thead>
+                        <tbody>
+                            {invoice.items.map((item, i) => (
+                                <tr key={i}>
+                                    <td>
+                                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item.service}</div>
+                                        {item.description && <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{item.description}</div>}
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>{item.quantity}</td>
+                                    <td style={{ textAlign: 'right' }}>₹{item.unitPrice.toLocaleString()}</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 500 }}>₹{item.total.toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
 
                 {/* Totals */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <div style={{ width: 280 }}>
+                    <div style={{ width: 280, maxWidth: '100%' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: 'var(--text-secondary)' }}>
                             <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString()}</span>
                         </div>
@@ -154,7 +156,7 @@ function InvoiceDetail() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
                 {invoice.status === 'draft' && <button className="admin-btn admin-btn-primary" onClick={() => updateStatus('sent')}>Mark as Sent</button>}
                 {(invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'draft') && <button className="admin-btn admin-btn-primary" style={{ background: 'var(--success)', color: 'white', borderColor: 'var(--success)' }} onClick={() => updateStatus('paid')}>Mark as Paid</button>}
                 {invoice.status !== 'cancelled' && invoice.status !== 'paid' && <button className="admin-btn admin-btn-danger" onClick={() => updateStatus('cancelled')}>Cancel Invoice</button>}
@@ -255,7 +257,7 @@ function InvoiceList() {
             </div>
 
             {/* Stats */}
-            <div className="admin-stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="admin-stats-grid">
                 <div className="admin-stat-card" style={{ borderTop: '2px solid rgba(255, 255, 255, 0.15)' }}><div className="stat-label">Total Invoices</div><div className="stat-value">{invoices.length}</div></div>
                 <div className="admin-stat-card" style={{ borderTop: '2px solid rgba(16, 185, 129, 0.4)' }}><div className="stat-label">Revenue (Paid)</div><div className="stat-value green">₹{totalRevenue.toLocaleString()}</div></div>
                 <div className="admin-stat-card" style={{ borderTop: outstanding > 0 ? '2px solid rgba(245, 158, 11, 0.4)' : '2px solid rgba(16, 185, 129, 0.4)' }}><div className="stat-label">Outstanding</div><div className="stat-value" style={{ color: outstanding > 0 ? 'var(--warning-light)' : 'var(--success-light)' }}>₹{outstanding.toLocaleString()}</div></div>
@@ -300,7 +302,7 @@ function InvoiceList() {
                         <div style={{ marginTop: 20 }}>
                             <div className="admin-form-label" style={{ marginBottom: 10 }}>Services</div>
                             {items.map((item, idx) => (
-                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                                <div key={idx} className="invoice-item-row">
                                     <select className="admin-form-select" value={item.service} onChange={e => updateItem(idx, 'service', e.target.value)} required>
                                         <option value="">Select service</option>
                                         {services.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
