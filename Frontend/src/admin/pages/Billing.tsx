@@ -273,7 +273,8 @@ export default function Billing() {
         });
         text += `\nSubtotal: ₹${lastInvoice.subtotal}\n`;
         if (lastInvoice.discountAmount > 0) text += `Discount: -₹${lastInvoice.discountAmount}\n`;
-        text += `GST: ₹${lastInvoice.taxAmount}\n`;
+        text += `CGST (${lastInvoice.taxPercent / 2}%): ₹${Math.floor(lastInvoice.taxAmount / 2)}\n`;
+        text += `SGST (${lastInvoice.taxPercent / 2}%): ₹${lastInvoice.taxAmount - Math.floor(lastInvoice.taxAmount / 2)}\n`;
         text += `*Total: ₹${lastInvoice.total}*\n\n`;
         text += `Thank you for your visit!`;
         
@@ -333,7 +334,7 @@ export default function Billing() {
                 <div className="billing-section billing-section--client">
                     <div className="billing-section-header">
                         <h3><User size={16} /> Client Registration</h3>
-                        {!showNewClientForm && <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setShowNewClientForm(true)}>+ New Client</button>}
+                        {!showNewClientForm && <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={() => setShowNewClientForm(true)}>+ New Client</button>}
                     </div>
                     
                     {showNewClientForm ? (
@@ -478,7 +479,7 @@ export default function Billing() {
 
                     <div className="billing-item-actions">
                         <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={addServiceItem}><Plus size={14} /> Add Service</button>
-                        <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={addProductItem}><Package size={14} /> Add Retail Product</button>
+                        <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={addProductItem}><Package size={14} /> Add Retail Product</button>
                     </div>
                 </div>
 
@@ -590,7 +591,10 @@ export default function Billing() {
                             </div>
                         )}
                         <div className="preview-tax">
-                            <span>GST ({taxPercent}%)</span><span>₹{taxAmount.toLocaleString()}</span>
+                            <span>CGST ({(taxPercent / 2)}%)</span><span>₹{Math.floor(taxAmount / 2).toLocaleString()}</span>
+                        </div>
+                        <div className="preview-tax">
+                            <span>SGST ({(taxPercent / 2)}%)</span><span>₹{(taxAmount - Math.floor(taxAmount / 2)).toLocaleString()}</span>
                         </div>
                         <div className="preview-grand-total">
                             <span>Total</span><span>₹{total.toLocaleString()}</span>

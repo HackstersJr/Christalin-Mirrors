@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Christalin Mirrors — Gulbarga Launch & Rollout Plan</title>
+<style>
+    @page { size: A4; margin: 18mm 16mm 20mm 16mm; @bottom-right { content: counter(page) " / " counter(pages); } }
+    * { box-sizing: border-box; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: "Segoe UI","Helvetica Neue",Arial,sans-serif; color:#1f1b18; font-size:10.5pt; line-height:1.5; margin:0; }
+    :root { --accent:#A0694A; --accent-dark:#7c4f36; --muted:#6b6355; --line:#e4ddd3; --bg-soft:#faf6f1; --green:#0f8a5f; --amber:#b7791f; --red:#b4453a; }
+    h1,h2,h3,h4 { font-family:Georgia,"Times New Roman",serif; color:#14100d; margin:0 0 6px; }
+    h1 { font-size:25pt; line-height:1.15; }
+    h2 { font-size:16pt; color:var(--accent-dark); margin-top:0; padding-bottom:6px; border-bottom:2px solid var(--accent); }
+    h3 { font-size:12.5pt; margin-top:16px; color:var(--accent-dark); }
+    h4 { font-size:11pt; margin-top:12px; }
+    p { margin:6px 0; }
+    ul,ol { margin:6px 0; padding-left:20px; }
+    li { margin:3px 0; }
+    code { background:#f2ece4; padding:1px 5px; border-radius:4px; font-family:"Consolas",monospace; font-size:9.5pt; }
+    pre { background:#1f1b18; color:#f3ede4; padding:12px 14px; border-radius:8px; font-family:"Consolas",monospace; font-size:9pt; line-height:1.45; white-space:pre-wrap; }
+    table { width:100%; border-collapse:collapse; margin:10px 0; font-size:9.6pt; }
+    th,td { border:1px solid var(--line); padding:6px 9px; text-align:left; vertical-align:top; }
+    th { background:var(--bg-soft); color:var(--accent-dark); font-family:Georgia,serif; }
+    .muted { color:var(--muted); }
+    .tag { display:inline-block; background:var(--bg-soft); border:1px solid var(--line); border-radius:999px; padding:1px 9px; font-size:8.5pt; color:var(--accent-dark); white-space:nowrap; }
+    .tag.ok { background:#eefaf3; border-color:#bfe6d2; color:var(--green); }
+    .tag.no { background:#fdeceb; border-color:#f0c9c4; color:var(--red); }
+    .tag.part { background:#fdf6e9; border-color:#f0dcb4; color:var(--amber); }
+    .callout { border-left:4px solid var(--accent); background:var(--bg-soft); padding:10px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+    .callout.warn { border-left-color:var(--amber); background:#fdf6e9; }
+    .callout.ok { border-left-color:var(--green); background:#eefaf3; }
+    .callout.risk { border-left-color:var(--red); background:#fdeceb; }
+    .checklist { list-style:none; padding-left:0; }
+    .checklist li { padding-left:24px; position:relative; margin:5px 0; }
+    .checklist li::before { content:"☐"; position:absolute; left:0; top:-1px; font-size:12pt; color:var(--accent); }
+    .page-break { page-break-before:always; }
+    .avoid-break { page-break-inside:avoid; }
+    .cover { padding-top:38mm; }
+    .cover .brand { font-family:Georgia,serif; letter-spacing:4px; text-transform:uppercase; color:var(--accent); font-size:12pt; margin-bottom:36px; }
+    .cover .sub { color:var(--muted); font-size:13pt; margin-top:10px; }
+    .cover .meta { margin-top:52px; color:var(--muted); font-size:10pt; }
+    .lead { font-size:11.5pt; color:#33291f; }
+    .toc { list-style:none; padding-left:0; }
+    .toc li { border-bottom:1px dotted var(--line); padding:5px 0; }
+    .num { color:var(--accent); font-weight:bold; margin-right:8px; }
+    .small { font-size:9pt; }
+    .phase { border:1px solid var(--line); border-radius:8px; padding:2px 14px 10px; margin:12px 0; }
+    .phase h4 { color:var(--accent-dark); }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<section class="cover">
+    <div class="brand">Christalin Mirrors</div>
+    <h1>Gulbarga Branch<br>Launch &amp; Rollout Plan</h1>
+    <div class="sub">Complete project overview, feature inventory, phased rollout, and testing plan for the digital salon-management platform.</div>
+    <div class="meta">
+        Prepared: 30 July 2026 &nbsp;·&nbsp; Version 1.0<br>
+        Occasion: Gulbarga (Kalaburagi) branch inauguration — 31 July 2026<br>
+        Status: <strong>In development</strong> · staged soft-launch recommended<br>
+        Audience: Owner / Operations / Development team
+    </div>
+</section>
+
+<!-- TOC -->
+<section class="page-break">
+    <h2>Contents</h2>
+    <ol class="toc">
+        <li><span class="num">1</span> Project overview</li>
+        <li><span class="num">2</span> System architecture &amp; current status</li>
+        <li><span class="num">3</span> Feature inventory — customer website</li>
+        <li><span class="num">4</span> Feature inventory — staff admin panel</li>
+        <li><span class="num">5</span> Backend &amp; data platform</li>
+        <li><span class="num">6</span> User roles &amp; access</li>
+        <li><span class="num">7</span> Launch-readiness assessment</li>
+        <li><span class="num">8</span> Rollout plan (phased, with dates)</li>
+        <li><span class="num">9</span> Testing plan &amp; phases</li>
+        <li><span class="num">10</span> Inauguration-day plan &amp; fallback (31 Jul)</li>
+        <li><span class="num">11</span> Risks &amp; mitigations</li>
+        <li><span class="num">12</span> Go-live checklist</li>
+        <li><span class="num">13</span> Post-launch support &amp; roadmap</li>
+    </ol>
+</section>
+
+<!-- 1 -->
+<section class="page-break">
+    <h2>1 · Project overview</h2>
+    <p class="lead">Christalin Mirrors is a premium salon operating across branches (Bengaluru, and now Gulbarga/Kalaburagi). The project is a complete digital platform with two faces:</p>
+    <ul>
+        <li><strong>Customer-facing website</strong> — brand presence, services, gallery, and online appointment booking.</li>
+        <li><strong>Staff admin panel</strong> — a full salon-management system: point-of-sale billing with GST, appointments, clients, invoices, staff, attendance, inventory, and revenue reporting, all scoped per branch with role-based access.</li>
+    </ul>
+    <p>A <strong>backend service and database</strong> (Express + Prisma + PostgreSQL) have been built to power both, with authentication, role permissions, and image hosting.</p>
+    <div class="callout warn"><strong>Status in one line:</strong> the platform's features are built and demonstrable, but the app currently runs on <em>in-browser demo data</em> and is <strong>not yet connected to the live backend/database</strong>. This document plans a safe, phased path from "inauguration" to "fully live".</div>
+</section>
+
+<!-- 2 -->
+<section>
+    <h2>2 · System architecture &amp; current status</h2>
+    <table class="avoid-break">
+        <tr><th style="width:22%">Layer</th><th style="width:30%">Built with</th><th>Current status</th></tr>
+        <tr><td>Customer website</td><td>React + Vite, responsive, Cloudinary media</td><td><span class="tag ok">Ready</span> Marketing site &amp; booking UI complete.</td></tr>
+        <tr><td>Staff admin panel</td><td>React SPA, role-based routing, light/dark theme</td><td><span class="tag ok">Ready (UI/UX)</span> All modules functional on demo data.</td></tr>
+        <tr><td>Data layer (now)</td><td>Browser <code>localStorage</code> (seeded mock data)</td><td><span class="tag part">Interim</span> Per-device, per-browser. No sharing/backup.</td></tr>
+        <tr><td>Backend API</td><td>Express + Prisma, JWT auth, RBAC, validation</td><td><span class="tag part">Built, not connected</span> Endpoints &amp; services exist; frontend not yet calling them.</td></tr>
+        <tr><td>Database</td><td>PostgreSQL (Prisma schema + seed)</td><td><span class="tag part">Schema ready</span> Needs provisioning, migration &amp; hosting.</td></tr>
+        <tr><td>Payments (Pine Labs)</td><td>Card terminal integration</td><td><span class="tag no">Pending</span> Awaiting merchant credentials (separate plan doc).</td></tr>
+        <tr><td>Bill auto-archive</td><td>PDF save to folder</td><td><span class="tag no">Planned</span> Design ready; not yet built.</td></tr>
+    </table>
+    <div class="callout risk"><strong>Most important gap:</strong> because data lives in the browser today, two receptionists on two computers would <em>not</em> see the same clients, appointments, or invoices, and clearing the browser cache would erase data. <strong>Central data (backend + database) must be connected before the software is relied upon for real operations</strong> — see the rollout phases.</div>
+</section>
+
+<!-- 3 -->
+<section class="page-break">
+    <h2>3 · Feature inventory — customer website</h2>
+    <table>
+        <tr><th style="width:30%">Feature</th><th>Description</th></tr>
+        <tr><td>Landing / brand experience</td><td>Hero, About, Founder's Note, animated reveals, loading screen.</td></tr>
+        <tr><td>Services showcase</td><td>Service categories &amp; highlights for clients.</td></tr>
+        <tr><td>Branches</td><td>Branch locations &amp; details (Bengaluru, Gulbarga).</td></tr>
+        <tr><td>Gallery</td><td>Salon &amp; work photos (Cloudinary-hosted, optimised).</td></tr>
+        <tr><td>Testimonials</td><td>Client reviews section.</td></tr>
+        <tr><td>Online appointment booking</td><td>Multi-step booking flow (service, branch, date/time, details).</td></tr>
+        <tr><td>Contact</td><td>Contact section / enquiry.</td></tr>
+        <tr><td>Legal</td><td>Privacy Policy &amp; Terms pages.</td></tr>
+        <tr><td>Technical</td><td>Mobile-responsive, SEO-friendly, favicon &amp; crawler fixes, performance-tuned (Lighthouse pass).</td></tr>
+    </table>
+    <p class="small muted">Note: booking submissions currently save to the interim in-browser store; they route to the database once the backend is connected (Phase 2).</p>
+</section>
+
+<!-- 4 -->
+<section>
+    <h2>4 · Feature inventory — staff admin panel</h2>
+    <table>
+        <tr><th style="width:24%">Module</th><th>Key capabilities</th></tr>
+        <tr><td>Secure login</td><td>Role-based sign-in; owner / manager / receptionist accounts; branch pinning.</td></tr>
+        <tr><td>Dashboard</td><td>Branch KPIs (today's appointments, pending requests, total clients, revenue); pending-confirmation nudge (branch staff); upcoming appointments; owner sees an all-branch overview with per-branch cards.</td></tr>
+        <tr><td>Billing / POS</td><td>Client search or on-the-spot registration; assign stylist; add services &amp; retail products; discount; GST at 5% shown as CGST + SGST; Cash / UPI / Card with change calc; pull items from today's appointment; live receipt preview; print; WhatsApp the bill.</td></tr>
+        <tr><td>Appointments</td><td>List with search &amp; status filter; status flow (pending → confirmed → arrived → completed / cancelled) via dropdown; reschedule date &amp; time; view linked client; call / WhatsApp the client; mobile-friendly card view.</td></tr>
+        <tr><td>Calendar</td><td>Calendar view of appointments.</td></tr>
+        <tr><td>Clients</td><td>Client database (shared across branches); profile with total visits, spend, last visit; service, invoice &amp; appointment history; call / WhatsApp contact; tags (VIP, etc.).</td></tr>
+        <tr><td>Invoices</td><td>Invoice list &amp; detail; GST (CGST + SGST) breakup; print; WhatsApp share.</td></tr>
+        <tr><td>Staff</td><td>Staff directory; roles &amp; specialties; active/inactive; per-branch (owner &amp; manager).</td></tr>
+        <tr><td>Attendance</td><td>Staff attendance tracking (owner &amp; manager).</td></tr>
+        <tr><td>Services</td><td>Service catalogue management — pricing &amp; categories (owner).</td></tr>
+        <tr><td>Inventory</td><td>Retail products &amp; stock.</td></tr>
+        <tr><td>Revenue</td><td>Revenue analytics; branch filter; monthly trend; branch comparison (owner).</td></tr>
+        <tr><td>Settings</td><td>Salon configuration (owner).</td></tr>
+        <tr><td>Experience</td><td>Light/dark theme; fully mobile-responsive admin; company logo branding.</td></tr>
+    </table>
+</section>
+
+<!-- 5 -->
+<section class="page-break">
+    <h2>5 · Backend &amp; data platform</h2>
+    <p>A production-oriented backend is already built and awaiting connection:</p>
+    <ul>
+        <li><strong>Stack:</strong> Express + Prisma ORM + PostgreSQL; JWT authentication; role-based access control (RBAC) middleware; request validation; Cloudinary image uploads.</li>
+        <li><strong>Data models:</strong> Branch, Service, Staff, User, Client, Appointment, Invoice, InvoiceItem, ServiceVisit, InventoryItem, SalonSettings, ContactSubmission, and an InvoiceSequence (for unique bill numbers).</li>
+        <li><strong>Services/endpoints present for:</strong> auth, clients, staff, services, appointments, invoices, inventory, settings, branches, and dashboard aggregation.</li>
+    </ul>
+    <h3>Remaining work to make it live</h3>
+    <ul class="checklist">
+        <li>Provision &amp; host the PostgreSQL database; run migrations &amp; seed reference data (branches, services, staff, owner/manager/receptionist users).</li>
+        <li>Deploy the backend API (with HTTPS) and set environment secrets (DB URL, JWT secret, Cloudinary keys).</li>
+        <li>Point the frontend to the live API and replace the mock login &amp; in-browser store with real API calls.</li>
+        <li>Data backup &amp; restore routine.</li>
+    </ul>
+</section>
+
+<!-- 6 -->
+<section class="avoid-break">
+    <h2>6 · User roles &amp; access</h2>
+    <table>
+        <tr><th>Role</th><th>Sees</th><th>Can do</th></tr>
+        <tr><td>Owner</td><td>All branches</td><td>Everything — billing, clients, staff, services, inventory, settings, and all-branch revenue.</td></tr>
+        <tr><td>Manager</td><td>Own branch</td><td>Billing, appointments, clients, invoices, staff &amp; attendance for their branch.</td></tr>
+        <tr><td>Receptionist</td><td>Own branch</td><td>Front-desk billing, appointments, clients, invoices.</td></tr>
+    </table>
+    <p class="small muted">Branch-sensitive data is scoped to the user's branch; the owner sees all. Clients are intentionally shared across branches (a customer may visit either location).</p>
+</section>
+
+<!-- 7 -->
+<section class="page-break">
+    <h2>7 · Launch-readiness assessment</h2>
+    <table>
+        <tr><th style="width:34%">Area</th><th style="width:16%">Ready?</th><th>Notes</th></tr>
+        <tr><td>Customer website &amp; booking UI</td><td><span class="tag ok">Yes</span></td><td>Can go live for the inauguration.</td></tr>
+        <tr><td>Admin features (functionality)</td><td><span class="tag ok">Yes</span></td><td>All modules work on demo data — good for training &amp; demos.</td></tr>
+        <tr><td>Central shared database</td><td><span class="tag no">No</span></td><td>Backend built but not connected; data is per-browser today.</td></tr>
+        <tr><td>Real authentication</td><td><span class="tag part">Partial</span></td><td>Login is a demo/mock; real JWT login to be wired.</td></tr>
+        <tr><td>Card payments (Pine Labs)</td><td><span class="tag no">No</span></td><td>Awaiting merchant credentials.</td></tr>
+        <tr><td>Bill auto-archive / print-to-folder</td><td><span class="tag no">No</span></td><td>Designed; not built. Manual print works now.</td></tr>
+        <tr><td>Backups &amp; data safety</td><td><span class="tag no">No</span></td><td>Depends on database being live.</td></tr>
+    </table>
+    <div class="callout"><strong>Verdict:</strong> the platform is ready for a <strong>ceremonial launch and staff demos on 31 July</strong>, but should <strong>not</strong> be the sole system of record for money/appointments until the database is connected (Phase 2). Use the phased plan below with a manual fallback in the interim.</div>
+</section>
+
+<!-- 8 -->
+<section class="page-break">
+    <h2>8 · Rollout plan (phased)</h2>
+
+    <div class="phase avoid-break">
+        <h4>Phase 0 — Inauguration &amp; soft launch &nbsp;<span class="tag">31 Jul 2026</span></h4>
+        <ul>
+            <li>Publish the <strong>customer website</strong> (brand, services, branches, gallery) — safe, read-only for visitors.</li>
+            <li>Run the <strong>admin panel in demo mode on the reception desk</strong> for showcasing &amp; staff familiarisation.</li>
+            <li>Take real bookings/bills on the existing manual process (or single-desk app) — see §10 fallback.</li>
+        </ul>
+        <p class="small muted">Goal: a confident public launch without depending on unfinished data plumbing.</p>
+    </div>
+
+    <div class="phase avoid-break">
+        <h4>Phase 1 — Controlled pilot (single desk) &nbsp;<span class="tag">Week 1</span></h4>
+        <ul>
+            <li>Connect <strong>authentication + billing + appointments + clients</strong> to the live backend for <strong>one reception station</strong> at Gulbarga.</li>
+            <li>Receptionist uses it for real transactions while the manual method runs in parallel as backup.</li>
+            <li>Daily check that bills, GST, and totals reconcile.</li>
+        </ul>
+    </div>
+
+    <div class="phase avoid-break">
+        <h4>Phase 2 — Full backend cutover &nbsp;<span class="tag">Weeks 2–3</span></h4>
+        <ul>
+            <li>All admin modules read/write the live database; retire the in-browser store and mock login.</li>
+            <li>Seed real services, staff, and users; enable backups.</li>
+            <li>Multiple devices at the branch share the same data. Retire the manual parallel run once stable.</li>
+        </ul>
+    </div>
+
+    <div class="phase avoid-break">
+        <h4>Phase 3 — Payments &amp; convenience &nbsp;<span class="tag">Weeks 3–5</span></h4>
+        <ul>
+            <li>Integrate <strong>Pine Labs</strong> card terminals (per the separate Pine Labs plan) — auto-mark invoices paid.</li>
+            <li>Ship <strong>bill auto-archive to folder</strong> (receptionist) for easy reprints.</li>
+        </ul>
+    </div>
+
+    <div class="phase avoid-break">
+        <h4>Phase 4 — Scale &amp; optimise &nbsp;<span class="tag">Week 6+</span></h4>
+        <ul>
+            <li>Roll the same live setup to Bengaluru; enable full multi-branch reporting for the owner.</li>
+            <li>Optional: thermal receipts, automatic WhatsApp confirmations, loyalty, deeper analytics.</li>
+        </ul>
+    </div>
+</section>
+
+<!-- 9 -->
+<section class="page-break">
+    <h2>9 · Testing plan &amp; phases</h2>
+    <p>Testing runs alongside the rollout. Each phase has an exit criterion that must pass before proceeding.</p>
+
+    <h3>9.1 · Test phases</h3>
+    <table>
+        <tr><th style="width:22%">Test phase</th><th>What we check</th><th>Exit criterion</th></tr>
+        <tr><td>Smoke test</td><td>App loads; every page opens; login works; no console errors.</td><td>All pages reachable for each role.</td></tr>
+        <tr><td>Functional (per module)</td><td>Create/edit/delete for clients, appointments, invoices, staff, services, inventory; billing math (subtotal, discount, GST 5% = CGST 2.5% + SGST 2.5%, total); reschedule; status flow.</td><td>All core actions behave correctly; totals reconcile to the rupee.</td></tr>
+        <tr><td>Role &amp; branch access</td><td>Owner/manager/receptionist see only what they should; branch scoping; clients shared.</td><td>No unauthorised access; correct scoping.</td></tr>
+        <tr><td>Data-integrity (post-backend)</td><td>Two devices see the same data; refresh keeps data; invoice numbers unique; no data loss.</td><td>Consistent shared data across devices.</td></tr>
+        <tr><td>Payments (Phase 3)</td><td>Terminal charge → correct amount, correct branch terminal, success/failure/cancel handled, no double charge.</td><td>Sandbox &amp; live test charges reconcile.</td></tr>
+        <tr><td>Cross-device / responsive</td><td>Reception desktop, tablet, and mobile layouts; dropdowns, cards, print.</td><td>Usable on target devices &amp; browsers.</td></tr>
+        <tr><td>Security</td><td>Auth required on admin; tokens; no secrets in browser; HTTPS.</td><td>No sensitive data client-side; access enforced server-side.</td></tr>
+        <tr><td>Backup &amp; recovery</td><td>Database backup taken and restore tested.</td><td>Successful restore drill.</td></tr>
+        <tr><td>UAT (staff sign-off)</td><td>Receptionist &amp; manager run a real day's flow end-to-end.</td><td>Staff confirm it's ready; issues logged &amp; fixed.</td></tr>
+    </table>
+
+    <h3>9.2 · Priority test scenarios (billing)</h3>
+    <ul>
+        <li>Walk-in: register client → add 2 services + 1 product → 10% discount → GST → cash with change → print → WhatsApp.</li>
+        <li>Appointment → bill: pull items from today's appointment → pay by UPI → mark appointment completed.</li>
+        <li>GST correctness: verify CGST + SGST each = half of GST and sum exactly to total on odd amounts.</li>
+        <li>Reschedule: change an appointment's date &amp; time; verify it updates everywhere.</li>
+        <li>Cross-branch client: a Bengaluru client billed at Gulbarga is found and linked.</li>
+    </ul>
+</section>
+
+<!-- 10 -->
+<section class="page-break">
+    <h2>10 · Inauguration-day plan &amp; fallback (31 Jul)</h2>
+    <h3>On the day</h3>
+    <ul class="checklist">
+        <li>Customer website live and checked on phone &amp; desktop.</li>
+        <li>Reception laptop/desktop set up with the admin panel; owner &amp; receptionist logins tested.</li>
+        <li>Admin panel used to <strong>showcase</strong> billing, appointments, and dashboards to guests/staff.</li>
+        <li>WhatsApp bill sharing demonstrated.</li>
+        <li>Staff walkthrough / mini-training on the POS flow.</li>
+    </ul>
+    <div class="callout warn"><strong>Because central data isn't connected yet,</strong> treat the software on day one as a <strong>demo + single-desk tool</strong>, not the shared system of record. Keep the existing manual billing/receipt method available for actual transactions until Phase 2 completes.</div>
+    <h3>Fallback for real transactions (until Phase 2)</h3>
+    <ul>
+        <li>Take payments as today (cash/UPI/existing card machine) and issue a manual/printed receipt.</li>
+        <li>If using the app on the single reception desk, do <strong>not</strong> clear the browser cache, and export/print bills at day-end.</li>
+        <li>Record the day's bills so they can be entered once the live database is ready (optional).</li>
+    </ul>
+</section>
+
+<!-- 11 -->
+<section class="page-break">
+    <h2>11 · Risks &amp; mitigations</h2>
+    <table>
+        <tr><th style="width:30%">Risk</th><th style="width:12%">Severity</th><th>Mitigation</th></tr>
+        <tr><td>Data only in browser → loss / no sharing</td><td>High</td><td>Keep manual fallback; prioritise Phase 1–2 backend cutover; don't clear cache; enable backups on go-live.</td></tr>
+        <tr><td>Real login not wired (mock auth)</td><td>Medium</td><td>Limit to trusted staff on one device until JWT auth is live (Phase 1).</td></tr>
+        <tr><td>Pine Labs not integrated</td><td>Medium</td><td>Use existing card machine manually; integrate in Phase 3 once credentials arrive.</td></tr>
+        <tr><td>Internet outage at branch</td><td>Medium</td><td>Manual receipts as backup; ensure reliable connection &amp; a mobile-hotspot fallback.</td></tr>
+        <tr><td>GST rate / invoice compliance</td><td>Medium</td><td>Confirm 5% and required invoice fields (GSTIN, SAC, CGST/SGST) with the accountant before real billing.</td></tr>
+        <tr><td>Staff unfamiliar with system</td><td>Low</td><td>Training on inauguration day + quick reference guide; pilot period with support.</td></tr>
+        <tr><td>Bugs discovered in real use</td><td>Low/Med</td><td>Pilot phase with parallel manual run; fast-fix cycle; UAT sign-off before cutover.</td></tr>
+    </table>
+</section>
+
+<!-- 12 -->
+<section class="avoid-break">
+    <h2>12 · Go-live checklist</h2>
+    <h4>Before go-live (Phase 2 cutover)</h4>
+    <ul class="checklist">
+        <li>Database provisioned, migrated, seeded (branches, services, staff, users).</li>
+        <li>Backend deployed over HTTPS with secrets set; health-checked.</li>
+        <li>Frontend pointed to live API; mock login &amp; in-browser store removed.</li>
+        <li>Real owner / manager / receptionist accounts created &amp; tested.</li>
+        <li>Invoice numbering verified unique &amp; sequential.</li>
+        <li>GST rate &amp; invoice format confirmed with accountant.</li>
+        <li>Backup routine enabled &amp; a restore tested.</li>
+        <li>All §9 test phases passed; staff UAT signed off.</li>
+        <li>Support contact &amp; rollback plan agreed.</li>
+    </ul>
+</section>
+
+<!-- 13 -->
+<section class="avoid-break">
+    <h2>13 · Post-launch support &amp; roadmap</h2>
+    <ul>
+        <li><strong>Hypercare (first 2 weeks):</strong> daily reconciliation, fast bug fixes, on-call support during business hours.</li>
+        <li><strong>Then:</strong> Pine Labs payments, bill auto-archive, Bengaluru cutover, all-branch reporting.</li>
+        <li><strong>Future options:</strong> automatic WhatsApp appointment confirmations/reminders, loyalty &amp; offers, thermal receipt printing, client GSTIN on invoices, deeper analytics, and staff performance dashboards.</li>
+    </ul>
+    <div class="callout ok"><strong>Bottom line:</strong> inaugurate confidently on 31 July with the website live and the admin panel as a showcase/single-desk tool; then execute Phases 1–2 quickly to make it the shared, backed-up system of record, followed by payments and convenience features.</div>
+</section>
+
+<p class="muted small" style="margin-top:24px; text-align:center;">Christalin Mirrors — Gulbarga Launch &amp; Rollout Plan v1.0 · Internal planning document</p>
+
+</body>
+</html>

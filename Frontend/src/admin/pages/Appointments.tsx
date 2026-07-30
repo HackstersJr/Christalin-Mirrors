@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search, Clock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Search, Clock, CalendarClock, Phone, MessageCircle, Eye } from 'lucide-react'
 import { appointmentStore, serviceStore, clientStore, staffStore } from '../data/store'
 import { getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Appointment, ServiceRecord, Client, StaffMember } from '../data/types'
+import Dropdown from '../components/Dropdown'
 import '../AdminShared.css'
 
 const timeSlots = [
     '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM',
     '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM',
     '6:00 PM', '7:00 PM', '8:00 PM',
+]
+
+// Digits only, for tel:/wa.me links
+const waNumber = (phone: string) => phone.replace(/\D/g, '')
+
+const statusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'arrived', label: 'Arrived' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
 ]
 
 const emptyForm = {
@@ -19,6 +32,7 @@ const emptyForm = {
 }
 
 export default function Appointments() {
+    const navigate = useNavigate()
     const branchScope = getBranchScope()
     const scopedEmptyForm = { ...emptyForm, branch: branchScope || 'Bengaluru' }
     const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -26,6 +40,11 @@ export default function Appointments() {
     const [statusFilter, setStatusFilter] = useState<string>('all')
     const [showForm, setShowForm] = useState(false)
     const [form, setForm] = useState(scopedEmptyForm)
+
+    // Reschedule modal state
+    const [rescheduleId, setRescheduleId] = useState<string | null>(null)
+    const [reDate, setReDate] = useState('')
+    const [reTime, setReTime] = useState('')
 
     // Data for dropdowns (Fix 7)
     const [services, setServices] = useState<ServiceRecord[]>([])
@@ -36,7 +55,8 @@ export default function Appointments() {
     useEffect(() => {
         reload()
         setServices(serviceStore.getAll().filter(s => s.isActive))
-        setClients(scopeByBranch(clientStore.getAll()))
+        // Clients are shared across branches; staff stays branch-scoped.
+        setClients(clientStore.getAll())
         setStaffList(scopeByBranch(staffStore.getAll().filter(s => s.isActive)))
     }, [])
 
@@ -48,6 +68,12 @@ export default function Appointments() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
+        // Service & Time use the custom Dropdown (no native `required`),
+        // so validate them explicitly before creating the appointment.
+        if (!form.service || !form.time) {
+            alert('Please select a service and time.')
+            return
+        }
         // Find entities to get IDs (Fix 7 / Task 1)
         const matchedClient = clients.find(c => c.name === form.clientName)
         const matchedStaff = staffList.find(s => s.name === form.stylist)
@@ -69,19 +95,71 @@ export default function Appointments() {
         reload()
     }
 
+    // Resolve the client record linked to an appointment by id, name, or email
+    // (seed appointments may not store a clientId directly).
+    const getClient = (apt: Appointment) => clients.find(c =>
+        (apt.clientId && c.id === apt.clientId) ||
+        c.name === apt.clientName ||
+        c.email === apt.clientEmail
+    )
+
+    // Appointments may not carry a phone directly, so fall back to the client's.
+    const getPhone = (apt: Appointment) => apt.clientPhone || getClient(apt)?.phone || ''
+
+    const viewClient = (apt: Appointment) => {
+        const c = getClient(apt)
+        if (c) navigate(`/admin/clients/${c.id}`)
+    }
+
+    const startReschedule = (apt: Appointment) => {
+        setRescheduleId(apt.id)
+        setReDate(apt.date)
+        setReTime(apt.time)
+    }
+
+    const cancelReschedule = () => {
+        setRescheduleId(null)
+        setReDate('')
+        setReTime('')
+    }
+
+    const saveReschedule = () => {
+        if (!rescheduleId) return
+        if (!reDate || !reTime) {
+            alert('Please choose a new date and time.')
+            return
+        }
+        appointmentStore.update(rescheduleId, { date: reDate, time: reTime })
+        cancelReschedule()
+        reload()
+    }
+
     const renderActions = (apt: Appointment) => (
-        <select
-            className={`admin-status-select status-${apt.status}`}
-            value={apt.status}
-            onChange={e => updateStatus(apt.id, e.target.value as Appointment['status'])}
-            title="Change status"
-        >
-            <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="arrived">Arrived</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-        </select>
+        <div className="admin-actions" style={{ alignItems: 'center' }}>
+            {getClient(apt) && (
+                <button
+                    className="admin-btn admin-btn-ghost admin-btn-sm"
+                    title="View client"
+                    onClick={() => viewClient(apt)}
+                >
+                    <Eye size={16} />
+                </button>
+            )}
+            <button
+                className="admin-btn admin-btn-ghost admin-btn-sm"
+                title="Reschedule date & time"
+                onClick={() => startReschedule(apt)}
+            >
+                <CalendarClock size={16} />
+            </button>
+            <Dropdown
+                variant="status"
+                value={apt.status}
+                onChange={v => updateStatus(apt.id, v as Appointment['status'])}
+                options={statusOptions}
+                aria-label="Change status"
+            />
+        </div>
     )
 
     return (
@@ -117,10 +195,12 @@ export default function Appointments() {
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Service *</label>
-                                <select className="admin-form-select" value={form.service} onChange={e => setForm({ ...form, service: e.target.value })} required>
-                                    <option value="">Select service</option>
-                                    {services.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                </select>
+                                <Dropdown
+                                    value={form.service}
+                                    onChange={v => setForm({ ...form, service: v })}
+                                    placeholder="Select service"
+                                    options={services.map(s => ({ value: s.name, label: s.name }))}
+                                />
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Date *</label>
@@ -128,29 +208,35 @@ export default function Appointments() {
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Time *</label>
-                                <select className="admin-form-select" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} required>
-                                    <option value="">Select time</option>
-                                    {timeSlots.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
+                                <Dropdown
+                                    value={form.time}
+                                    onChange={v => setForm({ ...form, time: v })}
+                                    placeholder="Select time"
+                                    options={timeSlots.map(s => ({ value: s, label: s }))}
+                                />
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Stylist</label>
-                                <select className="admin-form-select" value={form.stylist} onChange={e => setForm({ ...form, stylist: e.target.value })}>
-                                    <option value="">Select stylist (optional)</option>
-                                    {staffList.map(s => <option key={s.id} value={s.name}>{s.name} ({s.role})</option>)}
-                                </select>
+                                <Dropdown
+                                    value={form.stylist}
+                                    onChange={v => setForm({ ...form, stylist: v })}
+                                    placeholder="Select stylist (optional)"
+                                    options={staffList.map(s => ({ value: s.name, label: `${s.name} (${s.role})` }))}
+                                />
                             </div>
-                            <div className="admin-form-group">
-                                <label className="admin-form-label">Branch</label>
-                                {branchScope ? (
-                                    <input className="admin-form-input" value={branchScope} disabled />
-                                ) : (
-                                    <select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}>
-                                        <option value="Bengaluru">Bengaluru</option>
-                                        <option value="Kalaburagi">Kalaburagi</option>
-                                    </select>
-                                )}
-                            </div>
+                            {!branchScope && (
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Branch</label>
+                                    <Dropdown
+                                        value={form.branch}
+                                        onChange={v => setForm({ ...form, branch: v })}
+                                        options={[
+                                            { value: 'Bengaluru', label: 'Bengaluru' },
+                                            { value: 'Kalaburagi', label: 'Kalaburagi' },
+                                        ]}
+                                    />
+                                </div>
+                            )}
                             <div className="admin-form-group full">
                                 <label className="admin-form-label">Notes</label>
                                 <textarea className="admin-form-textarea" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Any special notes..." />
@@ -167,18 +253,16 @@ export default function Appointments() {
             {/* Filters */}
             <div className="admin-toolbar">
                 <input className="admin-search" placeholder="Search by name or service..." value={search} onChange={e => setSearch(e.target.value)} />
-                <select className="admin-filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                    <option value="all">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="arrived">Arrived</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                </select>
+                <Dropdown
+                    variant="filter"
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    options={[{ value: 'all', label: 'All Status' }, ...statusOptions]}
+                />
             </div>
 
             {/* Table */}
-            <div className="admin-table-wrapper apt-table-wrapper">
+            <div className="admin-table-wrapper mobile-table-wrapper">
                 <table className="admin-table">
                     <thead>
                         <tr>
@@ -187,14 +271,14 @@ export default function Appointments() {
                             <th>Time</th>
                             <th>Service</th>
                             <th>Stylist</th>
-                            <th>Branch</th>
+                            {!branchScope && <th>Branch</th>}
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filtered.length === 0 ? (
-                            <tr><td colSpan={8}>
+                            <tr><td colSpan={branchScope ? 7 : 8}>
                                 <div className="admin-empty" style={{ padding: 32 }}>
                                     <Search size={28} className="admin-empty-icon" />
                                     <h3>No appointments found</h3>
@@ -206,12 +290,17 @@ export default function Appointments() {
                                 <td>
                                     <div className="cell-primary" style={{ fontSize: 14 }}>{apt.clientName}</div>
                                     <div className="cell-secondary">{apt.clientEmail}</div>
+                                    {getPhone(apt) && (
+                                        <a href={`tel:${getPhone(apt)}`} className="apt-contact-phone" style={{ fontSize: 12 }}>
+                                            <Phone size={11} /> {getPhone(apt)}
+                                        </a>
+                                    )}
                                 </td>
                                 <td>{new Date(apt.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                                 <td><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Clock size={12} />{apt.time}</span></td>
                                 <td className="cell-secondary">{apt.service}</td>
                                 <td className="cell-secondary">{apt.stylist || '—'}</td>
-                                <td className="cell-secondary">{apt.branch}</td>
+                                {!branchScope && <td className="cell-secondary">{apt.branch}</td>}
                                 <td>
                                     <span className={`status-badge ${apt.status}`}>
                                         <span className="status-dot"></span>
@@ -226,7 +315,7 @@ export default function Appointments() {
             </div>
 
             {/* Mobile Card List */}
-            <div className="apt-cards">
+            <div className="mobile-cards">
                 {filtered.length === 0 ? (
                     <div className="admin-empty" style={{ padding: 32 }}>
                         <Search size={28} className="admin-empty-icon" />
@@ -234,45 +323,94 @@ export default function Appointments() {
                         <p>Try adjusting your filters</p>
                     </div>
                 ) : filtered.map(apt => (
-                    <div className="apt-card" key={apt.id}>
-                        <div className="apt-card-top">
-                            <div>
-                                <div className="apt-card-name">{apt.clientName}</div>
-                                <div className="apt-card-email">{apt.clientEmail}</div>
+                    <div className="mobile-card" key={apt.id}>
+                        <div className="mobile-card-top">
+                            <div className="mobile-card-heading">
+                                <div>
+                                    <div className="mobile-card-title">{apt.clientName}</div>
+                                    <div className="mobile-card-sub">{apt.clientEmail}</div>
+                                </div>
                             </div>
                             <span className={`status-badge ${apt.status}`}>
                                 <span className="status-dot"></span>
                                 {apt.status}
                             </span>
                         </div>
-                        <div className="apt-card-meta">
-                            <div className="apt-card-meta-item">
-                                <span className="apt-card-meta-label">Date</span>
+                        <div className="mobile-card-meta">
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Date</span>
                                 <span>{new Date(apt.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                             </div>
-                            <div className="apt-card-meta-item">
-                                <span className="apt-card-meta-label">Time</span>
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Time</span>
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Clock size={12} />{apt.time}</span>
                             </div>
-                            <div className="apt-card-meta-item">
-                                <span className="apt-card-meta-label">Service</span>
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Service</span>
                                 <span>{apt.service}</span>
                             </div>
-                            <div className="apt-card-meta-item">
-                                <span className="apt-card-meta-label">Stylist</span>
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Stylist</span>
                                 <span>{apt.stylist || '—'}</span>
                             </div>
-                            <div className="apt-card-meta-item">
-                                <span className="apt-card-meta-label">Branch</span>
-                                <span>{apt.branch}</span>
-                            </div>
+                            {getPhone(apt) && (
+                                <div className="mobile-card-meta-item full">
+                                    <span className="mobile-card-meta-label">Contact</span>
+                                    <span className="apt-contact">
+                                        <a href={`tel:${getPhone(apt)}`} className="apt-contact-phone">
+                                            <Phone size={13} /> {getPhone(apt)}
+                                        </a>
+                                        <a
+                                            href={`https://wa.me/${waNumber(getPhone(apt))}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="apt-contact-wa"
+                                            title="Message on WhatsApp"
+                                        >
+                                            <MessageCircle size={13} /> WhatsApp
+                                        </a>
+                                    </span>
+                                </div>
+                            )}
+                            {!branchScope && (
+                                <div className="mobile-card-meta-item">
+                                    <span className="mobile-card-meta-label">Branch</span>
+                                    <span>{apt.branch}</span>
+                                </div>
+                            )}
                         </div>
-                        <div className="apt-card-actions">
+                        <div className="mobile-card-actions">
                             {renderActions(apt)}
                         </div>
                     </div>
                 ))}
             </div>
+
+            {/* Reschedule Modal */}
+            {rescheduleId && (
+                <div className="admin-modal-overlay" onClick={cancelReschedule}>
+                    <div className="admin-modal" onClick={e => e.stopPropagation()}>
+                        <h3><CalendarClock size={18} /> Reschedule Appointment</h3>
+                        <div className="admin-form-group">
+                            <label className="admin-form-label">New Date *</label>
+                            <input className="admin-form-input" type="date" value={reDate} onChange={e => setReDate(e.target.value)} />
+                        </div>
+                        <div className="admin-form-group">
+                            <label className="admin-form-label">New Time *</label>
+                            <Dropdown
+                                value={reTime}
+                                onChange={setReTime}
+                                placeholder="Select time"
+                                options={timeSlots.map(s => ({ value: s, label: s }))}
+                            />
+                        </div>
+                        <div className="admin-form-actions">
+                            <button type="button" className="admin-btn admin-btn-secondary" onClick={cancelReschedule}>Cancel</button>
+                            <button type="button" className="admin-btn admin-btn-primary" onClick={saveReschedule}>Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

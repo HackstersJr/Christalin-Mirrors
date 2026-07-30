@@ -182,7 +182,7 @@ export default function Staff() {
                 )}
             </div>
 
-            <div className="admin-table-wrapper">
+            <div className="admin-table-wrapper mobile-table-wrapper">
                 <table className="admin-table">
                     <thead>
                         <tr>
@@ -231,6 +231,61 @@ export default function Staff() {
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="mobile-cards">
+                {filtered.length === 0 ? (
+                    <div className="admin-empty" style={{ padding: 32 }}>
+                        <Search size={28} className="admin-empty-icon" />
+                        <h3>No staff found</h3>
+                    </div>
+                ) : filtered.map(member => (
+                    <div className="mobile-card" key={member.id} style={{ opacity: member.isActive ? 1 : 0.6 }}>
+                        <div className="mobile-card-top">
+                            <div className="mobile-card-heading">
+                                <div style={{ width: 40, height: 40, flexShrink: 0, borderRadius: '50%', background: getRoleAvatarColor(member.role), color: 'var(--text-bright)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 17 }}>
+                                    {getInitial(member.name)}
+                                </div>
+                                <div>
+                                    <div className="mobile-card-title">{member.name}</div>
+                                    <div className="mobile-card-sub">
+                                        <span className={`role-badge ${member.role}`}>{roleLabels[member.role]}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span className={`status-badge ${member.isActive ? 'confirmed' : 'cancelled'}`}>{member.isActive ? 'Active' : 'Inactive'}</span>
+                        </div>
+                        <div className="mobile-card-meta">
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Branch</span>
+                                <span>{member.branch}</span>
+                            </div>
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Phone</span>
+                                <span>{member.phone || '—'}</span>
+                            </div>
+                            <div className="mobile-card-meta-item full">
+                                <span className="mobile-card-meta-label">Email</span>
+                                <span>{member.email || '—'}</span>
+                            </div>
+                            {member.specialties.length > 0 && (
+                                <div className="mobile-card-meta-item full">
+                                    <span className="mobile-card-meta-label">Specialties</span>
+                                    <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                        {member.specialties.map(s => <span key={s} className="admin-tag" style={{ padding: '4px 10px' }}>{s}</span>)}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        {isOwner && (
+                            <div className="mobile-card-actions" style={{ justifyContent: 'flex-end' }}>
+                                <button className="admin-btn admin-btn-ghost" onClick={() => startEdit(member)}><Edit2 size={16} /></button>
+                                <button className="admin-btn admin-btn-ghost" onClick={() => deleteStaff(member.id)}><Trash2 size={16} /></button>
+                            </div>
+                        )}
+                    </div>
+                ))}
             </div>
         </div>
     )

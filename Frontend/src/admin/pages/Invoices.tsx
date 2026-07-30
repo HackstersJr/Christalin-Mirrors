@@ -41,7 +41,8 @@ function InvoiceDetail() {
         });
         text += `\nSubtotal: ₹${invoice.subtotal}\n`;
         if (invoice.discountAmount > 0) text += `Discount: -₹${invoice.discountAmount}\n`;
-        text += `GST: ₹${invoice.taxAmount}\n`;
+        text += `CGST (${invoice.taxPercent / 2}%): ₹${Math.floor(invoice.taxAmount / 2)}\n`;
+        text += `SGST (${invoice.taxPercent / 2}%): ₹${invoice.taxAmount - Math.floor(invoice.taxAmount / 2)}\n`;
         text += `*Total: ₹${invoice.total}*\n\n`;
         text += `Thank you for your visit!`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
@@ -124,7 +125,10 @@ function InvoiceDetail() {
                             </div>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: 'var(--text-muted)' }}>
-                            <span>GST ({invoice.taxPercent}%)</span><span>₹{invoice.taxAmount.toLocaleString()}</span>
+                            <span>CGST ({invoice.taxPercent / 2}%)</span><span>₹{Math.floor(invoice.taxAmount / 2).toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: 'var(--text-muted)' }}>
+                            <span>SGST ({invoice.taxPercent / 2}%)</span><span>₹{(invoice.taxAmount - Math.floor(invoice.taxAmount / 2)).toLocaleString()}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontSize: 18, fontWeight: 700, color: 'var(--accent)', borderTop: '1px solid var(--border-light)', marginTop: 4 }}>
                             <span>Total</span><span>₹{invoice.total.toLocaleString()}</span>
@@ -328,7 +332,7 @@ function InvoiceList() {
             </div>
 
             {/* Table */}
-            <div className="admin-table-wrapper">
+            <div className="admin-table-wrapper mobile-table-wrapper">
                 <table className="admin-table">
                     <thead>
                         <tr><th>Invoice #</th><th>Client</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Actions</th></tr>
@@ -364,6 +368,51 @@ function InvoiceList() {
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="mobile-cards">
+                {filtered.length === 0 ? (
+                    <div className="admin-empty" style={{ padding: 32 }}>
+                        <FileText size={28} className="admin-empty-icon" />
+                        <h3>No invoices found</h3>
+                    </div>
+                ) : filtered.map(inv => (
+                    <div className="mobile-card" key={inv.id}>
+                        <div className="mobile-card-top">
+                            <div className="mobile-card-heading">
+                                <div>
+                                    <div className="mobile-card-title" style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => navigate(`/admin/invoices/${inv.id}`)}>{inv.invoiceNumber}</div>
+                                    <div className="mobile-card-sub">{inv.clientName}</div>
+                                </div>
+                            </div>
+                            <span className={`status-badge ${inv.status === 'paid' ? 'confirmed' : inv.status === 'sent' ? 'pending' : inv.status}`}>
+                                <span className="status-dot"></span>
+                                {inv.status}
+                            </span>
+                        </div>
+                        <div className="mobile-card-meta">
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Date</span>
+                                <span>{new Date(inv.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                            </div>
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Items</span>
+                                <span>{inv.items.length} item{inv.items.length > 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="mobile-card-meta-item full">
+                                <span className="mobile-card-meta-label">Total</span>
+                                <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>₹{inv.total.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div className="mobile-card-actions" style={{ justifyContent: 'flex-end' }}>
+                            <button className="admin-btn admin-btn-ghost" onClick={() => navigate(`/admin/invoices/${inv.id}`)}><Eye size={16} /></button>
+                            {canDelete && (
+                                <button className="admin-btn admin-btn-ghost" onClick={() => deleteInv(inv.id)}><Trash2 size={16} /></button>
+                            )}
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     )

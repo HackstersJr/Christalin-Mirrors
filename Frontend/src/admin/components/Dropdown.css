@@ -1,0 +1,173 @@
+/* ─── Reusable Custom Dropdown ─────────────────────────────────────
+   Replaces native <select> so the open list can be fully themed.
+   Variants: form (input field), filter (toolbar), status (colored pill). */
+
+.dd {
+    position: relative;
+    display: inline-block;
+}
+
+.dd--form {
+    display: block;
+    width: 100%;
+}
+
+/* ─── Trigger (closed state) ─────────────────────────────────────── */
+.dd-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--text-primary);
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 12px 10px 14px;
+    cursor: pointer;
+    outline: none;
+    text-align: left;
+    transition: border-color 0.2s ease;
+}
+
+.dd-trigger:focus-visible {
+    border-color: var(--accent);
+}
+
+.dd--open .dd-trigger {
+    border-color: var(--accent);
+}
+
+.dd--disabled .dd-trigger {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.dd-value {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dd-placeholder {
+    color: var(--text-dim);
+}
+
+.dd-chevron {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.dd-chevron.open {
+    transform: rotate(180deg);
+}
+
+/* ─── Filter variant (sits on card bg, auto width) ──────────────── */
+.dd--filter {
+    display: inline-block;
+    width: auto;
+}
+
+.dd--filter .dd-trigger {
+    background: var(--bg-card);
+    min-width: 150px;
+}
+
+/* ─── Status variant (colored pill) ─────────────────────────────── */
+.dd--status {
+    display: inline-block;
+    width: auto;
+}
+
+.dd--status .dd-trigger {
+    border-radius: 20px;
+    padding: 6px 10px 6px 14px;
+    font-weight: 600;
+    text-transform: capitalize;
+    min-width: 128px;
+    border-color: transparent;
+}
+
+.dd--status .dd-trigger.status-pending { background: rgba(245, 158, 11, 0.18); color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
+.dd--status .dd-trigger.status-confirmed { background: rgba(16, 185, 129, 0.15); color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
+.dd--status .dd-trigger.status-arrived { background: rgba(167, 139, 250, 0.15); color: var(--purple); border-color: rgba(167, 139, 250, 0.3); }
+.dd--status .dd-trigger.status-completed { background: rgba(96, 165, 250, 0.15); color: var(--info); border-color: rgba(96, 165, 250, 0.3); }
+.dd--status .dd-trigger.status-cancelled { background: var(--border-color); color: var(--text-muted); border-color: var(--border-light); }
+
+.dd--status .dd-chevron {
+    color: currentColor;
+}
+
+/* ─── Panel (open list) ─────────────────────────────────────────────
+   Rendered via a portal on <body> with fixed positioning so it is never
+   clipped by table/overflow containers. Coordinates are set inline. */
+.dd-panel {
+    position: fixed;
+    width: max-content;
+    max-width: min(320px, 90vw);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    box-shadow: var(--shadow-hover);
+    padding: 6px;
+    z-index: 3000;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    animation: dd-pop 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dd-pop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.dd-option {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--text-primary);
+    background: none;
+    border: none;
+    border-radius: 7px;
+    padding: 9px 12px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dd-option:hover:not(:disabled) {
+    background: var(--bg-card-hover);
+}
+
+.dd-option.selected {
+    background: var(--accent-subtle);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.dd-option:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.dd-group + .dd-group {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border-color);
+}
+
+.dd-group-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px 4px;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Mail, Phone, MapPin, Star, FileText, Clock, CreditCard } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, MapPin, Star, FileText, Clock, CreditCard, MessageCircle } from 'lucide-react'
 import { clientStore, visitStore, invoiceStore, appointmentStore } from '../data/store'
 import type { Client, ServiceVisit, Invoice, Appointment } from '../data/types'
 import '../AdminShared.css'
@@ -65,8 +65,19 @@ export default function ClientDetail() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
                             <Mail size={14} style={{ color: 'var(--text-muted)' }} /> {client.email}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
-                            <Phone size={14} style={{ color: 'var(--text-muted)' }} /> {client.phone}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 13, flexWrap: 'wrap' }}>
+                            <a href={`tel:${client.phone}`} className="apt-contact-phone">
+                                <Phone size={14} /> {client.phone}
+                            </a>
+                            <a
+                                href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="apt-contact-wa"
+                                title="Message on WhatsApp"
+                            >
+                                <MessageCircle size={14} /> WhatsApp
+                            </a>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
                             <MapPin size={14} style={{ color: 'var(--text-muted)' }} /> {client.branch}

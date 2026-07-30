@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
     LayoutDashboard, Calendar, Users, Scissors,
-    UserCog, Settings, Menu, X, ArrowLeft, LogOut,
+    UserCog, Settings, Menu, X, LogOut,
     FileText, CalendarDays, Receipt, UserCheck, TrendingUp,
     Sun, Moon
 } from 'lucide-react'
@@ -100,10 +100,6 @@ export default function AdminLayout() {
                 </nav>
 
                 <div className="admin-sidebar-footer">
-                    <button className="admin-nav-link" onClick={() => navigate('/')}>
-                        <ArrowLeft size={18} />
-                        <span>Back to Website</span>
-                    </button>
                     <button className="admin-nav-link logout" onClick={handleLogout}>
                         <LogOut size={18} />
                         <span>Logout</span>
@@ -121,8 +117,7 @@ export default function AdminLayout() {
                         <Menu size={22} />
                     </button>
                     <div className="admin-topbar-title">
-                        <img src={cmLogo} alt="Christalin Mirrors" className="admin-topbar-logo" />
-                        {session?.branch && <span className="admin-topbar-branch">{session.branch}</span>}
+                        <img src={cmLogo} alt="Christalin Mirrors" className="admin-topbar-logo-mobile" />
                     </div>
                     <div className="admin-topbar-user">
                         <button

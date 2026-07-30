@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Christalin Mirrors — Billing System Plan & Pine Labs Integration</title>
+<style>
+    @page {
+        size: A4;
+        margin: 18mm 16mm 20mm 16mm;
+        @bottom-right { content: counter(page) " / " counter(pages); }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body {
+        font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        color: #1f1b18;
+        font-size: 10.5pt;
+        line-height: 1.5;
+        margin: 0;
+    }
+    :root {
+        --accent: #A0694A;
+        --accent-dark: #7c4f36;
+        --muted: #6b6355;
+        --line: #e4ddd3;
+        --bg-soft: #faf6f1;
+        --green: #0f8a5f;
+        --amber: #b7791f;
+    }
+    h1, h2, h3, h4 { font-family: Georgia, "Times New Roman", serif; color: #14100d; margin: 0 0 6px; }
+    h1 { font-size: 25pt; line-height: 1.15; }
+    h2 { font-size: 16pt; color: var(--accent-dark); margin-top: 0; padding-bottom: 6px; border-bottom: 2px solid var(--accent); }
+    h3 { font-size: 12.5pt; margin-top: 16px; color: var(--accent-dark); }
+    h4 { font-size: 11pt; margin-top: 12px; }
+    p { margin: 6px 0; }
+    ul, ol { margin: 6px 0 6px 0; padding-left: 20px; }
+    li { margin: 3px 0; }
+    code { background: #f2ece4; padding: 1px 5px; border-radius: 4px; font-family: "Consolas", monospace; font-size: 9.5pt; }
+    pre { background: #1f1b18; color: #f3ede4; padding: 12px 14px; border-radius: 8px; font-family: "Consolas", monospace; font-size: 9pt; line-height: 1.45; overflow: hidden; white-space: pre-wrap; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 9.8pt; }
+    th, td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+    th { background: var(--bg-soft); color: var(--accent-dark); font-family: Georgia, serif; }
+    .muted { color: var(--muted); }
+    .tag { display: inline-block; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; font-size: 8.5pt; color: var(--accent-dark); }
+    .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+    .callout.warn { border-left-color: var(--amber); background: #fdf6e9; }
+    .callout.ok { border-left-color: var(--green); background: #eefaf3; }
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { padding-left: 26px; position: relative; margin: 6px 0; }
+    .checklist li::before { content: "☐"; position: absolute; left: 0; top: -1px; font-size: 13pt; color: var(--accent); }
+    .page-break { page-break-before: always; }
+    .avoid-break { page-break-inside: avoid; }
+    .cover { text-align: left; padding-top: 40mm; }
+    .cover .brand { font-family: Georgia, serif; letter-spacing: 4px; text-transform: uppercase; color: var(--accent); font-size: 12pt; margin-bottom: 40px; }
+    .cover .sub { color: var(--muted); font-size: 13pt; margin-top: 10px; }
+    .cover .meta { margin-top: 60px; color: var(--muted); font-size: 10pt; }
+    .lead { font-size: 11.5pt; color: #33291f; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
+    .toc { list-style: none; padding-left: 0; }
+    .toc li { border-bottom: 1px dotted var(--line); padding: 5px 0; }
+    .num { color: var(--accent); font-weight: bold; margin-right: 8px; }
+    .small { font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<section class="cover">
+    <div class="brand">Christalin Mirrors</div>
+    <h1>Billing System Plan<br>&amp; Pine Labs Integration</h1>
+    <div class="sub">Point-of-Sale, GST invoicing, bill archival, and card-terminal payment integration across branches.</div>
+    <div class="meta">
+        Prepared: 30 July 2026 &nbsp;·&nbsp; Version 1.0<br>
+        Scope: Bengaluru &amp; Kalaburagi branches (multi-branch ready)<br>
+        Audience: Owner / Operations / Pine Labs onboarding
+    </div>
+</section>
+
+<!-- TOC -->
+<section class="page-break">
+    <h2>Contents</h2>
+    <ol class="toc">
+        <li><span class="num">1</span> Executive summary</li>
+        <li><span class="num">2</span> Current system (what exists today)</li>
+        <li><span class="num">3</span> Billing workflow — end to end</li>
+        <li><span class="num">4</span> Invoice data model</li>
+        <li><span class="num">5</span> GST handling (5% · CGST + SGST split)</li>
+        <li><span class="num">6</span> Roles &amp; multi-branch scoping</li>
+        <li><span class="num">7</span> Auto-save bills to a folder (receptionist)</li>
+        <li><span class="num">8</span> Printing</li>
+        <li><span class="num">9</span> Multi-branch / multi-terminal architecture</li>
+        <li><span class="num">10</span> Implementation roadmap (phased)</li>
+        <li><span class="num">11</span> Open decisions</li>
+        <li><span class="num">A</span> <strong>Pine Labs — Prerequisites, Checklist &amp; Questions to Ask</strong></li>
+    </ol>
+</section>
+
+<!-- 1 -->
+<section class="page-break">
+    <h2>1 · Executive summary</h2>
+    <p class="lead">This document describes the salon's billing system — how it works today, the two features being added (automatic bill archival for the front desk, and card-terminal payments via Pine Labs), and exactly what must be obtained from Pine Labs before their integration can be built.</p>
+    <p>The billing module is a web-based Point-of-Sale used by the front desk. It creates GST-compliant invoices, records payment, shares bills over WhatsApp, and is scoped per branch. Two enhancements are planned:</p>
+    <ul>
+        <li><strong>Bill archival:</strong> automatically save each finalised bill as a PDF into a folder on the reception computer for later reprinting.</li>
+        <li><strong>Pine Labs card payments:</strong> send the bill amount directly to the branch's card machine so the invoice is marked paid automatically, across multiple branches and multiple terminals.</li>
+    </ul>
+    <div class="callout ok"><strong>Key principle for card payments:</strong> card data is handled entirely by the Pine Labs terminal — it never enters our software. This keeps the salon's PCI-DSS compliance scope minimal.</div>
+</section>
+
+<!-- 2 -->
+<section>
+    <h2>2 · Current system (what exists today)</h2>
+    <table class="avoid-break">
+        <tr><th style="width:34%">Capability</th><th>Status &amp; notes</th></tr>
+        <tr><td>Point-of-Sale (create bill)</td><td>Live — branch, client, stylist, line items (services &amp; retail products), discount, GST, payment method.</td></tr>
+        <tr><td>Client registration</td><td>Live — search existing client or register a new one during billing.</td></tr>
+        <tr><td>GST invoice</td><td>Live — subtotal, discount, GST, grand total; live receipt preview.</td></tr>
+        <tr><td>GST split (CGST + SGST)</td><td>Live — GST line now shown as CGST + SGST on preview, saved invoice, and WhatsApp text.</td></tr>
+        <tr><td>Payment methods</td><td>Live — Cash / UPI / Card recorded manually (cash gives change calculation).</td></tr>
+        <tr><td>WhatsApp bill share</td><td>Live — sends a formatted bill summary to the client.</td></tr>
+        <tr><td>Print bill</td><td>Live — opens the invoice and uses the browser print dialog.</td></tr>
+        <tr><td>Multi-branch</td><td>Live — data scoped to the logged-in user's branch; owner sees all.</td></tr>
+        <tr><td>Auto-save to folder</td><td><span class="tag">Planned</span> — see §7.</td></tr>
+        <tr><td>Pine Labs terminal payment</td><td><span class="tag">Planned</span> — see §9 &amp; Appendix A.</td></tr>
+    </table>
+    <p class="muted small">Data today is held in the application's front-end store. A backend service exists in the project and will host secure integrations (e.g. Pine Labs credentials) — see §9.</p>
+</section>
+
+<!-- 3 -->
+<section>
+    <h2>3 · Billing workflow — end to end</h2>
+    <ol>
+        <li><strong>Branch</strong> — auto-set to the receptionist's branch (owner can choose).</li>
+        <li><strong>Client</strong> — search &amp; select an existing client, or register a new one on the spot.</li>
+        <li><strong>Stylist / therapist</strong> — assign who performed the service.</li>
+        <li><strong>Items</strong> — add services and/or retail products; set quantity and price.</li>
+        <li><strong>Discount</strong> — percentage or flat, applied to the subtotal.</li>
+        <li><strong>GST</strong> — applied on the taxable amount and shown as CGST + SGST (§5).</li>
+        <li><strong>Payment</strong> — Cash / UPI / Card. <span class="muted">(Future: "Charge on Pine Labs terminal" — §9.)</span></li>
+        <li><strong>Finalise</strong> — invoice saved with a unique number; success screen offers Print &amp; WhatsApp. <span class="muted">(Future: PDF auto-archived to folder — §7.)</span></li>
+    </ol>
+</section>
+
+<!-- 4 -->
+<section class="avoid-break">
+    <h2>4 · Invoice data model</h2>
+    <table>
+        <tr><th>Field</th><th>Meaning</th></tr>
+        <tr><td><code>invoiceNumber</code></td><td>Unique human-readable ID (e.g. CM-INV-0001) — also used as the payment reference.</td></tr>
+        <tr><td><code>clientName / clientEmail / clientPhone</code></td><td>Customer details (phone used for call &amp; WhatsApp).</td></tr>
+        <tr><td><code>items[]</code></td><td>Each line: service/product, quantity, unit price, total.</td></tr>
+        <tr><td><code>subtotal</code></td><td>Sum of line items before discount/tax.</td></tr>
+        <tr><td><code>discountPercent / discountAmount</code></td><td>Discount applied.</td></tr>
+        <tr><td><code>taxPercent / taxAmount</code></td><td>GST rate and value (displayed as CGST + SGST).</td></tr>
+        <tr><td><code>total / amountPaid</code></td><td>Grand total and amount collected.</td></tr>
+        <tr><td><code>paymentMethod / status</code></td><td>cash / upi / card; paid / sent / etc.</td></tr>
+        <tr><td><code>branch / stylist / date</code></td><td>Branch, staff, and date of the bill.</td></tr>
+    </table>
+    <p class="muted small">Future additions for the enhancements: <code>clientGSTIN</code> (optional, for B2B invoices), and Pine Labs fields such as <code>terminalId</code> and <code>pgTransactionRef</code>.</p>
+</section>
+
+<!-- 5 -->
+<section class="avoid-break">
+    <h2>5 · GST handling (5% · CGST + SGST split)</h2>
+    <p>Salon GST is configured at <strong>5%</strong>. Because services are consumed in-state (intra-state supply), the GST is always split equally into two halves that are reported to different governments:</p>
+    <table>
+        <tr><th>Component</th><th>Rate</th><th>On a ₹400 service</th><th>Goes to</th></tr>
+        <tr><td>CGST</td><td>2.5%</td><td>₹10</td><td>Central government</td></tr>
+        <tr><td>SGST</td><td>2.5%</td><td>₹10</td><td>State government</td></tr>
+        <tr><td><strong>Total GST</strong></td><td><strong>5%</strong></td><td><strong>₹20</strong></td><td>Grand total ₹420</td></tr>
+    </table>
+    <ul>
+        <li>The split is <strong>display-only</strong> — totals and stored values are unchanged; the single GST line is simply shown as two lines on the receipt, saved invoice, and WhatsApp text.</li>
+        <li>Halves are computed so the two rounded amounts always sum exactly to the total GST (no ₹1 rounding gaps on odd amounts).</li>
+        <li>Inter-state sales would instead use a single <strong>IGST 5%</strong> line — not applicable to a walk-in salon.</li>
+    </ul>
+    <div class="callout warn"><strong>To confirm with your accountant:</strong> the correct GST rate for the salon's services (5% is configured; hairdressing/beauty services are often 18%), and whether your GSTIN, SAC codes, and CGST/SGST breakup must also be printed on the invoice for full compliance.</div>
+</section>
+
+<!-- 6 -->
+<section>
+    <h2>6 · Roles &amp; multi-branch scoping</h2>
+    <table class="avoid-break">
+        <tr><th>Role</th><th>Branch access</th><th>Billing rights</th></tr>
+        <tr><td>Owner</td><td>All branches</td><td>Full visibility, all-branch reporting.</td></tr>
+        <tr><td>Manager</td><td>Own branch only</td><td>Billing, staff, attendance for their branch.</td></tr>
+        <tr><td>Receptionist</td><td>Own branch only</td><td>Front-desk billing, clients, invoices.</td></tr>
+    </table>
+    <ul>
+        <li>Appointments, staff, invoices and revenue are <strong>scoped to the user's branch</strong>; the owner sees everything.</li>
+        <li><strong>Clients are shared across branches</strong> — a client who visits another branch is still visible (they may return to either location).</li>
+        <li>The planned <strong>auto-save-to-folder</strong> feature is <strong>receptionist-only</strong> (§7).</li>
+    </ul>
+</section>
+
+<!-- 7 -->
+<section class="page-break">
+    <h2>7 · Auto-save bills to a folder (receptionist)</h2>
+    <p>Goal: after a bill is finalised, a PDF is automatically stored in a folder on the reception PC so it can be reprinted later.</p>
+    <div class="callout warn"><strong>Browser limitation:</strong> a website cannot silently write to an arbitrary path like <code>C:\Bills\</code>. A normal download always lands in the browser's Downloads folder and JavaScript cannot choose the path. The two viable approaches below work around this.</div>
+
+    <h3>Option A — File System Access API &nbsp;<span class="tag">Recommended to start</span></h3>
+    <ul>
+        <li>Receptionist picks the "Bills" folder <strong>once</strong>; the app remembers that folder.</li>
+        <li>Each finalised bill is written there automatically as a PDF, e.g. <code>CM-INV-0001_ArjunDesai_2026-07-30.pdf</code>.</li>
+        <li>Bills can be opened and printed from that folder anytime.</li>
+    </ul>
+    <p class="small muted"><strong>Caveats:</strong> Chromium browsers only (Chrome / Edge); requires HTTPS; after a full browser restart the receptionist confirms folder access with one click at the start of the day, then it is silent for the session.</p>
+
+    <h3>Option B — Local agent / desktop wrapper &nbsp;<span class="tag">Bulletproof, more work</span></h3>
+    <ul>
+        <li>A small local program on the reception PC receives the PDF and writes it to any fixed path — and can <strong>auto-print</strong> to the connected printer with zero clicks.</li>
+        <li>No browser limitations; true hands-off archival and printing.</li>
+    </ul>
+
+    <h4>Work required either way</h4>
+    <ul>
+        <li>Add PDF generation from the existing invoice layout.</li>
+        <li>Gate the feature to the <strong>receptionist</strong> role.</li>
+        <li>Consistent file naming: invoice no. + client + date; optionally sub-foldered by branch or date.</li>
+    </ul>
+    <div class="callout ok"><strong>Recommendation:</strong> ship Option A first (covers "auto-save to a folder for later printing" with minimal effort). Move to Option B later if fully automatic, zero-click printing is required.</div>
+</section>
+
+<!-- 8 -->
+<section class="avoid-break">
+    <h2>8 · Printing</h2>
+    <ul>
+        <li>Today: the invoice opens and prints via the browser's print dialog.</li>
+        <li>With Option A (§7): print any archived PDF from the folder.</li>
+        <li>With Option B (§7): optional automatic printing at finalisation.</li>
+        <li>Thermal receipt printers (80mm) can be supported later with a receipt-sized layout if desired.</li>
+    </ul>
+</section>
+
+<!-- 9 -->
+<section class="page-break">
+    <h2>9 · Multi-branch / multi-terminal architecture (Pine Labs)</h2>
+    <p>Pine Labs uses a three-level hierarchy that maps directly onto the salon's structure:</p>
+    <pre>Merchant  (Christalin Mirrors — one company account)
+  └─ Store        (one per branch: Bengaluru, Kalaburagi)
+        └─ Terminal   (each physical card machine — identified by IMEI / serial)</pre>
+    <p>When the software initiates a payment it names the <strong>target terminal</strong> (IMEI, and/or Store ID) so the request reaches the <em>correct physical machine</em> — not every terminal in the company.</p>
+
+    <h3>How it fits our app</h3>
+    <ol>
+        <li><strong>Configuration (owner, once):</strong> for each branch, store its <strong>Store ID</strong> and a list of <strong>terminals</strong> (IMEI + friendly label, e.g. "Front Desk 1").</li>
+        <li><strong>At billing:</strong> the receptionist's branch auto-filters to that branch's terminals.
+            <ul>
+                <li>One machine → auto-selected.</li>
+                <li>Several machines → a "send to terminal" choice, or pin each reception station to its own terminal (zero choosing).</li>
+            </ul>
+        </li>
+        <li><strong>Transaction:</strong> backend sends <em>amount + invoice number (reference) + terminal IMEI/Store ID</em> → Pine Labs routes it → customer pays on that machine → result returns → invoice marked <strong>paid</strong> on the correct branch.</li>
+    </ol>
+
+    <h3>Why a backend is required</h3>
+    <ul>
+        <li>Pine Labs credentials (merchant secret/token) must live <strong>server-side</strong>, never in the browser.</li>
+        <li>The backend initiates the charge, receives the callback/poll result, and reconciles it to the invoice.</li>
+        <li>Card data stays on the terminal → minimal PCI scope for the salon.</li>
+    </ul>
+    <div class="callout"><strong>App deliverables (once credentials are available):</strong> (a) a <em>Settings → Payment Terminals</em> screen to map each branch to its Store ID and terminals; (b) a <em>"Charge on terminal"</em> button in billing that auto-marks the invoice paid on success.</div>
+</section>
+
+<!-- 10 -->
+<section>
+    <h2>10 · Implementation roadmap (phased)</h2>
+    <table class="avoid-break">
+        <tr><th>Phase</th><th>Deliverable</th><th>Depends on</th></tr>
+        <tr><td>1 ✅</td><td>GST CGST + SGST split (done)</td><td>—</td></tr>
+        <tr><td>2</td><td>PDF auto-save to folder (Option A), receptionist-only</td><td>Confirm reception browser (Chrome/Edge)</td></tr>
+        <tr><td>3</td><td>Settings → Payment Terminals (branch → store → terminal mapping)</td><td>Pine Labs Store IDs &amp; terminal IMEIs</td></tr>
+        <tr><td>4</td><td>Backend Pine Labs endpoint (initiate + reconcile)</td><td>Pine Labs API docs + sandbox credentials</td></tr>
+        <tr><td>5</td><td>"Charge on terminal" in billing; auto-mark paid</td><td>Phase 3 &amp; 4</td></tr>
+        <tr><td>6</td><td>Optional: refunds/voids, daily settlement reconciliation, thermal receipts, auto-print (Option B)</td><td>Phase 5</td></tr>
+    </table>
+    <p class="small muted">Phases 3 can begin now (it is our own configuration data). Phases 4–5 need Pine Labs onboarding — see Appendix A.</p>
+</section>
+
+<!-- 11 -->
+<section class="avoid-break">
+    <h2>11 · Open decisions</h2>
+    <ul class="checklist">
+        <li>Confirm correct <strong>GST rate</strong> (5% configured) and whether GSTIN/SAC must print on the invoice — with accountant.</li>
+        <li>Choose folder-archival approach: <strong>Option A</strong> (recommended) vs Option B; confirm reception browser is Chrome/Edge.</li>
+        <li>Do you want an optional <strong>client GSTIN field</strong> for B2B invoices?</li>
+        <li>Number of Pine Labs <strong>terminals per branch</strong>, and whether each reception station is pinned to a terminal.</li>
+        <li>Whether invoices should also live in the <strong>backend/database</strong> (recommended before Pine Labs reconciliation).</li>
+    </ul>
+</section>
+
+<!-- APPENDIX A : PINE LABS -->
+<section class="page-break">
+    <h2>A · Pine Labs — Prerequisites, Checklist &amp; Questions to Ask</h2>
+    <p class="lead">Pine Labs integration cannot be built until the items below are obtained from your Pine Labs relationship manager. Use this appendix as the brief to send them.</p>
+
+    <h3>A.1 · Things needed before development (prerequisites)</h3>
+    <ul class="checklist">
+        <li>An active <strong>Pine Labs merchant account</strong> for the company.</li>
+        <li>Confirmation of the integration product: <strong>Cloud-based POS integration</strong> (Plutus Smart cloud API) suitable for multi-branch billing software.</li>
+        <li><strong>Merchant ID</strong> (company-level).</li>
+        <li><strong>Store IDs</strong> — one per branch (Bengaluru, Kalaburagi).</li>
+        <li><strong>Terminal IMEIs / serials</strong> — for every card machine, mapped to its branch.</li>
+        <li><strong>Client ID + security token/secret</strong> for API authentication.</li>
+        <li><strong>Sandbox / UAT credentials and a test terminal</strong> for integration testing.</li>
+        <li>Full <strong>API / integration documentation</strong> (request/response formats, status codes).</li>
+        <li>A named <strong>technical / integration support contact</strong> at Pine Labs.</li>
+        <li>Any <strong>IP-whitelisting or request-signing</strong> requirements for production.</li>
+    </ul>
+
+    <h3>A.2 · Questions to ask Pine Labs</h3>
+
+    <h4>Account &amp; structure</h4>
+    <ol>
+        <li>We are one company with <strong>multiple branches and multiple card machines per branch</strong>. Can we have <strong>one Merchant ID → one Store per branch → multiple Terminals per store</strong>? How are Store IDs and Terminal IMEIs provisioned and listed?</li>
+        <li>Which integration product suits centralised multi-branch billing — <strong>Cloud (Plutus Smart)</strong> or LAN/local integration? What are the pros/cons for our case?</li>
+    </ol>
+
+    <h4>Credentials &amp; environments</h4>
+    <ol start="3">
+        <li>Exact credentials required for <strong>sandbox and production</strong>: Merchant ID, Store ID(s), Client ID, security token/secret, Terminal IMEIs.</li>
+        <li>Please provide <strong>API documentation</strong> and a <strong>sandbox/UAT terminal</strong> to test before go-live.</li>
+    </ol>
+
+    <h4>Transaction API</h4>
+    <ol start="5">
+        <li>How do we <strong>target a specific terminal</strong> in a payment request — by IMEI, Store ID, or both?</li>
+        <li>Is the result delivered by <strong>callback/webhook</strong> or do we <strong>poll</strong> for status? What are the status codes, the <strong>timeout</strong>, and how do we handle a customer cancelling on the machine?</li>
+        <li>Which field carries <strong>our invoice/bill number</strong> (merchant reference) so we can match a payment back to the right bill?</li>
+        <li><strong>Idempotency:</strong> how do we prevent a <strong>double charge</strong> if a request is retried after a network drop (unique reference handling)?</li>
+    </ol>
+
+    <h4>Operations, reconciliation &amp; refunds</h4>
+    <ol start="9">
+        <li>API for <strong>refunds, partial refunds, and voids</strong> (e.g. a wrong charge).</li>
+        <li><strong>Settlement / MIS reports API</strong> to reconcile takings <strong>per branch</strong> daily.</li>
+        <li>Which <strong>payment modes</strong> can be enabled on the terminals (card, UPI, wallets, EMI)?</li>
+        <li>Adding <strong>new terminals</strong> later — self-service portal or via Pine Labs? Turnaround time?</li>
+        <li>Production <strong>security requirements</strong> (IP whitelisting, request signing) and confirmation the <strong>terminal handles all card data</strong> (so our software stays out of PCI scope).</li>
+        <li><strong>Support &amp; SLA</strong> — escalation contact and response times for terminal/API issues.</li>
+    </ol>
+
+    <h3>A.3 · Information to hand back to the development team</h3>
+    <p class="muted small">Once Pine Labs responds, collect these so integration can begin:</p>
+    <table>
+        <tr><th>Item</th><th>Value (fill in)</th></tr>
+        <tr><td>Integration type (Cloud / LAN)</td><td>&nbsp;</td></tr>
+        <tr><td>Merchant ID</td><td>&nbsp;</td></tr>
+        <tr><td>Store ID — Bengaluru</td><td>&nbsp;</td></tr>
+        <tr><td>Store ID — Kalaburagi</td><td>&nbsp;</td></tr>
+        <tr><td>Terminal IMEIs (per branch)</td><td>&nbsp;</td></tr>
+        <tr><td>Client ID / security token</td><td>&nbsp;</td></tr>
+        <tr><td>Sandbox credentials + test terminal</td><td>&nbsp;</td></tr>
+        <tr><td>Result mechanism (callback / poll)</td><td>&nbsp;</td></tr>
+        <tr><td>Merchant-reference field name</td><td>&nbsp;</td></tr>
+        <tr><td>Support contact</td><td>&nbsp;</td></tr>
+    </table>
+    <div class="callout ok"><strong>After A.3 is filled in,</strong> development proceeds with Phase 3 (terminal configuration UI) → Phase 4 (backend Pine Labs endpoint) → Phase 5 ("Charge on terminal" + auto-mark paid).</div>
+</section>
+
+<p class="muted small" style="margin-top:24px; text-align:center;">Christalin Mirrors — Billing System Plan v1.0 · Internal planning document</p>
+
+</body>
+</html>

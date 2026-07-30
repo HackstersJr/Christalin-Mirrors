@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit2, Trash2, Eye } from 'lucide-react'
 import { clientStore } from '../data/store'
-import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
+import { authStore, getBranchScope } from '../data/authStore'
 import type { Client } from '../data/types'
 import '../AdminShared.css'
 
@@ -43,7 +43,9 @@ export default function Clients() {
     const [form, setForm] = useState(scopedEmptyForm)
     const [tagInput, setTagInput] = useState('')
 
-    const reload = () => setClients(scopeByBranch(clientStore.getAll()))
+    // Clients are shared across branches — a client may visit any branch, so
+    // managers/receptionists can see clients regardless of their home branch.
+    const reload = () => setClients(clientStore.getAll())
     useEffect(() => { reload() }, [])
 
     const filtered = clients.filter(c => {
@@ -174,17 +176,15 @@ export default function Clients() {
             {/* Filters */}
             <div className="admin-toolbar">
                 <input className="admin-search" placeholder="Search by name, email, or phone..." value={search} onChange={e => setSearch(e.target.value)} />
-                {!branchScope && (
-                    <select className="admin-filter-select" value={branchFilter} onChange={e => setBranchFilter(e.target.value)}>
-                        <option value="all">All Branches</option>
-                        <option value="Bengaluru">Bengaluru</option>
-                        <option value="Kalaburagi">Kalaburagi</option>
-                    </select>
-                )}
+                <select className="admin-filter-select" value={branchFilter} onChange={e => setBranchFilter(e.target.value)}>
+                    <option value="all">All Branches</option>
+                    <option value="Bengaluru">Bengaluru</option>
+                    <option value="Kalaburagi">Kalaburagi</option>
+                </select>
             </div>
 
             {/* Table */}
-            <div className="admin-table-wrapper">
+            <div className="admin-table-wrapper mobile-table-wrapper">
                 <table className="admin-table">
                     <thead>
                         <tr>
@@ -238,6 +238,64 @@ export default function Clients() {
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="mobile-cards">
+                {filtered.length === 0 ? (
+                    <div className="admin-empty" style={{ padding: 32 }}>
+                        <Search size={28} className="admin-empty-icon" />
+                        <h3>No clients found</h3>
+                    </div>
+                ) : filtered.map(client => (
+                    <div className="mobile-card" key={client.id}>
+                        <div className="mobile-card-top">
+                            <div className="mobile-card-heading">
+                                <div style={{ width: 40, height: 40, flexShrink: 0, borderRadius: '50%', background: getAvatarColor(client.name), color: 'var(--text-bright)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 17 }}>
+                                    {getInitial(client.name)}
+                                </div>
+                                <div>
+                                    <div className="mobile-card-title" style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/clients/${client.id}`)}>{client.name}</div>
+                                    <div className="mobile-card-sub">{client.email}</div>
+                                </div>
+                            </div>
+                            <span style={{ fontWeight: 700, fontSize: 18, color: 'var(--text-primary)' }}>{client.totalVisits}<span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-dim)', textTransform: 'uppercase', marginLeft: 4 }}>visits</span></span>
+                        </div>
+                        <div className="mobile-card-meta">
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Phone</span>
+                                <span>{client.phone}</span>
+                            </div>
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Gender</span>
+                                <span style={{ textTransform: 'capitalize' }}>{client.gender}</span>
+                            </div>
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Branch</span>
+                                <span>{client.branch}</span>
+                            </div>
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Last Visit</span>
+                                <span>{client.lastVisit ? new Date(client.lastVisit + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</span>
+                            </div>
+                            {client.tags.length > 0 && (
+                                <div className="mobile-card-meta-item full">
+                                    <span className="mobile-card-meta-label">Tags</span>
+                                    <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                        {client.tags.map(t => <span key={t} className="admin-tag" style={getTagStyle(t)}>{t}</span>)}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="mobile-card-actions" style={{ justifyContent: 'flex-end' }}>
+                            <button className="admin-btn admin-btn-ghost" onClick={() => navigate(`/admin/clients/${client.id}`)}><Eye size={16} /></button>
+                            <button className="admin-btn admin-btn-ghost" onClick={() => startEdit(client)}><Edit2 size={16} /></button>
+                            {canDelete && (
+                                <button className="admin-btn admin-btn-ghost" onClick={() => deleteClient(client.id)}><Trash2 size={16} /></button>
+                            )}
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     )

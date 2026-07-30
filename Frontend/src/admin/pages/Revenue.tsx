@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Building2 } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
+import { Building2 } from 'lucide-react'
 import { invoiceStore } from '../data/store'
 import { branches as branchList } from '../../data/branches'
 import type { Invoice } from '../data/types'
@@ -13,7 +13,6 @@ const sum = (items: Invoice[]) => items.reduce((s, i) => s + i.total, 0)
 
 export default function Revenue() {
     const location = useLocation()
-    const navigate = useNavigate()
     const initialBranch = (location.state as { branch?: string } | null)?.branch || 'all'
     const [branchFilter, setBranchFilter] = useState(initialBranch)
     const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -54,8 +53,7 @@ export default function Revenue() {
 
     return (
         <div>
-            <div className="admin-page-header" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <button className="admin-btn admin-btn-ghost" onClick={() => navigate('/admin')}><ArrowLeft size={18} /></button>
+            <div className="admin-page-header">
                 <div>
                     <h1 className="admin-page-title">Revenue</h1>
                     <p className="admin-page-sub">

@@ -677,3 +677,57 @@
         grid-template-columns: 1fr;
     }
 }
+
+@media (max-width: 600px) {
+    /* Match the full-bleed offset to the smaller mobile content padding
+       so sections don't get clipped at the screen edge */
+    .billing-container {
+        margin: -20px -16px;
+        gap: 0;
+    }
+
+    .billing-builder,
+    .billing-preview {
+        padding: 20px 16px;
+    }
+
+    /* Line items: let the item selector take a full row, with
+       qty / price / total / remove flowing underneath */
+    .billing-item-row {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding-bottom: 12px;
+        border-bottom: 1px dashed var(--border-light);
+    }
+
+    .billing-item-row > div:first-child {
+        flex: 1 0 100%;
+    }
+
+    .billing-item-total {
+        flex: 1;
+        width: auto;
+    }
+
+    /* New-client inline form stacks to a single column */
+    .billing-inline-form {
+        grid-template-columns: 1fr;
+    }
+
+    /* Add Service / Add Retail Product buttons share the row evenly */
+    .billing-item-actions .admin-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* Payment method toggles stay side-by-side but allow wrapping */
+    .billing-payment-toggles {
+        flex-wrap: wrap;
+    }
+
+    /* Confirmation modal / success actions stack on small screens */
+    .modal-actions,
+    .success-actions {
+        flex-direction: column;
+    }
+}

@@ -65,13 +65,9 @@ export default function Dashboard() {
                 <h1 className="admin-page-title">
                     {branchScope ? `${branchScope} Dashboard` : 'Dashboard'}
                 </h1>
-                <p className="admin-page-sub">
-                    {branchScope ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <Building2 size={13} /> Showing data for the {branchScope} branch only
-                        </span>
-                    ) : 'Overview of salon operations — all branches'}
-                </p>
+                {!branchScope && (
+                    <p className="admin-page-sub">Overview of salon operations — all branches</p>
+                )}
             </div>
 
             {/* Quick Actions */}
@@ -171,8 +167,9 @@ export default function Dashboard() {
                 )}
             </div>
 
-            {/* Alerts */}
-            {pendingApts.length > 0 && (
+            {/* Alerts — branch staff only; owner sees all branches, so this
+                per-branch confirmation nudge isn't relevant on their dashboard */}
+            {pendingApts.length > 0 && session?.role !== 'owner' && (
                 <div className="dashboard-alerts">
                     <div className="dashboard-alert alert-warning" onClick={() => navigate('/admin/appointments')}>
                         <Clock size={16} className="dashboard-alert-icon" />
@@ -193,7 +190,7 @@ export default function Dashboard() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                                 <h3 style={{ margin: 0, fontSize: 14 }}>Branch Performance — This Month</h3>
                             </div>
-                            <div className="admin-table-wrapper" style={{ marginBottom: 0 }}>
+                            <div className="admin-table-wrapper mobile-table-wrapper" style={{ marginBottom: 0 }}>
                                 <table className="admin-table">
                                     <thead><tr><th>Branch</th><th>Revenue</th><th>Clients</th><th>Staff</th><th>Appointments</th></tr></thead>
                                     <tbody>
@@ -209,6 +206,35 @@ export default function Dashboard() {
                                     </tbody>
                                 </table>
                             </div>
+                            <div className="mobile-cards">
+                                {branchOverview.map(b => (
+                                    <div className="mobile-card" key={b.name}>
+                                        <div className="mobile-card-top">
+                                            <div className="mobile-card-heading">
+                                                <div>
+                                                    <div className="mobile-card-title">{b.name}</div>
+                                                    <div className="mobile-card-sub">This month's performance</div>
+                                                </div>
+                                            </div>
+                                            <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--accent)' }}>₹{b.monthRevenueForBranch.toLocaleString()}</span>
+                                        </div>
+                                        <div className="mobile-card-meta">
+                                            <div className="mobile-card-meta-item">
+                                                <span className="mobile-card-meta-label">Clients</span>
+                                                <span>{b.totalClients}</span>
+                                            </div>
+                                            <div className="mobile-card-meta-item">
+                                                <span className="mobile-card-meta-label">Staff</span>
+                                                <span>{b.staffCount}</span>
+                                            </div>
+                                            <div className="mobile-card-meta-item">
+                                                <span className="mobile-card-meta-label">Appointments</span>
+                                                <span>{b.monthAppointments}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     ) : (
                         <>
@@ -218,7 +244,7 @@ export default function Dashboard() {
                                     <h3 style={{ margin: 0, fontSize: 14 }}>Upcoming Appointments</h3>
                                     <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate('/admin/calendar')}>View Calendar →</button>
                                 </div>
-                                <div className="admin-table-wrapper" style={{ marginBottom: 0 }}>
+                                <div className="admin-table-wrapper mobile-table-wrapper" style={{ marginBottom: 0 }}>
                                     <table className="admin-table">
                                         <thead><tr><th>Date</th><th>Time</th><th>Client</th><th>Service</th><th>Branch</th><th>Status</th></tr></thead>
                                         <tbody>
@@ -242,6 +268,38 @@ export default function Dashboard() {
                                         </tbody>
                                     </table>
                                 </div>
+                                <div className="mobile-cards">
+                                    {upcoming.length === 0 ? (
+                                        <div className="admin-empty" style={{ padding: 32 }}>
+                                            <Calendar size={28} className="admin-empty-icon" style={{ opacity: 0.5 }} />
+                                            <h3 style={{ fontSize: 15 }}>No upcoming appointments</h3>
+                                        </div>
+                                    ) : upcoming.map(apt => (
+                                        <div className="mobile-card" key={apt.id}>
+                                            <div className="mobile-card-top">
+                                                <div className="mobile-card-heading">
+                                                    <div>
+                                                        <div className="mobile-card-title">{apt.clientName}</div>
+                                                        <div className="mobile-card-sub">
+                                                            {new Date(apt.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} • {apt.time}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span className={`status-badge ${apt.status}`}>{apt.status}</span>
+                                            </div>
+                                            <div className="mobile-card-meta">
+                                                <div className="mobile-card-meta-item full">
+                                                    <span className="mobile-card-meta-label">Service</span>
+                                                    <span>{apt.service}</span>
+                                                </div>
+                                                <div className="mobile-card-meta-item">
+                                                    <span className="mobile-card-meta-label">Branch</span>
+                                                    <span>{apt.branch}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* Recent Invoices */}
@@ -251,7 +309,7 @@ export default function Dashboard() {
                                         <h3 style={{ margin: 0, fontSize: 14 }}>Recent Invoices</h3>
                                         <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate('/admin/invoices')}>View All →</button>
                                     </div>
-                                    <div className="admin-table-wrapper" style={{ marginBottom: 0 }}>
+                                    <div className="admin-table-wrapper mobile-table-wrapper" style={{ marginBottom: 0 }}>
                                         <table className="admin-table">
                                             <thead><tr><th>Invoice</th><th>Client</th><th>Total</th><th>Status</th></tr></thead>
                                             <tbody>
@@ -265,6 +323,27 @@ export default function Dashboard() {
                                                 ))}
                                             </tbody>
                                         </table>
+                                    </div>
+                                    <div className="mobile-cards">
+                                        {recentInvoices.map(inv => (
+                                            <div className="mobile-card" key={inv.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/invoices/${inv.id}`)}>
+                                                <div className="mobile-card-top">
+                                                    <div className="mobile-card-heading">
+                                                        <div>
+                                                            <div className="mobile-card-title" style={{ color: 'var(--accent)' }}>{inv.invoiceNumber}</div>
+                                                            <div className="mobile-card-sub">{inv.clientName}</div>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`status-badge ${inv.status === 'paid' ? 'confirmed' : inv.status === 'sent' ? 'pending' : inv.status}`}>{inv.status}</span>
+                                                </div>
+                                                <div className="mobile-card-meta">
+                                                    <div className="mobile-card-meta-item full">
+                                                        <span className="mobile-card-meta-label">Total</span>
+                                                        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>₹{inv.total.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
