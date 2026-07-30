@@ -29,6 +29,7 @@ import Billing from './admin/pages/Billing'
 import { InvoiceList, InvoiceDetail } from './admin/pages/Invoices'
 import Calendar from './admin/pages/Calendar'
 import Attendance from './admin/pages/Attendance'
+import Revenue from './admin/pages/Revenue'
 import Login from './admin/pages/Login'
 import ProtectedRoute from './admin/components/ProtectedRoute'
 import RoleRoute from './admin/components/RoleRoute'
@@ -122,6 +123,7 @@ function App() {
                 <Route path="staff" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Staff /></RoleRoute>} />
                 <Route path="attendance" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Attendance /></RoleRoute>} />
                 <Route path="settings" element={<RoleRoute allow={['owner']}><Settings /></RoleRoute>} />
+                <Route path="revenue" element={<RoleRoute allow={['owner']}><Revenue /></RoleRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
         </Routes>

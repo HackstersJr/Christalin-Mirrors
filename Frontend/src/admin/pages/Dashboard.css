@@ -26,7 +26,13 @@
     border: 1px solid var(--border-color);
     background: var(--bg-card);
     box-shadow: var(--shadow-card);
+    cursor: pointer;
     transition: box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dashboard-branch-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .dashboard-branch-card:hover {
@@ -45,15 +51,19 @@
 }
 
 /* Fade only where the photo meets the text (left edge) — the rest of
-   the photo (top/right/bottom) stays crisp and fully visible. */
+   the photo (top/right/bottom) stays crisp and fully visible.
+   Image sits at right:0, width:42%, so its left edge is at 58% of the
+   card — the gradient stops start there so the fade happens ON the
+   photo itself, not over the plain card background beside it. */
 .dashboard-branch-card-fade {
     position: absolute;
     inset: 0;
     z-index: 1;
     background: linear-gradient(to right,
-        var(--bg-card) 38%,
-        color-mix(in srgb, var(--bg-card) 65%, transparent) 52%,
-        transparent 68%);
+        var(--bg-card) 58%,
+        color-mix(in srgb, var(--bg-card) 60%, transparent) 68%,
+        color-mix(in srgb, var(--bg-card) 20%, transparent) 80%,
+        transparent 95%);
 }
 
 .dashboard-branch-card-content {
@@ -121,9 +131,10 @@
 
     .dashboard-branch-card-fade {
         background: linear-gradient(to right,
-            var(--bg-card) 45%,
-            color-mix(in srgb, var(--bg-card) 65%, transparent) 60%,
-            transparent 78%);
+            var(--bg-card) 66%,
+            color-mix(in srgb, var(--bg-card) 60%, transparent) 75%,
+            color-mix(in srgb, var(--bg-card) 20%, transparent) 86%,
+            transparent 98%);
     }
 
     .dashboard-branch-card-content {
@@ -154,6 +165,13 @@
     display: grid;
     grid-template-columns: 1fr 340px;
     gap: 20px;
+}
+
+/* Grid items default to min-width:auto, which forces the track to fit
+   the widest child's intrinsic content (e.g. a wide table) even when
+   the track itself is supposed to shrink — same trap as flex items. */
+.dashboard-grid > div {
+    min-width: 0;
 }
 
 /* Alert Bars */

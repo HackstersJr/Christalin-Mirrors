@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search, Check, X, Trash2, Clock, LogIn } from 'lucide-react'
+import { Plus, Search, Clock } from 'lucide-react'
 import { appointmentStore, serviceStore, clientStore, staffStore } from '../data/store'
 import { getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Appointment, ServiceRecord, Client, StaffMember } from '../data/types'
@@ -69,12 +69,20 @@ export default function Appointments() {
         reload()
     }
 
-    const deleteApt = (id: string) => {
-        if (confirm('Delete this appointment?')) {
-            appointmentStore.delete(id)
-            reload()
-        }
-    }
+    const renderActions = (apt: Appointment) => (
+        <select
+            className={`admin-status-select status-${apt.status}`}
+            value={apt.status}
+            onChange={e => updateStatus(apt.id, e.target.value as Appointment['status'])}
+            title="Change status"
+        >
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="arrived">Arrived</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+        </select>
+    )
 
     return (
         <div>
@@ -170,7 +178,7 @@ export default function Appointments() {
             </div>
 
             {/* Table */}
-            <div className="admin-table-wrapper">
+            <div className="admin-table-wrapper apt-table-wrapper">
                 <table className="admin-table">
                     <thead>
                         <tr>
@@ -210,42 +218,60 @@ export default function Appointments() {
                                         {apt.status}
                                     </span>
                                 </td>
-                                <td>
-                                    <div className="admin-actions">
-                                        {apt.status === 'pending' && (
-                                            <>
-                                                <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Confirm" onClick={() => updateStatus(apt.id, 'confirmed')}>
-                                                    <Check size={14} style={{ color: 'var(--success-light)' }} />
-                                                </button>
-                                                <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Cancel" onClick={() => updateStatus(apt.id, 'cancelled')}>
-                                                    <X size={14} style={{ color: 'var(--danger)' }} />
-                                                </button>
-                                            </>
-                                        )}
-                                        {apt.status === 'confirmed' && (
-                                            <>
-                                                <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Mark Arrived" onClick={() => updateStatus(apt.id, 'arrived')}>
-                                                    <LogIn size={14} style={{ color: 'var(--purple)' }} />
-                                                </button>
-                                                <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Cancel" onClick={() => updateStatus(apt.id, 'cancelled')}>
-                                                    <X size={14} style={{ color: 'var(--danger)' }} />
-                                                </button>
-                                            </>
-                                        )}
-                                        {apt.status === 'arrived' && (
-                                            <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Mark Complete" onClick={() => updateStatus(apt.id, 'completed')}>
-                                                <Check size={14} style={{ color: 'var(--info)' }} />
-                                            </button>
-                                        )}
-                                        <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Delete" onClick={() => deleteApt(apt.id)}>
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                </td>
+                                <td>{renderActions(apt)}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="apt-cards">
+                {filtered.length === 0 ? (
+                    <div className="admin-empty" style={{ padding: 32 }}>
+                        <Search size={28} className="admin-empty-icon" />
+                        <h3>No appointments found</h3>
+                        <p>Try adjusting your filters</p>
+                    </div>
+                ) : filtered.map(apt => (
+                    <div className="apt-card" key={apt.id}>
+                        <div className="apt-card-top">
+                            <div>
+                                <div className="apt-card-name">{apt.clientName}</div>
+                                <div className="apt-card-email">{apt.clientEmail}</div>
+                            </div>
+                            <span className={`status-badge ${apt.status}`}>
+                                <span className="status-dot"></span>
+                                {apt.status}
+                            </span>
+                        </div>
+                        <div className="apt-card-meta">
+                            <div className="apt-card-meta-item">
+                                <span className="apt-card-meta-label">Date</span>
+                                <span>{new Date(apt.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            </div>
+                            <div className="apt-card-meta-item">
+                                <span className="apt-card-meta-label">Time</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Clock size={12} />{apt.time}</span>
+                            </div>
+                            <div className="apt-card-meta-item">
+                                <span className="apt-card-meta-label">Service</span>
+                                <span>{apt.service}</span>
+                            </div>
+                            <div className="apt-card-meta-item">
+                                <span className="apt-card-meta-label">Stylist</span>
+                                <span>{apt.stylist || '—'}</span>
+                            </div>
+                            <div className="apt-card-meta-item">
+                                <span className="apt-card-meta-label">Branch</span>
+                                <span>{apt.branch}</span>
+                            </div>
+                        </div>
+                        <div className="apt-card-actions">
+                            {renderActions(apt)}
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     )

@@ -3,18 +3,13 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
     LayoutDashboard, Calendar, Users, Scissors,
     UserCog, Settings, Menu, X, ArrowLeft, LogOut,
-    FileText, CalendarDays, Receipt, UserCheck,
+    FileText, CalendarDays, Receipt, UserCheck, TrendingUp,
     Sun, Moon
 } from 'lucide-react'
 import { ToastProvider } from './components/Toast'
 import { authStore } from './data/authStore'
 import cmLogo from '../assets/cm-logo-white.png'
 import './AdminLayout.css'
-
-function initials(name: string) {
-    const parts = name.trim().split(/\s+/)
-    return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || 'CM'
-}
 
 // Staff-facing operations. Services & Settings are configuration —
 // owner-only, managed via the IT/owner login rather than the branch panel.
@@ -41,6 +36,7 @@ const receptionistNavItems = [
 ]
 
 const ownerOnlyNavItems = [
+    { label: 'Revenue', icon: TrendingUp, path: '/admin/revenue' },
     { label: 'Services', icon: Scissors, path: '/admin/services' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ]
@@ -125,7 +121,7 @@ export default function AdminLayout() {
                         <Menu size={22} />
                     </button>
                     <div className="admin-topbar-title">
-                        Christalin Mirrors
+                        <img src={cmLogo} alt="Christalin Mirrors" className="admin-topbar-logo" />
                         {session?.branch && <span className="admin-topbar-branch">{session.branch}</span>}
                     </div>
                     <div className="admin-topbar-user">
@@ -136,9 +132,6 @@ export default function AdminLayout() {
                         >
                             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
-                        <div className="admin-avatar" title={session ? `${session.name} · ${session.role}` : ''}>
-                            {initials(session?.name || 'CM')}
-                        </div>
                     </div>
                 </header>
 

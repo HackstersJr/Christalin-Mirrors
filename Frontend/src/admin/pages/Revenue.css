@@ -1,0 +1,83 @@
+/* ─── Revenue Page ────────────────────────────────────────── */
+.revenue-branch-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.revenue-tab {
+    padding: 8px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.revenue-tab:hover {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+}
+
+.revenue-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #FFFFFF;
+}
+
+.revenue-trend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.revenue-trend-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 90px;
+    align-items: center;
+    gap: 12px;
+}
+
+.revenue-trend-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.revenue-trend-bar-track {
+    height: 10px;
+    border-radius: 6px;
+    background: var(--bg-card-alt);
+    overflow: hidden;
+}
+
+.revenue-trend-bar {
+    height: 100%;
+    min-width: 2px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-alt));
+    transition: width 0.4s ease;
+}
+
+.revenue-trend-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+}
+
+@media (max-width: 480px) {
+    .revenue-trend-row {
+        grid-template-columns: 32px 1fr 70px;
+        gap: 8px;
+    }
+
+    .revenue-trend-value {
+        font-size: 11px;
+    }
+}

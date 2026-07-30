@@ -32,6 +32,7 @@ export default function Dashboard() {
     const thisMonthInvoices = invoices.filter(i => i.status === 'paid' && i.date.startsWith(today.slice(0, 7)))
     const monthRevenue = thisMonthInvoices.reduce((s, i) => s + i.total, 0)
     const allPaidTotal = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0)
+    const todayRevenue = invoices.filter(i => i.status === 'paid' && i.date === today).reduce((s, i) => s + i.total, 0)
 
     // Top services by frequency
     const serviceCount: Record<string, number> = {}
@@ -94,7 +95,14 @@ export default function Dashboard() {
             {isOwner && (
                 <div className="dashboard-branch-grid">
                     {branchOverview.map((b) => (
-                        <div key={b.name} className="dashboard-branch-card">
+                        <div
+                            key={b.name}
+                            className="dashboard-branch-card"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => navigate('/admin/revenue', { state: { branch: b.name } })}
+                            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/admin/revenue', { state: { branch: b.name } }) }}
+                        >
                             <img
                                 src={cld(b.image, 500)}
                                 alt=""
@@ -141,7 +149,20 @@ export default function Dashboard() {
                     <div className="stat-label">Total Clients</div>
                     <div className="stat-value green">{clients.length}</div>
                 </div>
-                {!isReceptionist && (
+                {isOwner ? (
+                    <div className="admin-stat-card" style={{ borderTop: '4px solid var(--accent-alt)' }}>
+                        <div className="stat-icon"><TrendingUp size={20} /></div>
+                        <div className="stat-label">Today's Revenue</div>
+                        <div className="stat-value accent">₹{todayRevenue.toLocaleString()}</div>
+                        <button
+                            className="admin-btn admin-btn-ghost admin-btn-sm"
+                            style={{ marginTop: 10, padding: '4px 0' }}
+                            onClick={() => navigate('/admin/revenue')}
+                        >
+                            View Revenue →
+                        </button>
+                    </div>
+                ) : !isReceptionist && (
                     <div className="admin-stat-card" onClick={() => navigate('/admin/invoices')} style={{ cursor: 'pointer', borderTop: '4px solid var(--accent-alt)' }}>
                         <div className="stat-icon"><TrendingUp size={20} /></div>
                         <div className="stat-label">This Month Revenue</div>

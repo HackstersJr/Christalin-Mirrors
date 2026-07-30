@@ -177,6 +177,18 @@
     color: var(--text-muted);
 }
 
+.admin-topbar-logo {
+    height: 24px;
+    width: auto;
+    display: block;
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+}
+
+:root[data-theme="light"] .admin-topbar-logo {
+    filter: brightness(0);
+}
+
 .admin-topbar-branch {
     font-family: 'Inter', sans-serif;
     font-size: 11px;
