@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { authStore, mockAdminUsers } from '../data/authStore'
+import { authStore } from '../data/authStore'
 import cmLogo from '../../assets/cm-logo-white.png'
 import './Login.css'
 
@@ -68,21 +68,6 @@ export default function Login() {
                         {submitting ? 'Signing In…' : 'Sign In'}
                     </button>
                 </form>
-
-                <div className="login-demo">
-                    <p className="login-demo-title">Demo Accounts</p>
-                    {mockAdminUsers.map((u) => (
-                        <button
-                            type="button"
-                            key={u.email}
-                            className="login-demo-row"
-                            onClick={() => { setEmail(u.email); setPassword(u.password); setError('') }}
-                        >
-                            <span className="login-demo-role">{u.role}{u.branch ? ` · ${u.branch}` : ' · all branches'}</span>
-                            <span className="login-demo-email">{u.email}</span>
-                        </button>
-                    ))}
-                </div>
             </div>
         </div>
     )
