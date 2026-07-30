@@ -36,7 +36,7 @@ export default function Login() {
                 <div className="login-logo">
                     <img src={cmLogo} alt="Christalin Mirrors" className="login-logo-img" />
                     <p className="login-eyebrow">Admin Portal</p>
-                    <h2>Christalin Mirrors</h2>
+                    <h2><span>Christalin</span><span>Mirrors</span></h2>
                 </div>
 
                 <form onSubmit={handleLogin} className="login-form">
