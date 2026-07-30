@@ -17,6 +17,7 @@ export interface Appointment {
     status: 'pending' | 'confirmed' | 'arrived' | 'completed' | 'cancelled'
     notes?: string
     branch: string
+    branchId?: string
     createdAt: string
 }
 
@@ -63,6 +64,7 @@ export interface StaffMember {
     name: string
     role: StaffRole
     branch: string
+    branchId?: string
     phone: string
     email: string
     specialties: string[]

@@ -14,7 +14,7 @@ export interface Branch {
 
 export const branches: Branch[] = [
     {
-        id: 'bengaluru',
+        id: 'branch_blr',
         name: 'CM — Bengaluru',
         city: 'Bengaluru, Karnataka',
         address: 'Century Ethos Club House, Bellary Rd, Bengaluru 560092',
@@ -24,8 +24,8 @@ export const branches: Branch[] = [
         image: branchBengaluru,
     },
     {
-        id: 'kalaburagi',
-        name: 'CM — Kalaburagi',
+        id: 'branch_klb',
+        name: 'CM — Kalaburagi (Gulbarga)',
         city: 'Kalaburagi, Karnataka',
         address: 'Orchid Mall, Mahaveer Nagar, Khuba Plot, Brahmpur, Kalaburagi 585105',
         hours: 'Everyday: 10:00 AM – 9:00 PM',
@@ -33,12 +33,21 @@ export const branches: Branch[] = [
         mapUrl: 'https://maps.google.com/?q=Orchid+Mall+Kalaburagi',
         image: branchKalaburagi,
     },
+    {
+        id: 'branch_bgm',
+        name: 'CM — Belgaum (Belagavi)',
+        city: 'Belgaum, Karnataka',
+        address: 'College Road, Belgaum 590001',
+        hours: 'Everyday: 10:00 AM – 9:00 PM',
+        phone: '+91 9845012345',
+        mapUrl: 'https://maps.google.com/?q=Belgaum+Karnataka',
+        image: branchBengaluru,
+    },
 ]
 
 export const comingSoonBranches = [
     { name: 'CM — Yelahanka', city: 'Yelahanka Phase 1, Bengaluru' },
     { name: 'CM — Hassan', city: 'Hassan, Karnataka' },
     { name: 'CM — Hubballi', city: 'Hubballi, Karnataka' },
-    { name: 'CM — Belagavi', city: 'Belagavi, Karnataka' },
     { name: 'CM — Dubai', city: 'Dubai, UAE' },
 ]

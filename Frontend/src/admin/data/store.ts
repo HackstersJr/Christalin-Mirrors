@@ -32,6 +32,7 @@ function mapBranch(nameOrId: string): string {
     if (!nameOrId) return 'Bengaluru'
     const lower = nameOrId.toLowerCase()
     if (lower.includes('kalaburagi') || lower.includes('kalburgi') || lower.includes('klb')) return 'Kalaburagi'
+    if (lower.includes('belgaum') || lower.includes('belagavi') || lower.includes('bgm')) return 'Belgaum'
     return 'Bengaluru'
 }
 
@@ -39,6 +40,7 @@ function getBranchId(branchName: string): string {
     if (!branchName) return 'branch_blr'
     const lower = branchName.toLowerCase()
     if (lower.includes('kalaburagi') || lower.includes('kalburgi') || lower.includes('klb')) return 'branch_klb'
+    if (lower.includes('belgaum') || lower.includes('belagavi') || lower.includes('bgm')) return 'branch_bgm'
     return 'branch_blr'
 }
 
@@ -81,6 +83,7 @@ export const appointmentStore = {
                 stylist: a.staffName || undefined,
                 status: a.status ? a.status.toLowerCase() as any : 'pending',
                 notes: a.notes || undefined,
+                branchId: a.branchId,
                 branch: a.branch?.name ? mapBranch(a.branch.name) : mapBranch(a.branchId),
                 createdAt: a.createdAt || new Date().toISOString(),
             }))
@@ -531,6 +534,7 @@ export const staffStore = {
                     name: s.name,
                     role: s.role ? s.role.toLowerCase() as any : 'hairstylist',
                     branch: (s.role?.toLowerCase() === 'owner') ? 'All Branches' : mapBranch(s.branch?.name || s.branchId),
+                    branchId: s.branchId,
                     phone: s.phone,
                     email: s.email,
                     specialties: s.specialties || [],

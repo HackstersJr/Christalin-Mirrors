@@ -26,7 +26,8 @@ export interface AdminSession {
 export const mockAdminUsers: AdminUser[] = [
     { email: 'manager.bengaluru@christalinmirrors.com', password: 'Manager@123', name: 'Rohit Bhandari', role: 'manager', branch: 'Bengaluru' },
     { email: 'manager.kalaburagi@christalinmirrors.com', password: 'Manager@123', name: 'Divya Menon', role: 'manager', branch: 'Kalaburagi' },
-    { email: 'reception.bengaluru@christalinmirrors.com', password: 'Reception@123', name: 'Preethi S.', role: 'receptionist', branch: 'Bengaluru' },
+    { email: 'manager.belgaum@christalinmirrors.com', password: 'Manager@123', name: 'Manager Belgaum', role: 'manager', branch: 'Belgaum' },
+    { email: 'owner@christalinmirrors.com', password: 'Owner@123', name: 'Sushmitha Cristalin A.', role: 'owner', branch: null },
 ]
 
 const SESSION_KEY = 'cm_admin_session'
@@ -87,7 +88,24 @@ export function getBranchScope(): string | null {
     return authStore.getSession()?.branch || null
 }
 
-export function scopeByBranch<T extends { branch: string }>(items: T[]): T[] {
+export function scopeByBranch<T extends { branch?: string; branchId?: string }>(items: T[]): T[] {
     const scope = getBranchScope()
-    return scope ? items.filter((i) => i.branch === scope) : items
+    if (!scope) return items
+    const cleanScope = scope.toLowerCase()
+
+    return items.filter((i) => {
+        const b = (i.branch || '').toLowerCase()
+        const bId = (i.branchId || '').toLowerCase()
+
+        if (cleanScope.includes('bengaluru') || cleanScope.includes('blr')) {
+            return b.includes('bengaluru') || b.includes('blr') || bId.includes('blr')
+        }
+        if (cleanScope.includes('kalaburagi') || cleanScope.includes('kalburgi') || cleanScope.includes('klb')) {
+            return b.includes('kalaburagi') || b.includes('kalburgi') || b.includes('klb')
+        }
+        if (cleanScope.includes('belgaum') || cleanScope.includes('belagavi') || cleanScope.includes('bgm')) {
+            return b.includes('belgaum') || b.includes('belagavi') || b.includes('bgm')
+        }
+        return b === cleanScope || bId === cleanScope || b.includes(cleanScope)
+    })
 }

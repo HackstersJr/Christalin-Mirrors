@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Phone, X } from 'lucide-react'
 import cmLogo from '../../assets/cm-logo-white.png'
 import { emptyBookingData, STEP_LABELS, type BookingData } from './types'
 import { appointmentStore } from '../../admin/data/store'
+import { branches } from '../../data/branches'
 import {
     StepAbout, StepBranch, StepServices, StepDateTime, StepConfirm,
     BookingSuccess, isStepValid,
@@ -55,6 +56,8 @@ export default function BookAppointment() {
         if (step === STEP_LABELS.length - 1) {
             setIsSubmitting(true)
             try {
+                const selectedBranchObj = branches.find(b => b.id === data.branchId)
+                const branchNameClean = selectedBranchObj ? selectedBranchObj.name.replace('CM — ', '') : 'Bengaluru'
                 await appointmentStore.create({
                     clientId: '',
                     staffId: '',
@@ -67,7 +70,7 @@ export default function BookAppointment() {
                     service: data.serviceNames.join(', '),
                     status: 'pending',
                     notes: data.notes,
-                    branch: (data.branchId === 'kalaburagi' || data.branchId === 'branch_klb') ? 'Kalaburagi' : 'Bengaluru',
+                    branch: branchNameClean,
                 })
             } catch {}
             setIsSubmitting(false)

@@ -44,11 +44,11 @@
 }
 
 .booking-calendar-card {
-    background: var(--bg-card, #fff);
-    border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
     border-radius: 16px;
     padding: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .booking-calendar-header {
@@ -62,7 +62,7 @@
     font-family: var(--font-heading, serif);
     font-size: 15px;
     font-weight: 600;
-    color: var(--text-primary, #111);
+    color: #1a1614 !important;
 }
 
 .booking-calendar-nav {
@@ -72,17 +72,17 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
-    background: transparent;
-    color: var(--text-primary, #333);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #f8fafc;
+    color: #1e293b;
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
 .booking-calendar-nav:hover:not(:disabled) {
-    background: var(--bg-card-alt, rgba(0, 0, 0, 0.05));
-    border-color: var(--accent, #c17f59);
-    color: var(--accent, #c17f59);
+    background: rgba(193, 127, 89, 0.1);
+    border-color: #c17f59;
+    color: #c17f59;
 }
 
 .booking-calendar-nav:disabled {
@@ -99,8 +99,8 @@
 
 .booking-calendar-weekday {
     font-size: 11px;
-    font-weight: 600;
-    color: var(--text-muted, #888);
+    font-weight: 700;
+    color: #64748b !important;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -119,24 +119,24 @@
     border-radius: 50%;
     border: none;
     background: transparent;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-primary, #222);
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a !important;
     cursor: pointer;
     transition: all 0.15s ease;
     position: relative;
 }
 
 .booking-calendar-day:hover:not(:disabled) {
-    background: rgba(193, 127, 89, 0.1);
-    color: var(--accent, #c17f59);
+    background: rgba(193, 127, 89, 0.15) !important;
+    color: #c17f59 !important;
 }
 
 .booking-calendar-day.selected {
-    background: var(--accent, #c17f59) !important;
-    color: #fff !important;
+    background: #c17f59 !important;
+    color: #ffffff !important;
     font-weight: 700;
-    box-shadow: 0 2px 8px rgba(193, 127, 89, 0.3);
+    box-shadow: 0 2px 8px rgba(193, 127, 89, 0.4);
 }
 
 .booking-calendar-day.is-today::after {
@@ -146,7 +146,7 @@
     width: 4px;
     height: 4px;
     border-radius: 50%;
-    background: var(--accent, #c17f59);
+    background: #c17f59;
 }
 
 .booking-calendar-day.selected.is-today::after {
@@ -155,6 +155,7 @@
 
 .booking-calendar-day:disabled {
     opacity: 0.25;
+    color: #94a3b8 !important;
     cursor: not-allowed;
     text-decoration: line-through;
 }
@@ -168,14 +169,16 @@
 }
 
 .booking-native-input {
-    padding: 8px 12px;
+    padding: 8px 14px;
     border-radius: 8px;
-    border: 1px solid var(--border, #ccc);
-    background: var(--bg-card, #fff);
-    color: var(--text-primary, #111);
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
     font-size: 13px;
+    font-weight: 500;
     outline: none;
     cursor: pointer;
+    color-scheme: light !important;
 }
 
 .booking-native-input:focus {
