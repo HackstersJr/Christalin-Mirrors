@@ -80,18 +80,32 @@
     font-family: 'Colabero', 'Playfair Display', serif;
     font-size: clamp(20px, 6vw, 26px);
     font-weight: 700;
-    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #1A1614;
     margin: 0;
-    line-height: 1.4;
-    white-space: nowrap;
+    line-height: 1.35;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-logo h2 span {
+    display: block;
+    letter-spacing: 0.12em;
+    /* Letter-spacing adds trailing space after the last character, which
+       biases text-align/flex centering to the left — pull it back so the
+       word is visually centered. */
+    margin-right: -0.12em;
+}
+
+.login-logo h2 span + span {
+    margin-top: 4px;
 }
 
 @media (max-width: 400px) {
-    .login-logo h2 {
-        white-space: normal;
+    .login-logo h2 span {
         letter-spacing: 0.08em;
+        margin-right: -0.08em;
     }
 }
 
