@@ -24,8 +24,6 @@ export interface AdminSession {
  * Supabase Auth user (see supabase/create_admin_auth_users.sql).
  */
 export const mockAdminUsers: AdminUser[] = [
-    { email: 'christalinmirrors.admin@gmail.com', password: 'Admin@1234', name: 'Sushmitha Cristalin A.', role: 'owner', branch: null },
-    { email: 'owner@christalinmirrors.com', password: 'Admin@1234', name: 'Sushmitha Cristalin A.', role: 'owner', branch: null },
     { email: 'manager.bengaluru@christalinmirrors.com', password: 'Manager@123', name: 'Rohit Bhandari', role: 'manager', branch: 'Bengaluru' },
     { email: 'manager.kalaburagi@christalinmirrors.com', password: 'Manager@123', name: 'Divya Menon', role: 'manager', branch: 'Kalaburagi' },
     { email: 'reception.bengaluru@christalinmirrors.com', password: 'Reception@123', name: 'Preethi S.', role: 'receptionist', branch: 'Bengaluru' },
