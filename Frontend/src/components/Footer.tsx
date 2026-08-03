@@ -62,6 +62,9 @@ export default function Footer() {
                             <li style={{ marginTop: 12 }}><strong>Kalaburagi</strong></li>
                             <li>Orchid Mall, Mahaveer Nagar</li>
                             <li>Khuba Plot, Kalaburagi 585105</li>
+                            <li style={{ marginTop: 12 }}><strong>Belgaum</strong></li>
+                            <li>College Road</li>
+                            <li>Belgaum 590001</li>
                             <li style={{ marginTop: 12 }}>Everyday: 10 AM — 9 PM</li>
                         </ul>
                     </div>

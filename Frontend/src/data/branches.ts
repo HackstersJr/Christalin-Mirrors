@@ -39,8 +39,8 @@ export const branches: Branch[] = [
         city: 'Belgaum, Karnataka',
         address: 'College Road, Belgaum 590001',
         hours: 'Everyday: 10:00 AM – 9:00 PM',
-        phone: '+91 9845012345',
-        mapUrl: 'https://maps.google.com/?q=Belgaum+Karnataka',
+        phone: '+91 8050153999',
+        mapUrl: 'https://maps.app.goo.gl/yyaWwhcgf2MnbfbP8',
         image: branchBengaluru,
     },
 ]
