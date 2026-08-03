@@ -1,5 +1,6 @@
 const branchBengaluru = "https://res.cloudinary.com/djrtoihj8/image/upload/v1780593536/WhatsApp_Image_2026-03-26_at_9.24.34_PM_w3eof8.jpg"
 const branchKalaburagi = "https://res.cloudinary.com/djrtoihj8/image/upload/v1780593844/WhatsApp_Image_2026-06-04_at_2.56.43_PM_1_xatxwk.jpg"
+const branchBelgaum = "/images/branches/belgaum.jpeg"
 
 export interface Branch {
     id: string
@@ -41,7 +42,7 @@ export const branches: Branch[] = [
         hours: 'Everyday: 10:00 AM – 9:00 PM',
         phone: '+91 8050153999',
         mapUrl: 'https://maps.app.goo.gl/yyaWwhcgf2MnbfbP8',
-        image: branchBengaluru,
+        image: branchBelgaum,
     },
 ]
 
