@@ -89,6 +89,12 @@ export function getBranchScope(): string | null {
 }
 
 export function scopeByBranch<T extends { branch?: string; branchId?: string; role?: string }>(items: T[]): T[] {
+    const session = authStore.getSession()
+    // Owner role always sees all items across all branches
+    if (session?.role === 'owner') {
+        return items
+    }
+
     const scope = getBranchScope()
     if (!scope) return items
     const cleanScope = scope.toLowerCase()
@@ -98,7 +104,7 @@ export function scopeByBranch<T extends { branch?: string; branchId?: string; ro
         const b = (i.branch || '').toLowerCase()
         const bId = (i.branchId || '').toLowerCase()
 
-        // Owner role or 'All Branches' items are visible in every branch scope
+        // Staff member with owner role or 'All Branches' items are visible in every branch scope
         if (roleStr === 'owner' || b.includes('all branches') || b === 'all') {
             return true
         }

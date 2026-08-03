@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { supabase } from '../../lib/supabase'
-import type { Appointment, Client, ServiceRecord, StaffMember, SalonSettings, ServiceVisit, Invoice, InventoryItem, AttendanceRecord } from './types'
+import type { Appointment, Client, ServiceRecord, StaffMember, SalonSettings, ServiceVisit, Invoice, InventoryItem, AttendanceRecord, ClientReview } from './types'
 import { mockAppointments, mockClients, mockServices, mockStaff, defaultSettings, mockVisits, mockInvoices, mockInventory } from './mockData'
 
 const KEYS = {
@@ -1059,7 +1059,111 @@ export const attendanceStore = {
     },
 }
 
+// ─── Voice Client Reviews ────────────────────────────────────
+export const reviewStore = {
+    getAll: async (): Promise<ClientReview[]> => {
+        try {
+            const { data, error } = await supabase
+                .from('ClientReview')
+                .select('*')
+                .order('createdAt', { ascending: false })
+
+            if (!error && data) {
+                return data.map((r: any) => ({
+                    id: r.id,
+                    appointmentId: r.appointmentId || undefined,
+                    clientName: r.clientName,
+                    clientPhone: r.clientPhone || undefined,
+                    branchId: r.branchId || 'branch_blr',
+                    branch: r.branch || mapBranch(r.branchId),
+                    staffName: r.staffName || undefined,
+                    serviceName: r.serviceName || undefined,
+                    transcript: r.transcript,
+                    audioUrl: r.audioUrl || undefined,
+                    derivedRating: r.derivedRating || 5,
+                    sentiment: (r.sentiment ? String(r.sentiment).toLowerCase() : 'positive') as any,
+                    tags: r.tags || [],
+                    status: (r.status ? String(r.status).toLowerCase() : 'published') as any,
+                    createdAt: r.createdAt || new Date().toISOString(),
+                }))
+            }
+        } catch {}
+
+        const raw = localStorage.getItem('cm_admin_reviews')
+        return raw ? JSON.parse(raw) : []
+    },
+
+    create: async (review: Omit<ClientReview, 'id' | 'createdAt'>): Promise<ClientReview> => {
+        const id = crypto.randomUUID()
+        const nowIso = new Date().toISOString()
+        const branchId = getBranchId(review.branch)
+        const payload = {
+            id,
+            appointmentId: review.appointmentId || null,
+            clientName: review.clientName,
+            clientPhone: review.clientPhone || null,
+            branchId: branchId,
+            branch: review.branch,
+            staffName: review.staffName || null,
+            serviceName: review.serviceName || null,
+            transcript: review.transcript,
+            audioUrl: review.audioUrl || null,
+            derivedRating: review.derivedRating || 5,
+            sentiment: (review.sentiment || 'positive').toUpperCase(),
+            tags: review.tags || [],
+            status: (review.status || 'published').toUpperCase(),
+            createdAt: nowIso,
+            updatedAt: nowIso,
+        }
+
+        try {
+            const { data, error } = await supabase.from('ClientReview').insert(payload).select('*').single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    appointmentId: data.appointmentId || undefined,
+                    clientName: data.clientName,
+                    clientPhone: data.clientPhone || undefined,
+                    branchId: data.branchId,
+                    branch: data.branch,
+                    staffName: data.staffName || undefined,
+                    serviceName: data.serviceName || undefined,
+                    transcript: data.transcript,
+                    audioUrl: data.audioUrl || undefined,
+                    derivedRating: data.derivedRating,
+                    sentiment: data.sentiment.toLowerCase() as any,
+                    tags: data.tags || [],
+                    status: data.status.toLowerCase() as any,
+                    createdAt: data.createdAt,
+                }
+            }
+        } catch (err) {
+            console.error('Failed to create review in Supabase:', err)
+        }
+
+        const newReview: ClientReview = { ...review, id, createdAt: nowIso }
+        const current = JSON.parse(localStorage.getItem('cm_admin_reviews') || '[]')
+        current.unshift(newReview)
+        localStorage.setItem('cm_admin_reviews', JSON.stringify(current))
+        return newReview
+    },
+
+    updateStatus: async (id: string, status: ClientReview['status']): Promise<boolean> => {
+        try {
+            await supabase.from('ClientReview').update({ status: status.toUpperCase(), updatedAt: new Date().toISOString() }).eq('id', id)
+        } catch {}
+        const current: ClientReview[] = JSON.parse(localStorage.getItem('cm_admin_reviews') || '[]')
+        const idx = current.findIndex(r => r.id === id)
+        if (idx >= 0) {
+            current[idx].status = status
+            localStorage.setItem('cm_admin_reviews', JSON.stringify(current))
+        }
+        return true
+    },
+}
+
 export function resetStore() {
     Object.values(KEYS).forEach(key => localStorage.removeItem(key))
+    localStorage.removeItem('cm_admin_reviews')
     initializeStore()
 }

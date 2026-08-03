@@ -95,12 +95,16 @@ import Privacy from './components/Privacy'
 import Terms from './components/Terms'
 import NotFound from './components/NotFound'
 import BookAppointment from './components/booking/BookAppointment'
+import VoiceReviewPage from './components/review/VoiceReviewPage'
+import VoiceReviews from './admin/pages/VoiceReviews'
 
 function App() {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/book" element={<BookAppointment />} />
+            <Route path="/review" element={<VoiceReviewPage />} />
+            <Route path="/voice-review" element={<VoiceReviewPage />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/admin/login" element={<Login />} />
@@ -119,6 +123,7 @@ function App() {
                 <Route path="clients/:clientId" element={<ClientDetail />} />
                 <Route path="invoices" element={<InvoiceList />} />
                 <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
+                <Route path="reviews" element={<VoiceReviews />} />
                 <Route path="services" element={<RoleRoute allow={['owner']}><AdminServices /></RoleRoute>} />
                 <Route path="staff" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Staff /></RoleRoute>} />
                 <Route path="attendance" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Attendance /></RoleRoute>} />

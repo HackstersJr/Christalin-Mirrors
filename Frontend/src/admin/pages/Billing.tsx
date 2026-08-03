@@ -2,15 +2,16 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Search, Plus, Trash2, Printer, Check, ArrowRight, X, Receipt,
-    User, Scissors, Package, Percent, CreditCard, Banknote, ShieldCheck, ChevronDown
+    User, Scissors, Package, Percent, CreditCard, Banknote, ShieldCheck, ChevronDown, Mic
 } from 'lucide-react';
 import {
     clientStore, serviceStore, staffStore, appointmentStore,
     inventoryStore, invoiceStore, settingsStore, visitStore
 } from '../data/store';
-import { getBranchScope, scopeByBranch } from '../data/authStore';
-import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice } from '../data/types';
+import { getBranchScope } from '../data/authStore';
+import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice, ClientReview } from '../data/types';
 import { useToast } from '../components/Toast';
+import VoiceRecorderModal from '../components/VoiceRecorderModal';
 import cmLogo from '../../assets/cm-logo-white.png';
 import '../AdminShared.css';
 import './Billing.css';
@@ -95,6 +96,8 @@ export default function Billing() {
 
     // Modals & Flows
     const [showPayModal, setShowPayModal] = useState(false);
+    const [showVoiceModal, setShowVoiceModal] = useState(false);
+    const [recordedVoiceReview, setRecordedVoiceReview] = useState<ClientReview | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
     const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
@@ -674,6 +677,28 @@ export default function Billing() {
                             <div>Method: <strong style={{ textTransform: 'uppercase' }}>{paymentMethod}</strong></div>
                         </div>
 
+                        {/* Pre-Billing Voice Review Step */}
+                        <div className="modal-voice-review-box" style={{ background: 'rgba(193, 127, 89, 0.1)', border: '1px solid rgba(193, 127, 89, 0.3)', borderRadius: 12, padding: 14, margin: '14px 0', textAlign: 'left' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ fontWeight: 600, fontSize: 13, color: '#e09f78', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Mic size={16} /> Pre-Billing Client Voice Review
+                                </div>
+                                {recordedVoiceReview && <span className="status-badge confirmed">Recorded</span>}
+                            </div>
+                            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 10px' }}>
+                                {recordedVoiceReview
+                                    ? `"${recordedVoiceReview.transcript}"`
+                                    : 'Record 10-second client voice review before completing invoice.'}
+                            </p>
+                            <button
+                                type="button"
+                                className={`admin-btn ${recordedVoiceReview ? 'admin-btn-secondary' : 'admin-btn-primary'} admin-btn-sm`}
+                                onClick={() => setShowVoiceModal(true)}
+                            >
+                                <Mic size={14} /> {recordedVoiceReview ? 'Re-record Voice Review' : 'Record Client Voice Review Now'}
+                            </button>
+                        </div>
+
                         {paymentMethod === 'cash' && (
                             <div className="modal-cash-input">
                                 <label>Amount Received</label>
@@ -689,6 +714,20 @@ export default function Billing() {
                     </div>
                 </div>
             )}
+
+            <VoiceRecorderModal
+                isOpen={showVoiceModal}
+                onClose={() => setShowVoiceModal(false)}
+                onReviewSaved={(review) => {
+                    setRecordedVoiceReview(review);
+                    showToast('success', 'Voice review recorded & saved!');
+                }}
+                defaultClientName={selectedClient === 'walk-in' ? 'Walk-in Guest' : selectedClient ? selectedClient.name : ''}
+                defaultClientPhone={selectedClient && selectedClient !== 'walk-in' ? selectedClient.phone : ''}
+                defaultBranch={selectedBranch}
+                defaultStaffName={staff.find(s => s.id === selectedStaffId)?.name || ''}
+                title="Client Pre-Billing Voice Review"
+            />
         </div>
     );
 }

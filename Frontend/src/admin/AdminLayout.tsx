@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Calendar, Users, Scissors,
     UserCog, Settings, Menu, X, LogOut,
     FileText, CalendarDays, Receipt, UserCheck, TrendingUp,
-    Sun, Moon
+    Sun, Moon, Mic
 } from 'lucide-react'
 import { ToastProvider } from './components/Toast'
 import { authStore } from './data/authStore'
@@ -19,6 +19,7 @@ const baseNavItems = [
     { label: 'Calendar', icon: CalendarDays, path: '/admin/calendar' },
     { label: 'Appointments', icon: Calendar, path: '/admin/appointments' },
     { label: 'Clients', icon: Users, path: '/admin/clients' },
+    { label: 'Voice Reviews', icon: Mic, path: '/admin/reviews' },
     { label: 'Invoices', icon: FileText, path: '/admin/invoices' },
     { label: 'Staff', icon: UserCog, path: '/admin/staff' },
     { label: 'Attendance', icon: UserCheck, path: '/admin/attendance' },
