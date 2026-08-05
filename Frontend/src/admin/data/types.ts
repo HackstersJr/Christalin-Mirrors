@@ -114,7 +114,7 @@ export interface ServiceVisit {
     discount: number
     tax: number
     total: number
-    paymentMethod: 'cash' | 'card' | 'upi' | 'other'
+    paymentMethod: 'cash' | 'card' | 'upi' | 'split' | 'other'
     notes?: string
     rating?: number       // 1-5 client feedback
     invoiceId?: string    // linked invoice
@@ -139,7 +139,12 @@ export interface Invoice {
     total: number
     amountPaid: number
     status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
-    paymentMethod?: 'cash' | 'card' | 'upi' | 'other'
+    paymentMethod?: 'cash' | 'card' | 'upi' | 'split' | 'other'
+    splitPayment?: {
+        cash: number
+        card: number
+        upi: number
+    }
     branch: string
     stylist?: string
     notes?: string
@@ -154,6 +159,7 @@ export interface InvoiceItem {
     unitPrice: number
     total: number
     productId?: string    // linked inventory item ID for stock decrement
+    isCustom?: boolean    // flag for custom custom-priced services
 }
 
 // ─── Inventory (Products) ───────────────────────────────────

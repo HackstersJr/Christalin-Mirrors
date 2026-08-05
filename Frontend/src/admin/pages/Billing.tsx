@@ -88,10 +88,13 @@ export default function Billing() {
     const [taxPercent, setTaxPercent] = useState<number>(18);
     
     // Payment
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'split'>('cash');
     const [amountReceived, setAmountReceived] = useState<number>(0);
     const [upiRef, setUpiRef] = useState('');
     const [cardLast4, setCardLast4] = useState('');
+    const [splitCash, setSplitCash] = useState<number>(0);
+    const [splitCard, setSplitCard] = useState<number>(0);
+    const [splitUpi, setSplitUpi] = useState<number>(0);
     const [notes, setNotes] = useState('');
 
     // Modals & Flows
@@ -146,28 +149,38 @@ export default function Billing() {
     };
 
     const addServiceItem = () => setItems([...items, { service: '', quantity: 1, unitPrice: 0, total: 0 }]);
+    const addCustomServiceItem = () => setItems([...items, { service: 'Custom Service', description: 'Custom', quantity: 1, unitPrice: 0, total: 0, isCustom: true }]);
     const addProductItem = () => setItems([...items, { service: '', description: 'Product', quantity: 1, unitPrice: 0, total: 0 }]);
 
-    const updateItem = (idx: number, field: keyof InvoiceItem, val: string | number) => {
+    const updateItem = (idx: number, field: keyof InvoiceItem, val: any) => {
         const copy = [...items];
         copy[idx] = { ...copy[idx], [field]: val };
         
         if (field === 'service') {
-            const svc = services.find(s => s.name === val);
-            const prd = inventory.find(p => p.name === val);
-            if (svc) {
-                copy[idx].unitPrice = svc.price;
-                copy[idx].description = '';
-                copy[idx].productId = undefined;
-            } else if (prd) {
-                copy[idx].unitPrice = prd.retailPrice || 0;
-                copy[idx].description = 'Product';
-                copy[idx].productId = prd.id;
+            if (val === 'CUSTOM_ITEM') {
+                copy[idx].isCustom = true;
+                copy[idx].service = 'Custom Service';
+                copy[idx].unitPrice = 0;
+                copy[idx].description = 'Custom';
+            } else {
+                const svc = services.find(s => s.name === val);
+                const prd = inventory.find(p => p.name === val);
+                if (svc) {
+                    copy[idx].isCustom = false;
+                    copy[idx].unitPrice = svc.price;
+                    copy[idx].description = '';
+                    copy[idx].productId = undefined;
+                } else if (prd) {
+                    copy[idx].isCustom = false;
+                    copy[idx].unitPrice = prd.retailPrice || 0;
+                    copy[idx].description = 'Product';
+                    copy[idx].productId = prd.id;
+                }
             }
         }
         
-        if (['quantity', 'unitPrice', 'service'].includes(field)) {
-            copy[idx].total = copy[idx].unitPrice * copy[idx].quantity;
+        if (['quantity', 'unitPrice', 'service'].includes(field as string)) {
+            copy[idx].total = (copy[idx].unitPrice || 0) * (copy[idx].quantity || 1);
         }
         setItems(copy);
     };
@@ -211,6 +224,15 @@ export default function Billing() {
         const stylistName = staff.find(s => s.id === selectedStaffId)?.name || '';
         const invNum = await invoiceStore.getNextInvoiceNumber();
 
+        let splitNotes = '';
+        if (paymentMethod === 'split') {
+            splitNotes = ` (Split Payment — Cash: ₹${splitCash}, Card: ₹${splitCard}, UPI: ₹${splitUpi})`;
+        } else if (paymentMethod === 'upi') {
+            splitNotes = upiRef ? ` (Ref: ${upiRef})` : '';
+        } else if (paymentMethod === 'card') {
+            splitNotes = cardLast4 ? ` (Card: *${cardLast4})` : '';
+        }
+
         const inv = await invoiceStore.create({
             invoiceNumber: invNum,
             clientId,
@@ -228,9 +250,10 @@ export default function Billing() {
             amountPaid: status === 'paid' ? total : 0,
             status,
             paymentMethod,
+            splitPayment: paymentMethod === 'split' ? { cash: splitCash, card: splitCard, upi: splitUpi } : undefined,
             branch: selectedBranch,
             stylist: stylistName,
-            notes: notes + (paymentMethod === 'upi' ? ` (Ref: ${upiRef})` : '') + (paymentMethod === 'card' ? ` (Card: *${cardLast4})` : ''),
+            notes: notes + splitNotes,
             appointmentId: selectedAppointmentId || undefined,
         });
 
@@ -311,6 +334,9 @@ export default function Billing() {
         setAmountReceived(0);
         setUpiRef('');
         setCardLast4('');
+        setSplitCash(0);
+        setSplitCard(0);
+        setSplitUpi(0);
         setNotes('');
         setSelectedAppointmentId('');
         setShowSuccess(false);
@@ -503,23 +529,34 @@ export default function Billing() {
                         
                         {items.map((item, idx) => (
                             <div key={idx} className="billing-item-row">
-                                <div style={{ flex: 2 }}>
-                                    <select 
-                                        className="admin-form-select" 
-                                        value={item.service} 
-                                        onChange={e => updateItem(idx, 'service', e.target.value)}
-                                        style={{ borderLeft: item.description === 'Product' ? '3px solid #10b981' : '3px solid #3b82f6' }}
-                                    >
-                                        <option value="">Select an item...</option>
-                                        <optgroup label="Services">
-                                            {services.map(s => <option key={`svc-${s.id}`} value={s.name}>{s.name} (₹{s.price})</option>)}
-                                        </optgroup>
-                                        <optgroup label="Products">
-                                            {inventory.map(p => <option key={`prd-${p.id}`} value={p.name}>{p.name} (₹{p.retailPrice})</option>)}
-                                        </optgroup>
-                                    </select>
+                                <div style={{ flex: 2, display: 'flex', gap: 6 }}>
+                                    {item.isCustom ? (
+                                        <input
+                                            className="admin-form-input"
+                                            placeholder="Custom Service Name..."
+                                            value={item.service}
+                                            onChange={e => updateItem(idx, 'service', e.target.value)}
+                                            style={{ borderLeft: '3px solid #e11d48' }}
+                                        />
+                                    ) : (
+                                        <select 
+                                            className="admin-form-select" 
+                                            value={item.service} 
+                                            onChange={e => updateItem(idx, 'service', e.target.value)}
+                                            style={{ borderLeft: item.description === 'Product' ? '3px solid #10b981' : '3px solid #3b82f6' }}
+                                        >
+                                            <option value="">Select an item...</option>
+                                            <option value="CUSTOM_ITEM">✨ + Custom Service (Enter custom name & price)</option>
+                                            <optgroup label="Services">
+                                                {services.map(s => <option key={`svc-${s.id}`} value={s.name}>{s.name} (₹{s.price})</option>)}
+                                            </optgroup>
+                                            <optgroup label="Products">
+                                                {inventory.map(p => <option key={`prd-${p.id}`} value={p.name}>{p.name} (₹{p.retailPrice})</option>)}
+                                            </optgroup>
+                                        </select>
+                                    )}
                                 </div>
-                                <div style={{ width: 80 }}>
+                                <div style={{ width: 75 }}>
                                     <input className="admin-form-input" type="number" min={1} value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)} placeholder="Qty" />
                                 </div>
                                 <div style={{ width: 100 }}>
@@ -532,7 +569,8 @@ export default function Billing() {
                     </div>
 
                     <div className="billing-item-actions">
-                        <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={addServiceItem}><Plus size={14} /> Add Service</button>
+                        <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={addServiceItem}><Plus size={14} /> Add Catalog Service</button>
+                        <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={addCustomServiceItem} style={{ color: '#e11d48', borderColor: 'rgba(225,29,72,0.3)' }}><Plus size={14} /> Add Custom Service</button>
                         <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={addProductItem}><Package size={14} /> Add Retail Product</button>
                     </div>
                 </div>
@@ -569,6 +607,9 @@ export default function Billing() {
                         <div className={`payment-toggle ${paymentMethod === 'upi' ? 'active' : ''}`} onClick={() => setPaymentMethod('upi')}>
                             <ShieldCheck size={20} /> UPI
                         </div>
+                        <div className={`payment-toggle ${paymentMethod === 'split' ? 'active' : ''}`} onClick={() => setPaymentMethod('split')}>
+                            <Percent size={20} /> Split Payment
+                        </div>
                     </div>
 
                     <div className="billing-payment-extras">
@@ -589,6 +630,37 @@ export default function Billing() {
                             <div className="payment-extra-card">
                                 <label>Card Last 4 Digits (Optional)</label>
                                 <input className="admin-form-input" value={cardLast4} onChange={e => setCardLast4(e.target.value)} placeholder="e.g. 4242" maxLength={4} />
+                            </div>
+                        )}
+                        {paymentMethod === 'split' && (
+                            <div className="payment-extra-card">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                    <label style={{ margin: 0, fontWeight: 600 }}>Split Payment Breakdown (Total: ₹{total.toLocaleString()})</label>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: (splitCash + splitCard + splitUpi) === total ? '#10b981' : '#f59e0b' }}>
+                                        {(splitCash + splitCard + splitUpi) === total ? '✓ Total Matched' : `Remaining: ₹${total - (splitCash + splitCard + splitUpi)}`}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                                    <div>
+                                        <label style={{ fontSize: 11, color: 'var(--text-dim)' }}>Cash (₹)</label>
+                                        <input className="admin-form-input" type="number" min={0} value={splitCash || ''} onChange={e => setSplitCash(parseInt(e.target.value) || 0)} placeholder="0" />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 11, color: 'var(--text-dim)' }}>Card (₹)</label>
+                                        <input className="admin-form-input" type="number" min={0} value={splitCard || ''} onChange={e => setSplitCard(parseInt(e.target.value) || 0)} placeholder="0" />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 11, color: 'var(--text-dim)' }}>UPI (₹)</label>
+                                        <input className="admin-form-input" type="number" min={0} value={splitUpi || ''} onChange={e => setSplitUpi(parseInt(e.target.value) || 0)} placeholder="0" />
+                                    </div>
+                                </div>
+                                {(total - (splitCash + splitCard + splitUpi)) !== 0 && (
+                                    <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                                        <button type="button" className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setSplitCash(Math.max(0, total - (splitCard + splitUpi)))}>+ Auto Cash</button>
+                                        <button type="button" className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setSplitCard(Math.max(0, total - (splitCash + splitUpi)))}>+ Auto Card</button>
+                                        <button type="button" className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setSplitUpi(Math.max(0, total - (splitCash + splitCard)))}>+ Auto UPI</button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
