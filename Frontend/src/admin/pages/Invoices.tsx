@@ -103,8 +103,8 @@ function InvoiceDetail() {
                 <div className="preview-header">Tax Invoice</div>
 
                 <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
-                <div className="preview-salon-name">Christalin Mirrors</div>
-                <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', marginTop: -20, marginBottom: 24 }}>
+                <div className="preview-salon-name" style={{ marginBottom: 4 }}>Christalin Mirrors</div>
+                <div className="preview-branch-line">
                     {invoice.branch}<br />GSTIN: 29AAVFC4475G1ZU
                 </div>
 

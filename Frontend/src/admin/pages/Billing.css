@@ -407,6 +407,14 @@
     margin-bottom: 24px;
 }
 
+.preview-branch-line {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
 .preview-meta {
     border-top: 1px dashed var(--border-strong);
     border-bottom: 1px dashed var(--border-strong);
