@@ -72,6 +72,7 @@ function InvoiceDetail() {
                         <img src={cmLogo} alt="Christalin Mirrors" style={{ height: 24, width: 'auto', filter: 'brightness(0)' }} />
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Christalin Mirrors</div>
                         <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{invoice.branch}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>GSTIN: 29AAVFC4475G1ZU</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{invoice.invoiceNumber}</div>
@@ -177,7 +178,7 @@ function InvoiceList() {
     const [statusFilter, setStatusFilter] = useState('all')
     const [showForm, setShowForm] = useState(false)
     const [items, setItems] = useState<InvoiceItem[]>([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
-    const [formData, setFormData] = useState({ clientId: '', discountPercent: 0, taxPercent: 18, paymentMethod: 'cash' as Invoice['paymentMethod'], branch: branchScope || 'Bengaluru', stylist: '', notes: '' })
+    const [formData, setFormData] = useState({ clientId: '', discountPercent: 0, taxPercent: 5, paymentMethod: 'cash' as Invoice['paymentMethod'], branch: branchScope || 'Bengaluru', stylist: '', notes: '' })
 
     const reload = async () => {
         const data = await invoiceStore.getAll()
@@ -233,7 +234,7 @@ function InvoiceList() {
         })
         setShowForm(false)
         setItems([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
-        setFormData({ clientId: '', discountPercent: 0, taxPercent: 18, paymentMethod: 'cash', branch: 'Bengaluru', stylist: '', notes: '' })
+        setFormData({ clientId: '', discountPercent: 0, taxPercent: 5, paymentMethod: 'cash', branch: 'Bengaluru', stylist: '', notes: '' })
         await reload()
     }
 

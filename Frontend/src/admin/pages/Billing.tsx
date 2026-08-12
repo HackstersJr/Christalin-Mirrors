@@ -85,7 +85,7 @@ export default function Billing() {
     // Discount & Tax
     const [discountType, setDiscountType] = useState<'percent' | 'flat'>('percent');
     const [discountValue, setDiscountValue] = useState<number>(0);
-    const [taxPercent, setTaxPercent] = useState<number>(18);
+    const [taxPercent, setTaxPercent] = useState<number>(5);
     
     // Payment
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'split'>('cash');
@@ -344,7 +344,7 @@ export default function Billing() {
         setItems([]);
         setDiscountType('percent');
         setDiscountValue(0);
-        setTaxPercent(18);
+        setTaxPercent(5);
         setPaymentMethod('cash');
         setAmountReceived(0);
         setUpiRef('');
@@ -700,7 +700,8 @@ export default function Billing() {
 
                     <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
                     <div className="preview-salon-name">Christalin Mirrors</div>
-                    
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center' }}>GSTIN: 29AAVFC4475G1ZU</div>
+
                     <div className="preview-meta">
                         <div>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
                         <div className="preview-client">
