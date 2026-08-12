@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Trash2, Download } from 'lucide-react'
+import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Download } from 'lucide-react'
 import { invoiceStore, clientStore, serviceStore } from '../data/store'
-import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
+import { getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Invoice, InvoiceItem } from '../data/types'
 import cmLogo from '../../assets/cm-logo-white.png'
 import '../AdminShared.css'
@@ -240,7 +240,6 @@ function InvoiceDetail() {
 // ─── Invoice List ───────────────────────────────────────────
 function InvoiceList() {
     const navigate = useNavigate()
-    const canDelete = authStore.getSession()?.role !== 'receptionist'
     const branchScope = getBranchScope()
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [clients, setClients] = useState<any[]>([])
@@ -307,13 +306,6 @@ function InvoiceList() {
         setItems([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
         setFormData({ clientId: '', discountPercent: 0, taxPercent: 5, paymentMethod: 'cash', branch: 'Bengaluru', stylist: '', notes: '' })
         await reload()
-    }
-
-    const deleteInv = async (id: string) => {
-        if (confirm('Delete this invoice?')) {
-            await invoiceStore.delete(id)
-            await reload()
-        }
     }
 
     return (
@@ -447,9 +439,6 @@ function InvoiceList() {
                                 <td>
                                     <div className="admin-actions">
                                         <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate(`/admin/invoices/${inv.id}`)}><Eye size={14} /></button>
-                                        {canDelete && (
-                                            <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => deleteInv(inv.id)}><Trash2 size={14} /></button>
-                                        )}
                                     </div>
                                 </td>
                             </tr>
@@ -495,9 +484,6 @@ function InvoiceList() {
                         </div>
                         <div className="mobile-card-actions" style={{ justifyContent: 'flex-end' }}>
                             <button className="admin-btn admin-btn-ghost" onClick={() => navigate(`/admin/invoices/${inv.id}`)}><Eye size={16} /></button>
-                            {canDelete && (
-                                <button className="admin-btn admin-btn-ghost" onClick={() => deleteInv(inv.id)}><Trash2 size={16} /></button>
-                            )}
                         </div>
                     </div>
                 ))}
