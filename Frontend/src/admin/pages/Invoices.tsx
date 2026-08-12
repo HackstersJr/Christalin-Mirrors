@@ -6,6 +6,7 @@ import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Invoice, InvoiceItem } from '../data/types'
 import cmLogo from '../../assets/cm-logo-white.png'
 import '../AdminShared.css'
+import './Billing.css'
 
 async function downloadInvoicePdf(invoice: Invoice) {
     const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
@@ -83,7 +84,7 @@ function InvoiceDetail() {
 
     return (
         <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
+            <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
                 <button className="admin-btn admin-btn-ghost" onClick={() => navigate('/admin/invoices')}>
                     <ArrowLeft size={18} />
                 </button>
@@ -97,99 +98,77 @@ function InvoiceDetail() {
                 <button className="admin-btn admin-btn-secondary" onClick={handlePrint}><Printer size={14} /> Print</button>
             </div>
 
-            {/* Invoice Card */}
-            <div className="admin-form-card" id="invoice-print">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 28 }}>
-                    <div>
-                        <img src={cmLogo} alt="Christalin Mirrors" style={{ height: 24, width: 'auto', filter: 'brightness(0)' }} />
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Christalin Mirrors</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{invoice.branch}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>GSTIN: 29AAVFC4475G1ZU</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{invoice.invoiceNumber}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Date: {new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-                        {invoice.stylist && <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Stylist: {invoice.stylist}</div>}
-                    </div>
+            {/* Invoice Card — mirrors the Billing "Bill Preview" receipt style */}
+            <div className="preview-receipt" id="invoice-print" style={{ position: 'static', boxShadow: 'none', border: '1px solid var(--border-color)' }}>
+                <div className="preview-header">Tax Invoice</div>
+
+                <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
+                <div className="preview-salon-name">Christalin Mirrors</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', marginTop: -20, marginBottom: 24 }}>
+                    {invoice.branch}<br />GSTIN: 29AAVFC4475G1ZU
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, padding: '14px 16px', background: 'var(--bg-card-alt)', borderRadius: 8 }}>
-                    <div>
-                        <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>Bill To</div>
-                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{invoice.clientName}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{invoice.clientEmail}</div>
-                        {invoice.clientPhone && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{invoice.clientPhone}</div>}
+                <div className="preview-meta">
+                    <div>{invoice.invoiceNumber} • {new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                    {invoice.stylist && <div style={{ fontSize: 12, marginTop: 4 }}>Stylist: {invoice.stylist}</div>}
+                    <div className="preview-client">{invoice.clientName}</div>
+                    {invoice.clientPhone && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{invoice.clientPhone}</div>}
+                </div>
+
+                <div className="preview-items">
+                    {invoice.items.map((item, i) => item.service ? (
+                        <div key={i} className="preview-row">
+                            <div className="preview-row-name">
+                                {item.service}
+                                <div className="preview-row-qty">{item.quantity} × ₹{item.unitPrice.toLocaleString()}</div>
+                            </div>
+                            <div className="preview-row-total">₹{item.total.toLocaleString()}</div>
+                        </div>
+                    ) : null)}
+                </div>
+
+                <div className="preview-totals">
+                    <div className="preview-sub">
+                        <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString()}</span>
                     </div>
-                    {invoice.paymentMethod && (
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>Payment</div>
-                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{invoice.paymentMethod}</div>
+                    {invoice.discountAmount > 0 && (
+                        <div className="preview-discount">
+                            <span>Discount ({invoice.discountPercent}%)</span><span>-₹{invoice.discountAmount.toLocaleString()}</span>
+                        </div>
+                    )}
+                    <div className="preview-tax">
+                        <span>CGST ({invoice.taxPercent / 2}%)</span><span>₹{Math.floor(invoice.taxAmount / 2).toLocaleString()}</span>
+                    </div>
+                    <div className="preview-tax">
+                        <span>SGST ({invoice.taxPercent / 2}%)</span><span>₹{(invoice.taxAmount - Math.floor(invoice.taxAmount / 2)).toLocaleString()}</span>
+                    </div>
+                    <div className="preview-grand-total">
+                        <span>Total</span><span>₹{invoice.total.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                        <span>Amount Paid</span><span>₹{invoice.amountPaid.toLocaleString()}</span>
+                    </div>
+                    {invoice.total - invoice.amountPaid > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--danger)' }}>
+                            <span>Balance Due</span><span>₹{(invoice.total - invoice.amountPaid).toLocaleString()}</span>
                         </div>
                     )}
                 </div>
 
-                {/* Items Table */}
-                <div className="table-scroll" style={{ marginBottom: 20 }}>
-                    <table className="admin-table" style={{ minWidth: 340 }}>
-                        <thead>
-                            <tr><th>Service</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Unit Price</th><th style={{ textAlign: 'right' }}>Total</th></tr>
-                        </thead>
-                        <tbody>
-                            {invoice.items.map((item, i) => (
-                                <tr key={i}>
-                                    <td>
-                                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item.service}</div>
-                                        {item.description && <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{item.description}</div>}
-                                    </td>
-                                    <td style={{ textAlign: 'right' }}>{item.quantity}</td>
-                                    <td style={{ textAlign: 'right' }}>₹{item.unitPrice.toLocaleString()}</td>
-                                    <td style={{ textAlign: 'right', fontWeight: 500 }}>₹{item.total.toLocaleString()}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Totals */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <div style={{ width: 280, maxWidth: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                            <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString()}</span>
-                        </div>
-                        {invoice.discountAmount > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: 'var(--success-light)' }}>
-                                <span>Discount ({invoice.discountPercent}%)</span><span>-₹{invoice.discountAmount.toLocaleString()}</span>
-                            </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: 'var(--text-muted)' }}>
-                            <span>CGST ({invoice.taxPercent / 2}%)</span><span>₹{Math.floor(invoice.taxAmount / 2).toLocaleString()}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: 'var(--text-muted)' }}>
-                            <span>SGST ({invoice.taxPercent / 2}%)</span><span>₹{(invoice.taxAmount - Math.floor(invoice.taxAmount / 2)).toLocaleString()}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontSize: 18, fontWeight: 700, color: 'var(--accent)', borderTop: '1px solid var(--border-light)', marginTop: 4 }}>
-                            <span>Total</span><span>₹{invoice.total.toLocaleString()}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12, color: 'var(--text-muted)' }}>
-                            <span>Amount Paid</span><span>₹{invoice.amountPaid.toLocaleString()}</span>
-                        </div>
-                        {invoice.total - invoice.amountPaid > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13, fontWeight: 600, color: 'var(--danger)' }}>
-                                <span>Balance Due</span><span>₹{(invoice.total - invoice.amountPaid).toLocaleString()}</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
                 {invoice.notes && (
-                    <div style={{ marginTop: 20, padding: '10px 14px', background: 'var(--bg-card-alt)', borderRadius: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                    <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
                         <strong>Notes:</strong> {invoice.notes}
                     </div>
                 )}
+
+                <div className="preview-footer">
+                    {invoice.paymentMethod && <span className="preview-payment-badge">{invoice.paymentMethod}</span>}
+                    <div className="preview-watermark">Christalin Mirrors — {invoice.branch}</div>
+                </div>
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+            <div className="no-print" style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap', maxWidth: 420, margin: '16px auto 0' }}>
                 {invoice.status === 'draft' && <button className="admin-btn admin-btn-primary" onClick={() => updateStatus('sent')}>Mark as Sent</button>}
                 {(invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'draft') && <button className="admin-btn admin-btn-primary" style={{ background: 'var(--success)', color: 'white', borderColor: 'var(--success)' }} onClick={() => updateStatus('paid')}>Mark as Paid</button>}
                 {invoice.status !== 'cancelled' && invoice.status !== 'paid' && <button className="admin-btn admin-btn-danger" onClick={() => updateStatus('cancelled')}>Cancel Invoice</button>}

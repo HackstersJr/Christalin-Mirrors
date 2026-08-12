@@ -245,3 +245,22 @@
         padding: 20px 16px;
     }
 }
+
+/* ─── Print ───────────────────────────────────────────────────── */
+@media print {
+    .admin-sidebar,
+    .admin-topbar,
+    .admin-overlay,
+    .no-print {
+        display: none !important;
+    }
+
+    .admin-main {
+        margin-left: 0 !important;
+    }
+
+    .admin-content {
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+}
