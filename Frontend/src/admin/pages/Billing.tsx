@@ -99,8 +99,6 @@ export default function Billing() {
 
     // Modals & Flows
     const [showPayModal, setShowPayModal] = useState(false);
-    const [showVoiceModal, setShowVoiceModal] = useState(false);
-    const [recordedVoiceReview, setRecordedVoiceReview] = useState<ClientReview | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
     const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
@@ -312,6 +310,23 @@ export default function Billing() {
         // Fix 2: Mark appointment as completed if bill was from an appointment
         if (selectedAppointmentId) {
             await appointmentStore.update(selectedAppointmentId, { status: 'completed' });
+        }
+
+        // Trigger WhatsApp review prompt to client's phone
+        if (inv.clientPhone) {
+            try {
+                const GATEWAY_URL = window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://christalin-whatsapp.onrender.com';
+                fetch(`${GATEWAY_URL}/send-review-request`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: inv.clientPhone,
+                        clientName: inv.clientName,
+                        branch: selectedBranch,
+                        services: items.map(i => i.service).filter(Boolean).join(', ')
+                    })
+                }).catch(e => console.log('WhatsApp review prompt dispatch info:', e));
+            } catch {}
         }
         
         // Auto reset after 30 seconds
@@ -749,28 +764,6 @@ export default function Billing() {
                             <div>Method: <strong style={{ textTransform: 'uppercase' }}>{paymentMethod}</strong></div>
                         </div>
 
-                        {/* Pre-Billing Voice Review Step */}
-                        <div className="modal-voice-review-box" style={{ background: 'rgba(193, 127, 89, 0.1)', border: '1px solid rgba(193, 127, 89, 0.3)', borderRadius: 12, padding: 14, margin: '14px 0', textAlign: 'left' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ fontWeight: 600, fontSize: 13, color: '#e09f78', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <Mic size={16} /> Pre-Billing Client Voice Review
-                                </div>
-                                {recordedVoiceReview && <span className="status-badge confirmed">Recorded</span>}
-                            </div>
-                            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 10px' }}>
-                                {recordedVoiceReview
-                                    ? `"${recordedVoiceReview.transcript}"`
-                                    : 'Record 10-second client voice review before completing invoice.'}
-                            </p>
-                            <button
-                                type="button"
-                                className={`admin-btn ${recordedVoiceReview ? 'admin-btn-secondary' : 'admin-btn-primary'} admin-btn-sm`}
-                                onClick={() => setShowVoiceModal(true)}
-                            >
-                                <Mic size={14} /> {recordedVoiceReview ? 'Re-record Voice Review' : 'Record Client Voice Review Now'}
-                            </button>
-                        </div>
-
                         {paymentMethod === 'cash' && (
                             <div className="modal-cash-input">
                                 <label>Amount Received</label>
@@ -786,20 +779,6 @@ export default function Billing() {
                     </div>
                 </div>
             )}
-
-            <VoiceRecorderModal
-                isOpen={showVoiceModal}
-                onClose={() => setShowVoiceModal(false)}
-                onReviewSaved={(review) => {
-                    setRecordedVoiceReview(review);
-                    showToast('success', 'Voice review recorded & saved!');
-                }}
-                defaultClientName={selectedClient === 'walk-in' ? 'Walk-in Guest' : selectedClient ? selectedClient.name : ''}
-                defaultClientPhone={selectedClient && selectedClient !== 'walk-in' ? selectedClient.phone : ''}
-                defaultBranch={selectedBranch}
-                defaultStaffName={staff.find(s => s.id === selectedStaffId)?.name || ''}
-                title="Client Pre-Billing Voice Review"
-            />
         </div>
     );
 }

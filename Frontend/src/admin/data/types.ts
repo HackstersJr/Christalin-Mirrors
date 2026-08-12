@@ -204,5 +204,6 @@ export interface ClientReview {
     sentiment: 'positive' | 'neutral' | 'negative'
     tags: string[]
     status: 'published' | 'pending' | 'flagged'
+    source?: 'web' | 'whatsapp_voice' | 'whatsapp_text'
     createdAt: string
 }

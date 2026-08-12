@@ -195,6 +195,9 @@ export default function VoiceReviews() {
 
                             <div className="voice-review-footer">
                                 <div className="voice-tags">
+                                    {r.source === 'whatsapp_voice' && <span className="admin-tag" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', borderColor: 'rgba(34, 197, 94, 0.3)' }}>📱 WhatsApp Voice</span>}
+                                    {r.source === 'whatsapp_text' && <span className="admin-tag" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', borderColor: 'rgba(59, 130, 246, 0.3)' }}>💬 WhatsApp Text</span>}
+                                    {(!r.source || r.source === 'web') && <span className="admin-tag">🌐 Web Studio</span>}
                                     {r.tags.map(t => (
                                         <span key={t} className="admin-tag">{t}</span>
                                     ))}

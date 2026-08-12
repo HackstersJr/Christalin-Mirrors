@@ -959,7 +959,9 @@ export const invoiceStore = {
     },
 
     create: async (inv: Omit<Invoice, 'id' | 'createdAt'>): Promise<Invoice> => {
+        const id = crypto.randomUUID()
         const payload = {
+            id,
             invoiceNumber: inv.invoiceNumber,
             clientId: inv.clientId || null,
             clientName: inv.clientName,
@@ -986,6 +988,7 @@ export const invoiceStore = {
             if (!error && invoice) {
                 if (inv.items && inv.items.length > 0) {
                     const itemsPayload = inv.items.map(it => ({
+                        id: crypto.randomUUID(),
                         invoiceId: invoice.id,
                         serviceName: it.service,
                         description: it.description || null,
@@ -1084,6 +1087,7 @@ export const reviewStore = {
                     sentiment: (r.sentiment ? String(r.sentiment).toLowerCase() : 'positive') as any,
                     tags: r.tags || [],
                     status: (r.status ? String(r.status).toLowerCase() : 'published') as any,
+                    source: r.source || 'web',
                     createdAt: r.createdAt || new Date().toISOString(),
                 }))
             }
@@ -1112,6 +1116,7 @@ export const reviewStore = {
             sentiment: (review.sentiment || 'positive').toUpperCase(),
             tags: review.tags || [],
             status: (review.status || 'published').toUpperCase(),
+            source: review.source || 'web',
             createdAt: nowIso,
             updatedAt: nowIso,
         }
@@ -1134,6 +1139,7 @@ export const reviewStore = {
                     sentiment: data.sentiment.toLowerCase() as any,
                     tags: data.tags || [],
                     status: data.status.toLowerCase() as any,
+                    source: data.source || review.source || 'web',
                     createdAt: data.createdAt,
                 }
             }
