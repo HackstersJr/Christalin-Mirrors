@@ -4,6 +4,7 @@ import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Download } from 'lucid
 import { invoiceStore, clientStore, serviceStore } from '../data/store'
 import { getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Invoice, InvoiceItem } from '../data/types'
+import { getBranchAddress } from '../../data/branches'
 import cmLogo from '../../assets/cm-logo-white.png'
 import '../AdminShared.css'
 import './Billing.css'
@@ -223,7 +224,11 @@ function InvoiceDetail() {
 
                 <div className="preview-footer">
                     {invoice.paymentMethod && <span className="preview-payment-badge">{invoice.paymentMethod}</span>}
+                    <div className="preview-thanks">Thank you for visiting — Team Christalin Mirrors</div>
                     <div className="preview-watermark">Christalin Mirrors — {invoice.branch}</div>
+                    {getBranchAddress(invoice.branch) && (
+                        <div className="preview-address">{getBranchAddress(invoice.branch)}</div>
+                    )}
                 </div>
             </div>
 

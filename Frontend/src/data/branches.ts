@@ -46,6 +46,13 @@ export const branches: Branch[] = [
     },
 ]
 
+// Looks up a branch's address by its clean short name (e.g. "Belgaum"), as
+// stored on invoices/appointments/clients via mapBranch() in admin/data/store.ts —
+// not branches[].name, which carries the fuller "CM — Belgaum (Belagavi)" label.
+export function getBranchAddress(cleanBranchName: string): string | undefined {
+    return branches.find(b => b.name.replace('CM — ', '').replace(/\s*\([^)]*\)$/, '') === cleanBranchName)?.address
+}
+
 export const comingSoonBranches = [
     { name: 'CM — Yelahanka', city: 'Yelahanka Phase 1, Bengaluru' },
     { name: 'CM — Hassan', city: 'Hassan, Karnataka' },

@@ -364,7 +364,16 @@
         border: 1px solid #000 !important;
     }
 
+    #invoice-print .preview-thanks {
+        font-size: 9px !important;
+        margin-bottom: 6px !important;
+    }
+
     #invoice-print .preview-watermark {
+        font-size: 8px !important;
+    }
+
+    #invoice-print .preview-address {
         font-size: 8px !important;
     }
 }

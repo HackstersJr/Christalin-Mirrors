@@ -9,6 +9,7 @@ import {
     inventoryStore, invoiceStore, settingsStore, visitStore
 } from '../data/store';
 import { getBranchScope } from '../data/authStore';
+import { getBranchAddress } from '../../data/branches';
 import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice, ClientReview } from '../data/types';
 import { useToast } from '../components/Toast';
 import VoiceRecorderModal from '../components/VoiceRecorderModal';
@@ -748,7 +749,11 @@ export default function Billing() {
                         {paymentMethod === 'cash' && changeToReturn > 0 && (
                             <div className="preview-change">Change: ₹{changeToReturn}</div>
                         )}
+                        <div className="preview-thanks">Thank you for visiting — Team Christalin Mirrors</div>
                         <div className="preview-watermark">Christalin Mirrors — {selectedBranch}</div>
+                        {getBranchAddress(selectedBranch) && (
+                            <div className="preview-address">{getBranchAddress(selectedBranch)}</div>
+                        )}
                     </div>
                 </div>
             </div>
