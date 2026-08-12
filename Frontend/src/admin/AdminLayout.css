@@ -268,3 +268,98 @@
         overflow: visible !important;
     }
 }
+
+/* ─── Thermal Receipt Print (58mm POS roll printer) ─────────────
+   #invoice-print opts into a named page sized for a 58mm roll.
+   The continuous-roll "auto" height lets the receipt print as one
+   strip instead of being paginated like A4. Only takes effect when
+   the browser's print dialog targets the thermal/POS printer. */
+@page thermal-receipt {
+    size: 58mm auto;
+    margin: 0;
+}
+
+@media print {
+    #invoice-print {
+        page: thermal-receipt;
+        width: 54mm !important;
+        max-width: 54mm !important;
+        margin: 0 auto !important;
+        padding: 2mm 2mm 6mm !important;
+        box-sizing: border-box;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        color: #000 !important;
+        font-family: 'Courier New', ui-monospace, monospace !important;
+        font-size: 10px !important;
+        line-height: 1.4 !important;
+    }
+
+    #invoice-print * {
+        color: #000 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    #invoice-print .preview-brand-logo {
+        filter: brightness(0) !important;
+        height: 22px !important;
+    }
+
+    #invoice-print .preview-header {
+        font-size: 8px !important;
+        margin-bottom: 10px !important;
+    }
+
+    #invoice-print .preview-salon-name {
+        font-size: 11px !important;
+        font-weight: 700;
+        margin-bottom: 2px !important;
+    }
+
+    #invoice-print .preview-meta,
+    #invoice-print .preview-totals {
+        border-top: 1px dashed #000 !important;
+        border-bottom: none !important;
+        padding: 8px 0 !important;
+        margin-bottom: 8px !important;
+    }
+
+    #invoice-print .preview-totals {
+        border-bottom: none !important;
+    }
+
+    #invoice-print .preview-client {
+        font-size: 11px !important;
+    }
+
+    #invoice-print .preview-row {
+        margin-bottom: 6px !important;
+        font-size: 10px !important;
+    }
+
+    #invoice-print .preview-row-qty {
+        font-size: 9px !important;
+    }
+
+    #invoice-print .preview-grand-total {
+        border-top: 1px dashed #000 !important;
+        font-size: 13px !important;
+        padding-top: 8px !important;
+        margin-top: 8px !important;
+    }
+
+    #invoice-print .preview-footer {
+        margin-top: 12px !important;
+    }
+
+    #invoice-print .preview-payment-badge {
+        border: 1px solid #000 !important;
+    }
+
+    #invoice-print .preview-watermark {
+        font-size: 8px !important;
+    }
+}
