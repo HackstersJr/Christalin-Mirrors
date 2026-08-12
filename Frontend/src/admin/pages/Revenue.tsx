@@ -24,7 +24,14 @@ export default function Revenue() {
     const today = new Date().toISOString().split('T')[0]
     const thisMonth = today.slice(0, 7)
     const thisYear = today.slice(0, 4)
-    const branchNames = branchList.map(b => b.name.replace('CM — ', ''))
+    // Invoices store the clean short branch name (e.g. "Belgaum") via
+    // mapBranch() in store.ts, not branchList's fuller display label (e.g.
+    // "Belgaum (Belagavi)") — strip the parenthetical so filtering below
+    // actually matches real records, while keeping the full label for display.
+    const branchOptions = branchList.map(b => {
+        const displayName = b.name.replace('CM — ', '')
+        return { name: displayName.replace(/\s*\([^)]*\)$/, ''), displayName }
+    })
 
     const paid = invoices.filter(i => i.status === 'paid')
     const scoped = branchFilter === 'all' ? paid : paid.filter(i => i.branch === branchFilter)
@@ -35,10 +42,11 @@ export default function Revenue() {
     const allTimeRevenue = sum(scoped)
 
     // Branch-by-branch comparison, independent of the active filter.
-    const branchComparison = branchNames.map(name => {
+    const branchComparison = branchOptions.map(({ name, displayName }) => {
         const branchPaid = paid.filter(i => i.branch === name)
         return {
             name,
+            displayName,
             today: sum(branchPaid.filter(i => i.date === today)),
             month: sum(branchPaid.filter(i => i.date.startsWith(thisMonth))),
             year: sum(branchPaid.filter(i => i.date.startsWith(thisYear))),
@@ -59,7 +67,7 @@ export default function Revenue() {
                 <div>
                     <h1 className="admin-page-title">Revenue</h1>
                     <p className="admin-page-sub">
-                        {branchFilter === 'all' ? 'Money flow across all branches' : `Money flow for ${branchFilter}`}
+                        {branchFilter === 'all' ? 'Money flow across all branches' : `Money flow for ${branchOptions.find(o => o.name === branchFilter)?.displayName || branchFilter}`}
                     </p>
                 </div>
             </div>
@@ -69,9 +77,9 @@ export default function Revenue() {
                 <button className={`revenue-tab ${branchFilter === 'all' ? 'active' : ''}`} onClick={() => setBranchFilter('all')}>
                     All Branches
                 </button>
-                {branchNames.map(name => (
+                {branchOptions.map(({ name, displayName }) => (
                     <button key={name} className={`revenue-tab ${branchFilter === name ? 'active' : ''}`} onClick={() => setBranchFilter(name)}>
-                        {name}
+                        {displayName}
                     </button>
                 ))}
             </div>
@@ -124,7 +132,7 @@ export default function Revenue() {
                                     <tr key={b.name} style={{ cursor: 'pointer' }} onClick={() => setBranchFilter(b.name)}>
                                         <td className="cell-primary" style={{ fontWeight: 600, color: 'var(--text-bright)' }}>
                                             <Building2 size={13} style={{ marginRight: 6, verticalAlign: 'middle', color: 'var(--accent)' }} />
-                                            {b.name}
+                                            {b.displayName}
                                         </td>
                                         <td className="cell-secondary">₹{b.today.toLocaleString()}</td>
                                         <td className="cell-secondary">₹{b.month.toLocaleString()}</td>

@@ -65,7 +65,12 @@ export default function Dashboard() {
     const isOwner = session?.role === 'owner'
     const thisMonth = today.slice(0, 7)
     const branchOverview = isOwner ? branchList.map((b) => {
-        const name = b.name.replace('CM — ', '')
+        const displayName = b.name.replace('CM — ', '')
+        // Invoices/appointments/clients/staff store the clean short branch
+        // name (e.g. "Belgaum") via mapBranch() in store.ts, not the fuller
+        // display label (e.g. "Belgaum (Belagavi)") — strip the parenthetical
+        // so filtering below actually matches real records.
+        const name = displayName.replace(/\s*\([^)]*\)$/, '')
         const branchPaidInvoices = invoices.filter((i) => i.branch === name && i.status === 'paid')
         const todayRevenue = branchPaidInvoices.filter((i) => i.date === today).reduce((s, i) => s + i.total, 0)
         const monthRevenueForBranch = branchPaidInvoices.filter((i) => i.date.startsWith(thisMonth)).reduce((s, i) => s + i.total, 0)
@@ -74,7 +79,7 @@ export default function Dashboard() {
         const monthAppointments = scopedAppointments.filter((a) => a.branch === name && a.date.startsWith(thisMonth)).length
         const totalClients = clients.filter((c) => c.branch === name).length
         const staffCount = staffList.filter((s) => s.branch === name && s.isActive).length
-        return { name, image: b.image, todayRevenue, monthRevenueForBranch, completedToday, bookingsToday, monthAppointments, totalClients, staffCount }
+        return { name, displayName, image: b.image, todayRevenue, monthRevenueForBranch, completedToday, bookingsToday, monthAppointments, totalClients, staffCount }
     }) : []
 
     return (
@@ -125,7 +130,7 @@ export default function Dashboard() {
                             />
                             <div className="dashboard-branch-card-fade" />
                             <div className="dashboard-branch-card-content">
-                                <h3><Building2 size={15} /> {b.name}</h3>
+                                <h3><Building2 size={15} /> {b.displayName}</h3>
                                 <div className="dashboard-branch-metrics">
                                     <div className="dashboard-branch-metric">
                                         <span className="value">₹{b.todayRevenue.toLocaleString()}</span>
@@ -214,7 +219,7 @@ export default function Dashboard() {
                                     <tbody>
                                         {branchOverview.map(b => (
                                             <tr key={b.name}>
-                                                <td className="cell-primary" style={{ fontWeight: 600, color: 'var(--text-bright)' }}>{b.name}</td>
+                                                <td className="cell-primary" style={{ fontWeight: 600, color: 'var(--text-bright)' }}>{b.displayName}</td>
                                                 <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>₹{b.monthRevenueForBranch.toLocaleString()}</td>
                                                 <td className="cell-secondary">{b.totalClients}</td>
                                                 <td className="cell-secondary">{b.staffCount}</td>
@@ -230,7 +235,7 @@ export default function Dashboard() {
                                         <div className="mobile-card-top">
                                             <div className="mobile-card-heading">
                                                 <div>
-                                                    <div className="mobile-card-title">{b.name}</div>
+                                                    <div className="mobile-card-title">{b.displayName}</div>
                                                     <div className="mobile-card-sub">This month's performance</div>
                                                 </div>
                                             </div>
