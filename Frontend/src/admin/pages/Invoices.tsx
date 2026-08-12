@@ -8,34 +8,66 @@ import cmLogo from '../../assets/cm-logo-white.png'
 import '../AdminShared.css'
 import './Billing.css'
 
+// html2canvas doesn't honor CSS `filter` (used on-screen to flip the white
+// logo artwork to black), so the captured image shows the raw white logo —
+// near-invisible on a white receipt. Bake a real black silhouette instead by
+// re-drawing the logo's alpha shape filled with black on an offscreen canvas.
+function blackenLogo(src: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = img.naturalWidth
+            canvas.height = img.naturalHeight
+            const ctx = canvas.getContext('2d')
+            if (!ctx) { reject(new Error('no 2d context')); return }
+            ctx.drawImage(img, 0, 0)
+            ctx.globalCompositeOperation = 'source-in'
+            ctx.fillStyle = '#000000'
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
+            resolve(canvas.toDataURL('image/png'))
+        }
+        img.onerror = reject
+        img.src = src
+    })
+}
+
+async function captureInvoiceCanvas(html2canvas: typeof import('html2canvas').default) {
+    const node = document.getElementById('invoice-print')
+    if (!node) return null
+
+    const logoImg = node.querySelector<HTMLImageElement>('.preview-brand-logo')
+    const originalSrc = logoImg?.getAttribute('src') || null
+    if (logoImg && originalSrc) {
+        try { logoImg.src = await blackenLogo(originalSrc) } catch { /* keep original on failure */ }
+    }
+
+    try {
+        return await html2canvas(node, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+    } finally {
+        if (logoImg && originalSrc) logoImg.src = originalSrc
+    }
+}
+
 async function downloadInvoicePdf(invoice: Invoice) {
     const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
     ])
-    const node = document.getElementById('invoice-print')
-    if (!node) return
-
-    const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+    const canvas = await captureInvoiceCanvas(html2canvas)
+    if (!canvas) return
     const imgData = canvas.toDataURL('image/png')
 
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const imgWidth = pageWidth
-    const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-    let heightLeft = imgHeight
-    let position = 0
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-    heightLeft -= pageHeight
-    while (heightLeft > 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
-    }
-
+    // Size the PDF page to the receipt itself (single page, 1:1) instead of
+    // forcing it into A4 — stretching a narrow receipt to A4 width made it
+    // taller than one page, which split the content across a page break.
+    const pdf = new jsPDF({
+        orientation: canvas.height >= canvas.width ? 'portrait' : 'landscape',
+        unit: 'px',
+        format: [canvas.width, canvas.height],
+    })
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
     pdf.save(`${invoice.invoiceNumber}.pdf`)
 }
 
@@ -65,8 +97,7 @@ function InvoiceDetail() {
         setInvoice({ ...invoice, status })
     }
 
-    const shareWhatsApp = () => {
-        if (!invoice) return;
+    const buildWhatsAppText = () => {
         let text = `*Christalin Mirrors - Invoice ${invoice.invoiceNumber}*\n`;
         text += `Date: ${new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN')}\n`;
         text += `Client: ${invoice.clientName}\n\n`;
@@ -79,6 +110,37 @@ function InvoiceDetail() {
         text += `SGST (${invoice.taxPercent / 2}%): ₹${invoice.taxAmount - Math.floor(invoice.taxAmount / 2)}\n`;
         text += `*Total: ₹${invoice.total}*\n\n`;
         text += `Thank you for your visit!`;
+        return text;
+    }
+
+    // WhatsApp's wa.me link only supports pre-filled text — there's no URL
+    // parameter for attaching a file. To actually send the bill image, we
+    // use the Web Share API (supported on Android/Chrome and most mobile
+    // browsers), which hands the image to the native share sheet where
+    // WhatsApp appears as a real target with the file attached. Falls back
+    // to the old text-only wa.me link where file sharing isn't supported
+    // (e.g. desktop browsers).
+    const shareWhatsApp = async () => {
+        if (!invoice) return;
+        const text = buildWhatsAppText();
+
+        try {
+            const { default: html2canvas } = await import('html2canvas')
+            const canvas = await captureInvoiceCanvas(html2canvas)
+            if (canvas) {
+                const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+                if (blob) {
+                    const file = new File([blob], `${invoice.invoiceNumber}.png`, { type: 'image/png' })
+                    if (navigator.canShare?.({ files: [file] })) {
+                        await navigator.share({ files: [file], title: invoice.invoiceNumber, text })
+                        return
+                    }
+                }
+            }
+        } catch (err) {
+            if ((err as Error)?.name === 'AbortError') return // user cancelled the share sheet
+        }
+
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
 
