@@ -1,11 +1,42 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Trash2 } from 'lucide-react'
+import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Trash2, Download } from 'lucide-react'
 import { invoiceStore, clientStore, serviceStore } from '../data/store'
 import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Invoice, InvoiceItem } from '../data/types'
 import cmLogo from '../../assets/cm-logo-white.png'
 import '../AdminShared.css'
+
+async function downloadInvoicePdf(invoice: Invoice) {
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+    ])
+    const node = document.getElementById('invoice-print')
+    if (!node) return
+
+    const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+    const imgData = canvas.toDataURL('image/png')
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const imgWidth = pageWidth
+    const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+    let heightLeft = imgHeight
+    let position = 0
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+    heightLeft -= pageHeight
+    while (heightLeft > 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+    }
+
+    pdf.save(`${invoice.invoiceNumber}.pdf`)
+}
 
 // ─── Invoice Detail View ────────────────────────────────────
 function InvoiceDetail() {
@@ -62,6 +93,7 @@ function InvoiceDetail() {
                 </div>
                 <span className={`status-badge ${invoice.status === 'paid' ? 'confirmed' : invoice.status === 'sent' ? 'pending' : invoice.status}`}>{invoice.status}</span>
                 <button className="admin-btn admin-btn-whatsapp" onClick={shareWhatsApp}>Share on WhatsApp</button>
+                <button className="admin-btn admin-btn-secondary" onClick={() => downloadInvoicePdf(invoice)}><Download size={14} /> Download</button>
                 <button className="admin-btn admin-btn-secondary" onClick={handlePrint}><Printer size={14} /> Print</button>
             </div>
 
