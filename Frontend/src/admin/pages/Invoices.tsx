@@ -9,28 +9,24 @@ import '../AdminShared.css'
 import './Billing.css'
 
 // html2canvas doesn't honor CSS `filter` (used on-screen to flip the white
-// logo artwork to black), so the captured image shows the raw white logo —
-// near-invisible on a white receipt. Bake a real black silhouette instead by
-// re-drawing the logo's alpha shape filled with black on an offscreen canvas.
-function blackenLogo(src: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = img.naturalWidth
-            canvas.height = img.naturalHeight
-            const ctx = canvas.getContext('2d')
-            if (!ctx) { reject(new Error('no 2d context')); return }
-            ctx.drawImage(img, 0, 0)
-            ctx.globalCompositeOperation = 'source-in'
-            ctx.fillStyle = '#000000'
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-            resolve(canvas.toDataURL('image/png'))
-        }
-        img.onerror = reject
-        img.src = src
-    })
+// logo artwork to black), so the captured image shows the raw white/cream
+// logo artwork, which blends into the white receipt. Bake a real black
+// silhouette instead by re-drawing the logo's alpha shape filled with black
+// on an offscreen canvas. Drawing the already-loaded, already-rendered <img>
+// element directly (rather than re-fetching the src into a new Image) avoids
+// a same-origin resource being re-requested with different CORS handling,
+// which can silently taint the canvas and produce no output at all.
+function blackenLogo(imgEl: HTMLImageElement): string | null {
+    const canvas = document.createElement('canvas')
+    canvas.width = imgEl.naturalWidth
+    canvas.height = imgEl.naturalHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx || canvas.width === 0) return null
+    ctx.drawImage(imgEl, 0, 0)
+    ctx.globalCompositeOperation = 'source-in'
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/png')
 }
 
 async function captureInvoiceCanvas(html2canvas: typeof import('html2canvas').default) {
@@ -39,8 +35,10 @@ async function captureInvoiceCanvas(html2canvas: typeof import('html2canvas').de
 
     const logoImg = node.querySelector<HTMLImageElement>('.preview-brand-logo')
     const originalSrc = logoImg?.getAttribute('src') || null
-    if (logoImg && originalSrc) {
-        try { logoImg.src = await blackenLogo(originalSrc) } catch { /* keep original on failure */ }
+    const blackened = logoImg ? blackenLogo(logoImg) : null
+    if (logoImg && blackened) {
+        logoImg.src = blackened
+        await logoImg.decode().catch(() => {}) // ensure the swapped image is painted before capture
     }
 
     try {
