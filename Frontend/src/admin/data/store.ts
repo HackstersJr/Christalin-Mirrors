@@ -452,6 +452,8 @@ export const serviceStore = {
 
     create: async (svc: Omit<ServiceRecord, 'id'>): Promise<ServiceRecord> => {
         const payload = {
+            id: crypto.randomUUID(),
+            updatedAt: new Date().toISOString(),
             name: svc.name,
             category: svc.category.toUpperCase(),
             duration: svc.duration,
@@ -714,6 +716,8 @@ export const inventoryStore = {
 
     create: async (item: Omit<InventoryItem, 'id'>): Promise<InventoryItem> => {
         const payload = {
+            id: crypto.randomUUID(),
+            updatedAt: new Date().toISOString(),
             name: item.name,
             brand: item.brand,
             category: item.category.toUpperCase().replace('-', ''),
@@ -960,8 +964,10 @@ export const invoiceStore = {
 
     create: async (inv: Omit<Invoice, 'id' | 'createdAt'>): Promise<Invoice> => {
         const id = crypto.randomUUID()
+        const nowIso = new Date().toISOString()
         const payload = {
             id,
+            updatedAt: nowIso,
             invoiceNumber: inv.invoiceNumber,
             clientId: inv.clientId || null,
             clientName: inv.clientName,
