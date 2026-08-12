@@ -247,6 +247,10 @@
 }
 
 /* ─── Print ───────────────────────────────────────────────────── */
+@page {
+    margin: 12mm;
+}
+
 @media print {
     .admin-sidebar,
     .admin-topbar,
