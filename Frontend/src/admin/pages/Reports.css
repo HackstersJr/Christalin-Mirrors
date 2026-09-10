@@ -1,0 +1,64 @@
+.report-sheet {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 28px;
+}
+
+.report-letterhead {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.report-logo {
+    height: 30px;
+    width: auto;
+    filter: brightness(0) invert(1);
+}
+
+:root[data-theme="light"] .report-logo {
+    filter: brightness(0);
+}
+
+.report-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-bright);
+}
+
+.report-range {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.report-table th,
+.report-table td {
+    white-space: nowrap;
+}
+
+.report-totals-row td {
+    font-weight: 700;
+    color: var(--text-bright);
+    border-top: 2px solid var(--border-strong);
+}
+
+.report-note {
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+.report-footer {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border-strong);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+}

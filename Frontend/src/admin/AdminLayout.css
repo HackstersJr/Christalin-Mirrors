@@ -269,6 +269,41 @@
     }
 }
 
+/* ─── Report Print (A4 — daily/weekly/monthly executive reports) ─
+   Standard letter/A4 output for filing, unlike the 58mm thermal
+   receipt below. Forces plain black-on-white regardless of theme,
+   since dark-theme text colors would be unreadable on printed paper. */
+@media print {
+    #report-print {
+        border: none !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        color: #000 !important;
+        padding: 0 !important;
+    }
+
+    #report-print * {
+        color: #000 !important;
+        background: transparent !important;
+    }
+
+    #report-print .report-logo {
+        filter: brightness(0) !important;
+    }
+
+    #report-print .report-totals-row td {
+        border-top: 2px solid #000 !important;
+    }
+
+    #report-print .report-letterhead {
+        border-bottom: 1px solid #000 !important;
+    }
+
+    #report-print .report-footer {
+        border-top: 1px dashed #000 !important;
+    }
+}
+
 /* ─── Thermal Receipt Print (58mm POS roll printer) ─────────────
    #invoice-print opts into a named page sized for a 58mm roll.
    The continuous-roll "auto" height lets the receipt print as one

@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Calendar, Users, Scissors,
     UserCog, Settings, Menu, X, LogOut,
     FileText, CalendarDays, Receipt, UserCheck, TrendingUp,
-    Sun, Moon, Mic, Package
+    Sun, Moon, Mic, Package, Printer
 } from 'lucide-react'
 import { ToastProvider } from './components/Toast'
 import { authStore } from './data/authStore'
@@ -39,6 +39,7 @@ const receptionistNavItems = [
 
 const ownerOnlyNavItems = [
     { label: 'Revenue', icon: TrendingUp, path: '/admin/revenue' },
+    { label: 'Reports', icon: Printer, path: '/admin/reports' },
     { label: 'Services', icon: Scissors, path: '/admin/services' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ]
