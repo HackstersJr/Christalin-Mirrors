@@ -302,6 +302,30 @@
     #report-print .report-footer {
         border-top: 1px dashed #000 !important;
     }
+
+    #report-print .report-section-title {
+        border-bottom: 1px solid #000 !important;
+        break-after: avoid;
+    }
+
+    #report-print .snapshot-card,
+    #report-print .insight-tile {
+        border: 1px solid #000 !important;
+        break-inside: avoid;
+    }
+
+    #report-print .report-snapshot-grid,
+    #report-print .report-insights-grid {
+        break-inside: avoid;
+    }
+
+    #report-print .report-table tr {
+        break-inside: avoid;
+    }
+
+    #report-print .signoff-block {
+        border-top: 1px solid #000 !important;
+    }
 }
 
 /* ─── Thermal Receipt Print (58mm POS roll printer) ─────────────

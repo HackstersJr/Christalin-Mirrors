@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Printer, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Printer, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { invoiceStore, appointmentStore, clientStore, staffStore, inventoryStore } from '../data/store'
 import { branches as branchList } from '../../data/branches'
 import type { Invoice, Appointment, Client, StaffMember, InventoryItem } from '../data/types'
@@ -16,6 +16,11 @@ const branchNames = branchList.map(b => b.name.replace('CM — ', '').replace(/\
 function pad(n: number) { return String(n).padStart(2, '0') }
 function toIso(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 function todayIso() { return toIso(new Date()) }
+function addDays(iso: string, n: number) {
+    const d = new Date(iso + 'T00:00:00')
+    d.setDate(d.getDate() + n)
+    return toIso(d)
+}
 
 function getRange(period: Period, anchor: string) {
     const d = new Date(anchor + 'T00:00:00')
@@ -45,6 +50,55 @@ function shiftAnchor(period: Period, anchor: string, dir: 1 | -1) {
     return toIso(d)
 }
 
+type PeriodAgg = {
+    revenue: number
+    paidCount: number
+    cancelledCount: number
+    completed: number
+    apptCancelled: number
+    apptPending: number
+    newClients: number
+    apptTotal: number
+}
+
+function computeTrend(curr: number, prev: number): { label: string; dir: 'up' | 'down' | 'flat' } {
+    if (prev === 0) {
+        if (curr === 0) return { label: '0%', dir: 'flat' }
+        return { label: 'New', dir: 'up' }
+    }
+    const pct = ((curr - prev) / prev) * 100
+    const dir = pct > 0.5 ? 'up' : pct < -0.5 ? 'down' : 'flat'
+    return { label: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`, dir }
+}
+
+function Trend({ curr, prev }: { curr: number; prev: number }) {
+    const t = computeTrend(curr, prev)
+    const Icon = t.dir === 'up' ? TrendingUp : t.dir === 'down' ? TrendingDown : Minus
+    return (
+        <span className={`report-trend report-trend-${t.dir}`}>
+            <Icon size={12} /> {t.label}
+        </span>
+    )
+}
+
+function SnapshotCard({ label, sub, stats, prev }: { label: string; sub: string; stats: PeriodAgg; prev: PeriodAgg }) {
+    return (
+        <div className="snapshot-card">
+            <div className="snapshot-label">{label}</div>
+            <div className="snapshot-sub">{sub}</div>
+            <div className="snapshot-value-row">
+                <div className="snapshot-value">₹{stats.revenue.toLocaleString()}</div>
+                <Trend curr={stats.revenue} prev={prev.revenue} />
+            </div>
+            <div className="snapshot-metrics">
+                <span>{stats.paidCount} paid inv.</span>
+                <span>{stats.completed} appts done</span>
+                <span>{stats.newClients} new clients</span>
+            </div>
+        </div>
+    )
+}
+
 export default function Reports() {
     const [period, setPeriod] = useState<Period>('daily')
     const [anchor, setAnchor] = useState(todayIso())
@@ -63,6 +117,22 @@ export default function Reports() {
     }, [])
 
     const { start, end, label } = getRange(period, anchor)
+
+    function aggregate(rangeStart: string, rangeEnd: string): PeriodAgg {
+        const inv = invoices.filter(i => i.date >= rangeStart && i.date <= rangeEnd)
+        const paid = inv.filter(i => i.status === 'paid')
+        const cancelled = inv.filter(i => i.status === 'cancelled')
+        const revenue = paid.reduce((s, i) => s + i.total, 0)
+
+        const appts = appointments.filter(a => a.date >= rangeStart && a.date <= rangeEnd)
+        const completed = appts.filter(a => a.status === 'completed').length
+        const apptCancelled = appts.filter(a => a.status === 'cancelled').length
+        const apptPending = appts.filter(a => a.status === 'pending' || a.status === 'confirmed' || a.status === 'arrived').length
+
+        const newClients = clients.filter(c => c.joinedDate >= rangeStart && c.joinedDate <= rangeEnd).length
+
+        return { revenue, paidCount: paid.length, cancelledCount: cancelled.length, completed, apptCancelled, apptPending, newClients, apptTotal: appts.length }
+    }
 
     const branchStats = branchNames.map(name => {
         const inv = invoices.filter(i => i.branch === name && i.date >= start && i.date <= end)
@@ -94,6 +164,42 @@ export default function Reports() {
         lowStockCount: t.lowStockCount + b.lowStock.length,
     }), { revenue: 0, paidCount: 0, cancelledCount: 0, completed: 0, apptCancelled: 0, apptPending: 0, newClients: 0, staffCount: 0, lowStockCount: 0 })
 
+    // ─── Performance Snapshot: Yesterday / Week-to-Date / Month-to-Date ───
+    const today = todayIso()
+
+    const yesterday = shiftAnchor('daily', today, -1)
+    const dayBefore = shiftAnchor('daily', yesterday, -1)
+    const yesterdayStats = aggregate(yesterday, yesterday)
+    const dayBeforeStats = aggregate(dayBefore, dayBefore)
+
+    const weekRange = getRange('weekly', today)
+    const wtdStats = aggregate(weekRange.start, today)
+    const prevWeekStart = getRange('weekly', shiftAnchor('weekly', today, -1)).start
+    const wtdOffsetDays = Math.round((new Date(today + 'T00:00:00').getTime() - new Date(weekRange.start + 'T00:00:00').getTime()) / 86400000)
+    const prevWtdStats = aggregate(prevWeekStart, addDays(prevWeekStart, wtdOffsetDays))
+
+    const monthRange = getRange('monthly', today)
+    const mtdStats = aggregate(monthRange.start, today)
+    const prevMonthRange = getRange('monthly', shiftAnchor('monthly', today, -1))
+    const dayOfMonth = new Date(today + 'T00:00:00').getDate()
+    const prevMonthLastDay = new Date(prevMonthRange.end + 'T00:00:00').getDate()
+    const prevMtdEnd = addDays(prevMonthRange.start, Math.min(dayOfMonth, prevMonthLastDay) - 1)
+    const prevMtdStats = aggregate(prevMonthRange.start, prevMtdEnd)
+
+    // ─── Trend for the currently selected period, vs the prior equivalent period ───
+    const prevPeriodRange = getRange(period, shiftAnchor(period, anchor, -1))
+    const prevPeriodStats = aggregate(prevPeriodRange.start, prevPeriodRange.end)
+
+    // ─── Business insights ───
+    const topBranch = branchStats.reduce((best, b) => (b.revenue > best.revenue ? b : best), branchStats[0])
+    const avgTicket = totals.paidCount > 0 ? totals.revenue / totals.paidCount : 0
+    const apptDecided = totals.completed + totals.apptCancelled + totals.apptPending
+    const completionRate = apptDecided > 0 ? (totals.completed / apptDecided) * 100 : 0
+    const branchesWithAlerts = branchStats.filter(b => b.lowStock.length > 0).length
+
+    const reportNo = `CM/RPT/${period.toUpperCase()}/${anchor.replace(/-/g, '')}`
+    const generatedAt = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+
     return (
         <div>
             <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
@@ -118,11 +224,30 @@ export default function Reports() {
 
             <div id="report-print" className="report-sheet">
                 <div className="report-letterhead">
-                    <img src={cmLogo} alt="Christalin Mirrors" className="report-logo" />
-                    <div>
-                        <div className="report-title">Christalin Mirrors — {period.charAt(0).toUpperCase() + period.slice(1)} Report</div>
-                        <div className="report-range">{label}</div>
+                    <div className="report-letterhead-main">
+                        <img src={cmLogo} alt="Christalin Mirrors" className="report-logo" />
+                        <div>
+                            <div className="report-title">Christalin Mirrors — {period.charAt(0).toUpperCase() + period.slice(1)} Executive Report</div>
+                            <div className="report-range">{label}</div>
+                        </div>
                     </div>
+                    <div className="report-letterhead-meta">
+                        <div><span>Report No.</span> {reportNo}</div>
+                        <div><span>Generated</span> {generatedAt}</div>
+                        <div><span>Branches Covered</span> {branchNames.length}</div>
+                    </div>
+                </div>
+
+                <div className="report-section-title">Performance Snapshot</div>
+                <div className="report-snapshot-grid">
+                    <SnapshotCard label="Yesterday" sub={new Date(yesterday + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} stats={yesterdayStats} prev={dayBeforeStats} />
+                    <SnapshotCard label="Week to Date" sub={`${new Date(weekRange.start + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – today, vs. same days last week`} stats={wtdStats} prev={prevWtdStats} />
+                    <SnapshotCard label="Month to Date" sub={`${new Date(monthRange.start + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – today, vs. same days last month`} stats={mtdStats} prev={prevMtdStats} />
+                </div>
+
+                <div className="report-section-title">
+                    Branch Performance — {label}
+                    <span className="report-section-trend">vs. previous {period} period <Trend curr={totals.revenue} prev={prevPeriodStats.revenue} /></span>
                 </div>
 
                 <div className="table-scroll">
@@ -165,12 +290,42 @@ export default function Reports() {
                     </table>
                 </div>
 
+                <div className="report-section-title">Business Insights</div>
+                <div className="report-insights-grid">
+                    <div className="insight-tile">
+                        <div className="insight-label">Top Performing Branch</div>
+                        <div className="insight-value">{topBranch?.name ?? '—'}</div>
+                        <div className="insight-note">₹{(topBranch?.revenue ?? 0).toLocaleString()} revenue this {period}</div>
+                    </div>
+                    <div className="insight-tile">
+                        <div className="insight-label">Average Ticket Size</div>
+                        <div className="insight-value">₹{Math.round(avgTicket).toLocaleString()}</div>
+                        <div className="insight-note">across {totals.paidCount} paid invoice{totals.paidCount === 1 ? '' : 's'}</div>
+                    </div>
+                    <div className="insight-tile">
+                        <div className="insight-label">Appointment Completion Rate</div>
+                        <div className="insight-value">{completionRate.toFixed(1)}%</div>
+                        <div className="insight-note">{totals.completed} completed of {apptDecided} decided</div>
+                    </div>
+                    <div className="insight-tile">
+                        <div className="insight-label">Inventory Alerts</div>
+                        <div className="insight-value">{totals.lowStockCount}</div>
+                        <div className="insight-note">low-stock item{totals.lowStockCount === 1 ? '' : 's'} across {branchesWithAlerts} branch{branchesWithAlerts === 1 ? '' : 'es'}</div>
+                    </div>
+                </div>
+
                 <div className="report-note">
-                    Note: staff attendance is recorded per-device only (not yet centralized), so it's excluded here — "Active Staff" is the current roster headcount, not who showed up today.
+                    Note: staff attendance is recorded per-device only (not yet centralized), so it's excluded here — "Active Staff" is the current roster headcount, not who showed up today. Week/Month-to-Date figures compare the same number of elapsed days against the prior week/month for a like-for-like trend.
+                </div>
+
+                <div className="report-signoff">
+                    <div className="signoff-block"><span>Prepared by</span></div>
+                    <div className="signoff-block"><span>Reviewed by</span></div>
+                    <div className="signoff-block"><span>Date</span></div>
                 </div>
 
                 <div className="report-footer">
-                    Generated {new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })} · Christalin Mirrors — Executive Report
+                    {reportNo} · Generated {generatedAt} · Christalin Mirrors — Confidential, Internal Use Only. Retain for records.
                 </div>
             </div>
         </div>

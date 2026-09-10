@@ -7,11 +7,19 @@
 
 .report-letterhead {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 16px;
     margin-bottom: 24px;
     padding-bottom: 20px;
     border-bottom: 1px solid var(--border-color);
+}
+
+.report-letterhead-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
 .report-logo {
@@ -36,6 +44,111 @@
     margin-top: 2px;
 }
 
+.report-letterhead-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+    line-height: 1.7;
+}
+
+.report-letterhead-meta span {
+    color: var(--text-muted);
+    margin-right: 6px;
+}
+
+.report-section-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-bright);
+    margin: 26px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.report-section-title:first-of-type {
+    margin-top: 0;
+}
+
+.report-section-trend {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.report-snapshot-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 4px;
+}
+
+.snapshot-card {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px 16px;
+    break-inside: avoid;
+}
+
+.snapshot-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-bright);
+}
+
+.snapshot-sub {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    margin-bottom: 10px;
+}
+
+.snapshot-value-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.snapshot-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-bright);
+}
+
+.snapshot-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.report-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.report-trend-up { color: var(--success-light, #4ade80); }
+.report-trend-down { color: var(--danger, #f87171); }
+.report-trend-flat { color: var(--text-dim); }
+
 .report-table th,
 .report-table td {
     white-space: nowrap;
@@ -47,6 +160,39 @@
     border-top: 2px solid var(--border-strong);
 }
 
+.report-insights-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.insight-tile {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 14px;
+    break-inside: avoid;
+}
+
+.insight-label {
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.insight-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+}
+
+.insight-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+}
+
 .report-note {
     margin-top: 16px;
     font-size: 12px;
@@ -54,11 +200,36 @@
     font-style: italic;
 }
 
+.report-signoff {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 36px;
+}
+
+.signoff-block {
+    border-top: 1px solid var(--border-strong);
+    padding-top: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
 .report-footer {
-    margin-top: 24px;
+    margin-top: 20px;
     padding-top: 16px;
     border-top: 1px dashed var(--border-strong);
     font-size: 11px;
     color: var(--text-dim);
     text-align: center;
+}
+
+@media (max-width: 720px) {
+    .report-snapshot-grid,
+    .report-insights-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .report-letterhead-meta {
+        text-align: left;
+    }
 }

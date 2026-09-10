@@ -1049,12 +1049,61 @@ export const invoiceStore = {
 }
 
 // ─── Staff Attendance ────────────────────────────────────────
+// dbStatus/fromDbStatus: the DB stores upper-snake-case ('HALF_DAY'),
+// matching the uppercase convention every other status/role column in this
+// schema uses; the app type keeps the friendlier hyphenated 'half-day'.
+function dbStatus(status: AttendanceRecord['status']): string {
+    return status.toUpperCase().replace('-', '_')
+}
+function fromDbStatus(status: string): AttendanceRecord['status'] {
+    return status.toLowerCase().replace('_', '-') as AttendanceRecord['status']
+}
+
 export const attendanceStore = {
-    getAll: (): AttendanceRecord[] => JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]'),
-    getByDate: (date: string): AttendanceRecord[] => attendanceStore.getAll().filter(a => a.date === date),
-    getByStaffId: (staffId: string): AttendanceRecord[] => attendanceStore.getAll().filter(a => a.staffId === staffId),
-    mark: (staffId: string, staffName: string, branch: string, date: string, status: AttendanceRecord['status']): AttendanceRecord => {
-        const all = attendanceStore.getAll()
+    getAll: async (): Promise<AttendanceRecord[]> => {
+        try {
+            const { data, error } = await supabase.from('Attendance').select('*').order('date', { ascending: false })
+            if (!error && data) {
+                return data.map((a: any) => ({
+                    id: a.id,
+                    staffId: a.staffId,
+                    staffName: a.staffName,
+                    branch: mapBranch(a.branchId),
+                    date: a.date,
+                    status: fromDbStatus(a.status),
+                }))
+            }
+        } catch {}
+        return JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]')
+    },
+
+    getByDate: async (date: string): Promise<AttendanceRecord[]> => {
+        const all = await attendanceStore.getAll()
+        return all.filter(a => a.date === date)
+    },
+
+    getByStaffId: async (staffId: string): Promise<AttendanceRecord[]> => {
+        const all = await attendanceStore.getAll()
+        return all.filter(a => a.staffId === staffId)
+    },
+
+    mark: async (staffId: string, staffName: string, branch: string, date: string, status: AttendanceRecord['status']): Promise<AttendanceRecord> => {
+        try {
+            const { data, error } = await supabase
+                .from('Attendance')
+                .upsert(
+                    { staffId, staffName, branchId: getBranchId(branch), date, status: dbStatus(status), updatedAt: new Date().toISOString() },
+                    { onConflict: 'staffId,date' }
+                )
+                .select()
+                .single()
+            if (!error && data) {
+                return { id: data.id, staffId: data.staffId, staffName: data.staffName, branch: mapBranch(data.branchId), date: data.date, status: fromDbStatus(data.status) }
+            }
+        } catch {}
+
+        // Fallback: local-only
+        const all: AttendanceRecord[] = JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]')
         const idx = all.findIndex(a => a.staffId === staffId && a.date === date)
         if (idx >= 0) {
             all[idx] = { ...all[idx], status }
