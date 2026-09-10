@@ -6,7 +6,7 @@ import cmLogo from '../../assets/cm-logo-white.png'
 import { emptyBookingData, STEP_LABELS, type BookingData } from './types'
 import { appointmentStore } from '../../admin/data/store'
 import { branches } from '../../data/branches'
-import { useGoogleTag } from '../../hooks/useGoogleTag'
+import { useGoogleTag, trackEvent } from '../../hooks/useGoogleTag'
 import {
     StepAbout, StepBranch, StepServices, StepDateTime, StepConfirm,
     BookingSuccess, isStepValid,
@@ -39,6 +39,13 @@ export default function BookAppointment() {
         window.scrollTo(0, 0)
     }, [])
 
+    // Funnel visibility: which step people reach and where they drop off.
+    useEffect(() => {
+        if (!submitted) {
+            trackEvent('booking_step_view', { step_number: step + 1, step_name: STEP_LABELS[step] })
+        }
+    }, [step, submitted])
+
     const update = (patch: Partial<BookingData>) => setData((d) => ({ ...d, ...patch }))
 
     const goTo = (target: number) => {
@@ -57,9 +64,9 @@ export default function BookAppointment() {
         if (!isStepValid(step, data)) return
         if (step === STEP_LABELS.length - 1) {
             setIsSubmitting(true)
+            const selectedBranchObj = branches.find(b => b.id === data.branchId)
+            const branchNameClean = selectedBranchObj ? selectedBranchObj.name.replace('CM — ', '') : 'Bengaluru'
             try {
-                const selectedBranchObj = branches.find(b => b.id === data.branchId)
-                const branchNameClean = selectedBranchObj ? selectedBranchObj.name.replace('CM — ', '') : 'Bengaluru'
                 await appointmentStore.create({
                     clientId: '',
                     staffId: '',
@@ -74,7 +81,14 @@ export default function BookAppointment() {
                     notes: data.notes,
                     branch: branchNameClean,
                 })
-            } catch {}
+                // Key event — mark this as a conversion in GA4 (Admin > Events).
+                trackEvent('booking_submitted', {
+                    branch: branchNameClean,
+                    service_count: data.serviceNames.length,
+                })
+            } catch {
+                trackEvent('booking_failed', { branch: branchNameClean })
+            }
             setIsSubmitting(false)
             setSubmitted(true)
             return
