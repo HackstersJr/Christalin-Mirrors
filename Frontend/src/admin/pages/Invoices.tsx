@@ -252,6 +252,7 @@ function InvoiceList() {
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
     const [showForm, setShowForm] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
     const [items, setItems] = useState<InvoiceItem[]>([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
     const [formData, setFormData] = useState({ clientId: '', discountPercent: 0, taxPercent: 5, paymentMethod: 'cash' as Invoice['paymentMethod'], branch: branchScope || 'Bengaluru', stylist: '', notes: '' })
 
@@ -289,6 +290,7 @@ function InvoiceList() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (isSaving) return // guards against double-click creating two invoices
         const client = clients.find(c => c.id === formData.clientId)
         if (!client || items.length === 0) return
         const subtotal = items.reduce((s, i) => s + i.total, 0)
@@ -297,6 +299,7 @@ function InvoiceList() {
         const taxAmount = Math.round(taxable * formData.taxPercent / 100)
         const total = taxable + taxAmount
 
+        setIsSaving(true)
         const invNum = await invoiceStore.getNextInvoiceNumber()
         await invoiceStore.create({
             invoiceNumber: invNum,
@@ -307,6 +310,7 @@ function InvoiceList() {
             status: 'draft', paymentMethod: formData.paymentMethod,
             branch: formData.branch, stylist: formData.stylist, notes: formData.notes,
         })
+        setIsSaving(false)
         setShowForm(false)
         setItems([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
         setFormData({ clientId: '', discountPercent: 0, taxPercent: 5, paymentMethod: 'cash', branch: 'Bengaluru', stylist: '', notes: '' })
@@ -401,7 +405,7 @@ function InvoiceList() {
                         </div>
                         <div className="admin-form-actions">
                             <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-                            <button type="submit" className="admin-btn admin-btn-primary">Create Invoice</button>
+                            <button type="submit" className="admin-btn admin-btn-primary" disabled={isSaving}>{isSaving ? 'Creating...' : 'Create Invoice'}</button>
                         </div>
                     </form>
                 </div>

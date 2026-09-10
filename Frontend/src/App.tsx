@@ -24,6 +24,7 @@ import Appointments from './admin/pages/Appointments'
 import Clients from './admin/pages/Clients'
 import ClientDetail from './admin/pages/ClientDetail'
 import AdminServices from './admin/pages/Services'
+import Inventory from './admin/pages/Inventory'
 import Staff from './admin/pages/Staff'
 import Settings from './admin/pages/Settings'
 import Billing from './admin/pages/Billing'
@@ -127,6 +128,7 @@ function App() {
                 <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
                 <Route path="reviews" element={<VoiceReviews />} />
                 <Route path="services" element={<RoleRoute allow={['owner']}><AdminServices /></RoleRoute>} />
+                <Route path="inventory" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Inventory /></RoleRoute>} />
                 <Route path="staff" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Staff /></RoleRoute>} />
                 <Route path="attendance" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Attendance /></RoleRoute>} />
                 <Route path="settings" element={<RoleRoute allow={['owner']}><Settings /></RoleRoute>} />

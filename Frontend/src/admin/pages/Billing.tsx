@@ -100,6 +100,7 @@ export default function Billing() {
 
     // Modals & Flows
     const [showPayModal, setShowPayModal] = useState(false);
+    const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
     const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
@@ -282,20 +283,26 @@ export default function Billing() {
     };
 
     const handleSaveDraft = async () => {
+        if (isConfirmingPayment) return; // guards against double-click creating two draft invoices
         if (!selectedClient || items.length === 0) { showToast('error', 'Select client and add items first'); return; }
         if (!selectedStaffId) { showToast('error', 'Please select a stylist/therapist'); return; }
+        setIsConfirmingPayment(true);
         await saveInvoice('draft');
+        setIsConfirmingPayment(false);
         showToast('success', 'Draft saved successfully');
         navigate('/admin/invoices');
     };
 
     const confirmPayment = async () => {
+        if (isConfirmingPayment) return; // guards against double-click/double-tap creating two invoices
         if (!selectedClient || items.length === 0) { showToast('error', 'Select client and add items first'); return; }
         if (!selectedStaffId) { showToast('error', 'Please select a stylist/therapist'); return; }
+        setIsConfirmingPayment(true);
         const inv = await saveInvoice('paid');
         setLastInvoice(inv);
         setShowPayModal(false);
         setShowSuccess(true);
+        setIsConfirmingPayment(false);
 
         // Fix 1: Decrement inventory stock for retail product items
         for (const item of items) {
@@ -342,6 +349,7 @@ export default function Billing() {
         setSelectedClient(null);
         setClientSearch('');
         setSelectedStaffId('');
+        setIsConfirmingPayment(false);
         setItems([]);
         setDiscountType('percent');
         setDiscountValue(0);
@@ -689,7 +697,7 @@ export default function Billing() {
 
                 {/* Action Buttons */}
                 <div className="billing-main-actions">
-                    <button className="admin-btn admin-btn-secondary" onClick={handleSaveDraft}>Save as Draft</button>
+                    <button className="admin-btn admin-btn-secondary" onClick={handleSaveDraft} disabled={isConfirmingPayment}>Save as Draft</button>
                     <button className="admin-btn admin-btn-primary premium-btn" onClick={() => setShowPayModal(true)}>⚡ Collect Payment - ₹{total.toLocaleString()}</button>
                 </div>
             </div>
@@ -779,8 +787,10 @@ export default function Billing() {
                         )}
 
                         <div className="modal-actions">
-                            <button className="admin-btn admin-btn-secondary" onClick={() => setShowPayModal(false)}>← Back to Bill</button>
-                            <button className="admin-btn admin-btn-success" onClick={confirmPayment}>✓ Confirm Payment</button>
+                            <button className="admin-btn admin-btn-secondary" onClick={() => setShowPayModal(false)} disabled={isConfirmingPayment}>← Back to Bill</button>
+                            <button className="admin-btn admin-btn-success" onClick={confirmPayment} disabled={isConfirmingPayment}>
+                                {isConfirmingPayment ? 'Confirming...' : '✓ Confirm Payment'}
+                            </button>
                         </div>
                     </div>
                 </div>

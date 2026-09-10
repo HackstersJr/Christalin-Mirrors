@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Plus, Edit2, Trash2, Search, AlertTriangle, Package } from 'lucide-react'
 import { inventoryStore } from '../data/store'
+import { getBranchScope, scopeByBranch } from '../data/authStore'
 import type { InventoryItem } from '../data/types'
 import '../AdminShared.css'
 
 const categories = ['hair-care', 'skin-care', 'color', 'tools', 'consumables'] as const
 const catLabels: Record<string, string> = { 'hair-care': 'Hair Care', 'skin-care': 'Skin Care', color: 'Color', tools: 'Tools', consumables: 'Consumables' }
+const branchNames = ['Bengaluru', 'Kalaburagi', 'Belgaum']
 
 const emptyForm: Omit<InventoryItem, 'id'> = {
     name: '', brand: '', category: 'hair-care', sku: '', currentStock: 0,
@@ -13,17 +15,19 @@ const emptyForm: Omit<InventoryItem, 'id'> = {
 }
 
 export default function Inventory() {
+    const branchScope = getBranchScope()
+    const scopedEmptyForm = { ...emptyForm, branch: branchScope || 'Bengaluru' }
     const [items, setItems] = useState<InventoryItem[]>([])
     const [search, setSearch] = useState('')
     const [catFilter, setCatFilter] = useState('all')
     const [branchFilter, setBranchFilter] = useState('all')
     const [showForm, setShowForm] = useState(false)
     const [editingId, setEditingId] = useState<string | null>(null)
-    const [form, setForm] = useState(emptyForm)
+    const [form, setForm] = useState(scopedEmptyForm)
 
     const reload = async () => {
         const data = await inventoryStore.getAll()
-        setItems(data)
+        setItems(scopeByBranch(data))
     }
     useEffect(() => { reload() }, [])
 
@@ -35,8 +39,10 @@ export default function Inventory() {
         return matchSearch && matchCat && matchBranch
     })
 
-    const bengaluruItems = items.filter(i => i.branch === 'Bengaluru')
-    const kalaburagiItems = items.filter(i => i.branch === 'Kalaburagi')
+    const branchItemCounts = branchNames.map(name => ({
+        name,
+        items: items.filter(i => i.branch === name),
+    }))
 
     const startEdit = (item: InventoryItem) => {
         setEditingId(item.id); const { id, ...rest } = item; setForm(rest); setShowForm(true)
@@ -48,7 +54,7 @@ export default function Inventory() {
         resetForm(); await reload()
     }
 
-    const resetForm = () => { setForm(emptyForm); setEditingId(null); setShowForm(false) }
+    const resetForm = () => { setForm(scopedEmptyForm); setEditingId(null); setShowForm(false) }
 
     const deleteItem = async (id: string) => {
         if (confirm('Delete this item?')) {
@@ -88,22 +94,21 @@ export default function Inventory() {
                 <div className="admin-stat-card"><div className="stat-label">Categories</div><div className="stat-value">{new Set(items.map(i => i.category)).size}</div></div>
             </div>
 
-            {/* Branch Split */}
-            <div className="admin-stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-                <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'all' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('all')}>
-                    <div className="stat-label">All Branches</div><div className="stat-value">{items.length} items</div>
+            {/* Branch Split — only meaningful for owner viewing across branches */}
+            {!branchScope && (
+                <div className="admin-stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+                    <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'all' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('all')}>
+                        <div className="stat-label">All Branches</div><div className="stat-value">{items.length} items</div>
+                    </div>
+                    {branchItemCounts.map(({ name, items: branchItems }) => (
+                        <div key={name} className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === name ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter(name)}>
+                            <div className="stat-label">{name}</div>
+                            <div className="stat-value accent">{branchItems.length}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>₹{branchItems.reduce((s, i) => s + i.costPrice * i.currentStock, 0).toLocaleString()} value</div>
+                        </div>
+                    ))}
                 </div>
-                <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'Bengaluru' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('Bengaluru')}>
-                    <div className="stat-label">Bengaluru</div>
-                    <div className="stat-value accent">{bengaluruItems.length}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>₹{bengaluruItems.reduce((s, i) => s + i.costPrice * i.currentStock, 0).toLocaleString()} value</div>
-                </div>
-                <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'Kalaburagi' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('Kalaburagi')}>
-                    <div className="stat-label">Kalaburagi</div>
-                    <div className="stat-value accent">{kalaburagiItems.length}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>₹{kalaburagiItems.reduce((s, i) => s + i.costPrice * i.currentStock, 0).toLocaleString()} value</div>
-                </div>
-            </div>
+            )}
 
             {showForm && (
                 <div className="admin-form-card">
@@ -118,7 +123,16 @@ export default function Inventory() {
                             <div className="admin-form-group"><label className="admin-form-label">Min Stock (Alert)</label><input className="admin-form-input" type="number" min={0} value={form.minStock} onChange={e => setForm({ ...form, minStock: parseInt(e.target.value) || 0 })} /></div>
                             <div className="admin-form-group"><label className="admin-form-label">Cost Price (₹)</label><input className="admin-form-input" type="number" min={0} value={form.costPrice} onChange={e => setForm({ ...form, costPrice: parseInt(e.target.value) || 0 })} /></div>
                             <div className="admin-form-group"><label className="admin-form-label">Retail Price (₹)</label><input className="admin-form-input" type="number" min={0} value={form.retailPrice} onChange={e => setForm({ ...form, retailPrice: parseInt(e.target.value) || 0 })} placeholder="0 = not for retail" /></div>
-                            <div className="admin-form-group"><label className="admin-form-label">Branch</label><select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}><option value="Bengaluru">Bengaluru</option><option value="Kalaburagi">Kalaburagi</option></select></div>
+                            <div className="admin-form-group">
+                                <label className="admin-form-label">Branch</label>
+                                {branchScope ? (
+                                    <input className="admin-form-input" value={branchScope} disabled />
+                                ) : (
+                                    <select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}>
+                                        {branchNames.map(name => <option key={name} value={name}>{name}</option>)}
+                                    </select>
+                                )}
+                            </div>
                         </div>
                         <div className="admin-form-actions"><button type="button" className="admin-btn admin-btn-secondary" onClick={resetForm}>Cancel</button><button type="submit" className="admin-btn admin-btn-primary">{editingId ? 'Update' : 'Add'} Product</button></div>
                     </form>
@@ -131,11 +145,12 @@ export default function Inventory() {
                     <option value="all">All Categories</option>
                     {categories.map(c => <option key={c} value={c}>{catLabels[c]}</option>)}
                 </select>
-                <select className="admin-filter-select" value={branchFilter} onChange={e => setBranchFilter(e.target.value)}>
-                    <option value="all">All Branches</option>
-                    <option value="Bengaluru">Bengaluru</option>
-                    <option value="Kalaburagi">Kalaburagi</option>
-                </select>
+                {!branchScope && (
+                    <select className="admin-filter-select" value={branchFilter} onChange={e => setBranchFilter(e.target.value)}>
+                        <option value="all">All Branches</option>
+                        {branchNames.map(name => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                )}
             </div>
 
             <div className="admin-table-wrapper">
