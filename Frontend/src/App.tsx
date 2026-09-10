@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './hooks/useTheme'
+import { useGoogleTag } from './hooks/useGoogleTag'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import About from './components/About'
@@ -52,6 +53,7 @@ function LandingPage() {
     const { theme, toggleTheme } = useTheme()
     const [isLoading, setIsLoading] = useState(true)
     const location = useLocation()
+    useGoogleTag()
 
     useEffect(() => {
         const timer = setTimeout(() => {

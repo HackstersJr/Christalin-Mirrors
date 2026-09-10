@@ -6,6 +6,7 @@ import cmLogo from '../../assets/cm-logo-white.png'
 import { emptyBookingData, STEP_LABELS, type BookingData } from './types'
 import { appointmentStore } from '../../admin/data/store'
 import { branches } from '../../data/branches'
+import { useGoogleTag } from '../../hooks/useGoogleTag'
 import {
     StepAbout, StepBranch, StepServices, StepDateTime, StepConfirm,
     BookingSuccess, isStepValid,
@@ -21,6 +22,7 @@ const variants = {
 }
 
 export default function BookAppointment() {
+    useGoogleTag()
     const location = useLocation()
     const preselectBranch = (location.state as { branchId?: string } | null)?.branchId
 
