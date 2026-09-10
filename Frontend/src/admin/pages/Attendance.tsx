@@ -20,13 +20,13 @@ export default function Attendance() {
     const [branchStaff, setBranchStaff] = useState<StaffMember[]>([])
 
     useEffect(() => {
-        setAttendance(attendanceStore.getAll())
+        attendanceStore.getAll().then(setAttendance)
         staffStore.getAll().then(stfs => setBranchStaff(scopeByBranch(stfs.filter(s => s.isActive && s.role.toLowerCase() !== 'owner'))))
     }, [])
 
-    const markAttendance = (staff: StaffMember, status: AttendanceRecord['status']) => {
-        attendanceStore.mark(staff.id, staff.name, staff.branch, today, status)
-        setAttendance(attendanceStore.getAll())
+    const markAttendance = async (staff: StaffMember, status: AttendanceRecord['status']) => {
+        await attendanceStore.mark(staff.id, staff.name, staff.branch, today, status)
+        attendanceStore.getAll().then(setAttendance)
     }
 
     const todayAttendanceByStaff = new Map(
