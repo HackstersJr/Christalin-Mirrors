@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Christalin Mirrors — Daily Briefing (Local)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#FAF6F1;
+    --surface:#F0EAE2;
+    --surface-2:#E4D8C7;
+    --text:#2A2018;
+    --text-muted:#7A6A5A;
+    --accent:#9B7B5E;
+    --accent-strong:#7E6249;
+    --accent-ink:#FAF6F1;
+    --border:rgba(122,90,58,0.22);
+    --ok:#4F7345;
+    --warn:#A8721F;
+    --critical:#A3402A;
+    --shadow:0 10px 30px rgba(42,32,24,0.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1A1614; --surface:#2A2320; --surface-2:#3D322C;
+      --text:#F5EDE6; --text-muted:#B8A99A;
+      --accent:#C9A87C; --accent-strong:#D4B88D; --accent-ink:#1A1614;
+      --border:rgba(200,168,124,0.16);
+      --ok:#84A278; --warn:#D9A441; --critical:#C97258;
+      --shadow:0 10px 30px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1A1614; --surface:#2A2320; --surface-2:#3D322C;
+    --text:#F5EDE6; --text-muted:#B8A99A;
+    --accent:#C9A87C; --accent-strong:#D4B88D; --accent-ink:#1A1614;
+    --border:rgba(200,168,124,0.16);
+    --ok:#84A278; --warn:#D9A441; --critical:#C97258;
+    --shadow:0 10px 30px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:'Inter',system-ui,-apple-system,sans-serif; font-size:15px; line-height:1.55;}
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
+  h1,h2,h3{font-family:'Playfair Display',Georgia,serif; margin:0;}
+  .wrap{max-width:1040px; margin:0 auto; padding:28px 24px 80px;}
+  .label{font-family:'Inter',sans-serif; font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:1.6px; color:var(--accent);}
+  .muted{color:var(--text-muted);}
+  .tabular{font-variant-numeric:tabular-nums;}
+
+  .masthead{display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap; padding-bottom:20px; border-bottom:1px solid var(--border); margin-bottom:22px;}
+  .brand{display:flex; align-items:center; gap:14px;}
+  .mirror-mark{width:38px; height:38px; flex:none;}
+  .brand-text h1{font-size:26px; letter-spacing:.2px; font-weight:700;}
+  .brand-text .doc-title{margin-top:3px;}
+  .weekday-line{font-size:13px; color:var(--text-muted); margin-top:2px;}
+  .masthead-controls{display:flex; flex-direction:column; align-items:flex-end; gap:10px;}
+  .date-row{display:flex; align-items:center; gap:6px;}
+  .date-row input[type="date"]{font-family:'Inter',sans-serif; font-size:13px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:7px 9px;}
+  .datenav-btn{width:28px; height:28px; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .datenav-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .prepared-row{display:flex; align-items:center; gap:8px; font-size:13px;}
+  .prepared-row input[type="text"]{font-family:'Inter',sans-serif; font-size:13px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:6px 9px; width:160px;}
+
+  input:focus-visible, textarea:focus-visible, button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  .btn{font-family:'Inter',sans-serif; font-weight:600; font-size:13px; cursor:pointer; border-radius:999px; padding:9px 18px; border:1px solid transparent; transition:transform .15s ease, box-shadow .15s ease, background .15s ease;}
+  .btn-primary{background:var(--accent); color:var(--accent-ink);}
+  .btn-primary:hover{background:var(--accent-strong); transform:translateY(-1px); box-shadow:var(--shadow);}
+  .btn-outline{background:transparent; color:var(--accent); border-color:var(--accent);}
+  .btn-outline:hover{background:rgba(155,123,94,0.1);}
+  .btn-small{padding:6px 13px; font-size:12px;}
+  .actions-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .status-line{font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;}
+  .live-dot{width:7px; height:7px; border-radius:50%; background:var(--ok); flex:none;}
+
+  .tabs{display:flex; gap:8px; margin-bottom:22px; flex-wrap:wrap;}
+  .tab-btn{font-family:'Inter',sans-serif; font-weight:600; font-size:13px; cursor:pointer; padding:8px 16px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted);}
+  .tab-btn[aria-selected="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+  .tab-btn:hover:not([aria-selected="true"]){border-color:var(--accent); color:var(--accent);}
+
+  .stat-strip{display:flex; background:var(--surface-2); border-radius:16px; padding:22px 8px; margin-bottom:22px; box-shadow:var(--shadow); overflow-x:auto;}
+  .stat{flex:1; min-width:130px; text-align:center; padding:0 14px; position:relative;}
+  .stat + .stat::before{content:""; position:absolute; left:0; top:8px; bottom:8px; width:1px; background:rgba(155,123,94,0.28);}
+  .stat .num{font-size:30px; font-weight:700; color:var(--accent);}
+  .stat .num small{font-size:14px; font-weight:600; margin-left:2px;}
+  .stat .delta{font-size:12px; font-weight:600; margin-top:2px; min-height:15px;}
+  .stat .delta.up{color:var(--ok);}
+  .stat .delta.down{color:var(--critical);}
+  .stat .cap{font-family:'Inter',sans-serif; font-size:11.5px; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-muted); margin-top:6px;}
+
+  .table-wrap{overflow-x:auto; border-radius:16px; border:1px solid var(--border); margin-bottom:22px;}
+  table{width:100%; border-collapse:collapse; min-width:640px; background:var(--surface);}
+  th,td{padding:11px 14px; text-align:right; border-bottom:1px solid var(--border); font-size:13.5px;}
+  th:first-child, td:first-child{text-align:left;}
+  thead th{font-family:'Inter',sans-serif; font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--accent); font-weight:600; background:var(--surface-2);}
+  tbody tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:600;}
+  .badge-ok{background:rgba(79,115,69,0.15); color:var(--ok);}
+  .badge-warn{background:rgba(168,114,31,0.15); color:var(--warn);}
+
+  .panel{margin-bottom:22px;}
+  .paste-box{background:var(--surface-2); border:1px solid var(--border); border-radius:14px; padding:14px 16px 16px; margin-bottom:16px;}
+  .paste-box textarea{min-height:70px; margin:8px 0;}
+  .section-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:16px;}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px 18px 20px; box-shadow:var(--shadow); position:relative; overflow:hidden;}
+  .card::before{content:""; position:absolute; top:0; left:18px; right:18px; height:2px; background:var(--accent); transform:scaleX(0); transform-origin:left; transition:transform .2s ease;}
+  .card:hover::before{transform:scaleX(1);}
+  .card h3.label{margin-bottom:12px;}
+  .field-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+  .field-row label{font-size:13px; color:var(--text-muted);}
+  .field-row input[type="number"], .field-row input[type="text"]{width:104px; text-align:right; font-family:'Inter',sans-serif; font-size:13.5px; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:6px 9px;}
+  textarea{width:100%; font-family:'Inter',sans-serif; font-size:13.5px; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:9px 10px; resize:vertical; min-height:64px; line-height:1.5;}
+  .subtotal{margin-top:8px; padding-top:10px; border-top:1px dashed var(--border); display:flex; justify-content:space-between; font-weight:700; font-size:14px;}
+  .subtotal .num{color:var(--accent);}
+  .hint{font-size:11.5px; color:var(--text-muted); margin-top:6px;}
+
+  .flags-box{background:var(--surface-2); border-radius:16px; padding:20px 22px 22px; margin-bottom:22px; box-shadow:var(--shadow);}
+  .flags-box h2{font-size:19px; margin-bottom:12px;}
+  .flags-box textarea{background:var(--bg); min-height:92px;}
+
+  .history{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px 20px 20px; margin-bottom:22px;}
+  .history .label{margin-bottom:10px;}
+  .history-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; max-height:260px; overflow-y:auto;}
+  .history-list li{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13.5px;}
+  .history-list li:last-child{border-bottom:none;}
+  .history-list button{background:none; border:none; color:var(--text); text-align:left; cursor:pointer; font-family:'Inter',sans-serif; font-size:13.5px; padding:0; flex:1;}
+  .history-list button:hover{color:var(--accent);}
+  .history-empty{font-size:13px; color:var(--text-muted); padding:6px 0;}
+
+  footer.tip{font-size:12px; color:var(--text-muted); margin-top:26px; text-align:center;}
+  footer.tip a{color:var(--accent);}
+
+  .print-only{display:none;}
+  @media print{
+    body{background:#fff; color:#1A1614;}
+    .no-print{display:none !important;}
+    .print-only{display:block;}
+    .wrap{max-width:100%; padding:0;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="brand">
+      <svg class="mirror-mark" viewBox="0 0 40 40" aria-hidden="true">
+        <ellipse cx="20" cy="19" rx="13" ry="16" fill="none" stroke="var(--accent)" stroke-width="2"></ellipse>
+        <path d="M13 10 C 15 15, 15 23, 12 28" fill="none" stroke="var(--accent)" stroke-width="1.4" opacity="0.55" stroke-linecap="round"></path>
+        <rect x="18" y="34" width="4" height="5" rx="1.4" fill="var(--accent)"></rect>
+      </svg>
+      <div class="brand-text">
+        <h1>Christalin Mirrors</h1>
+        <div class="label doc-title">Daily Executive Briefing &middot; Local</div>
+        <div class="weekday-line" id="weekdayLine"></div>
+      </div>
+    </div>
+    <div class="masthead-controls no-print">
+      <div class="date-row">
+        <button class="datenav-btn" id="prevDay" title="Previous day" type="button">&#8249;</button>
+        <input type="date" id="dateInput">
+        <button class="datenav-btn" id="nextDay" title="Next day" type="button">&#8250;</button>
+      </div>
+      <div class="prepared-row">
+        <label for="preparedBy" class="muted">Prepared by</label>
+        <input type="text" id="preparedBy" placeholder="Your name">
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-outline" id="copyBtn" type="button">Copy for WhatsApp</button>
+        <button class="btn btn-outline" id="printBtn" type="button">Print</button>
+        <button class="btn btn-primary" id="saveBtn" type="button">Save briefing</button>
+      </div>
+      <div class="status-line"><span class="live-dot" id="liveDot"></span><span id="statusText">Saved locally in this browser</span></div>
+    </div>
+  </header>
+
+  <nav class="tabs no-print" role="tablist">
+    <button class="tab-btn" data-tab="all" aria-selected="true" type="button">All Branches</button>
+    <button class="tab-btn" data-tab="blr" aria-selected="false" type="button">Bengaluru</button>
+    <button class="tab-btn" data-tab="klb" aria-selected="false" type="button">Kalaburagi</button>
+    <button class="tab-btn" data-tab="bgm" aria-selected="false" type="button">Belgaum</button>
+  </nav>
+
+  <main id="main">
+
+    <section class="panel" id="panel-all">
+      <div class="stat-strip">
+        <div class="stat">
+          <div class="num tabular"><small>&#8377;</small><span id="statRevenue">0</span></div>
+          <div class="delta" id="statRevenueDelta"></div>
+          <div class="cap">Total revenue</div>
+        </div>
+        <div class="stat">
+          <div class="num tabular"><span id="statInvoices">0</span></div>
+          <div class="cap">Invoices raised</div>
+        </div>
+        <div class="stat">
+          <div class="num tabular"><span id="statStaff">0</span><small>/<span id="statStaffTotal">0</span></small></div>
+          <div class="cap">Staff present</div>
+        </div>
+        <div class="stat">
+          <div class="num tabular"><span id="statClients">0</span></div>
+          <div class="cap">New clients</div>
+        </div>
+        <div class="stat">
+          <div class="num tabular"><span id="statAppts">0</span></div>
+          <div class="cap">Appointments done</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Branch</th><th>Revenue</th><th>Invoices</th><th>Staff</th><th>New clients</th><th>Appts (done/cancel/no-show)</th><th>Stock alerts</th></tr>
+          </thead>
+          <tbody id="cmpBody">
+            <tr><td>Bengaluru</td><td class="tabular" id="cmp-blr-rev">&#8377;0</td><td class="tabular" id="cmp-blr-inv">0</td><td class="tabular" id="cmp-blr-staff">0/0</td><td class="tabular" id="cmp-blr-clients">0</td><td class="tabular" id="cmp-blr-appts">0/0/0</td><td id="cmp-blr-stock"><span class="badge badge-ok">0</span></td></tr>
+            <tr><td>Kalaburagi</td><td class="tabular" id="cmp-klb-rev">&#8377;0</td><td class="tabular" id="cmp-klb-inv">0</td><td class="tabular" id="cmp-klb-staff">0/0</td><td class="tabular" id="cmp-klb-clients">0</td><td class="tabular" id="cmp-klb-appts">0/0/0</td><td id="cmp-klb-stock"><span class="badge badge-ok">0</span></td></tr>
+            <tr><td>Belgaum</td><td class="tabular" id="cmp-bgm-rev">&#8377;0</td><td class="tabular" id="cmp-bgm-inv">0</td><td class="tabular" id="cmp-bgm-staff">0/0</td><td class="tabular" id="cmp-bgm-clients">0</td><td class="tabular" id="cmp-bgm-appts">0/0/0</td><td id="cmp-bgm-stock"><span class="badge badge-ok">0</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-blr" hidden data-branch="blr" data-name="Bengaluru"></section>
+    <section class="panel" id="panel-klb" hidden data-branch="klb" data-name="Kalaburagi"></section>
+    <section class="panel" id="panel-bgm" hidden data-branch="bgm" data-name="Belgaum"></section>
+
+  </main>
+
+  <section class="flags-box">
+    <div class="label">For the CEO</div>
+    <h2>Flags &amp; action items</h2>
+    <textarea id="flags" placeholder="e.g.&#10;[Kalaburagi] Two ledgers were being kept under different names — resolved, using Christalin Mirrors book only&#10;[Belgaum] Confirm what drove 3 Sept's spike before reporting it as a trend"></textarea>
+    <div class="hint">One item per line. This is the part she actually reads — keep it to what needs her decision.</div>
+  </section>
+
+  <section class="history no-print">
+    <div class="label">Briefing history</div>
+    <ul class="history-list" id="historyList"><li class="history-empty">Loading…</li></ul>
+  </section>
+
+  <footer class="tip no-print">Stored only in this browser (localStorage) — nothing leaves this machine. Standard branch report format: <a href="Daily-Report-Format.md">Daily-Report-Format.md</a>.</footer>
+
+  <div class="print-only" id="printSheet"></div>
+</div>
+
+<script>
+(function(){
+  var STORE_KEY = 'cm-briefings-v1';
+  var SEED_FLAG = 'cm-briefings-seeded-v1';
+
+  var BRANCHES = [
+    {code:'blr', id:'branch_blr', name:'Bengaluru'},
+    {code:'klb', id:'branch_klb', name:'Kalaburagi'},
+    {code:'bgm', id:'branch_bgm', name:'Belgaum'}
+  ];
+
+  var FIELD_DEFS = [
+    {group:'Revenue &amp; cash', fields:[
+      {key:'cash', label:'Cash (₹)', type:'number', ph:'18400'},
+      {key:'upi', label:'UPI (₹)', type:'number', ph:'26200'},
+      {key:'card', label:'Card (₹)', type:'number', ph:'9800'}
+    ], subtotal:true},
+    {group:'Invoices', fields:[
+      {key:'invRaised', label:'Raised today', type:'number', ph:'34'},
+      {key:'invPending', label:'Pending / unpaid', type:'number', ph:'2'}
+    ]},
+    {group:'Stock', textarea:{key:'stock', label:'Low or out of stock (one per line)', ph:'Loreal 6.0 colour tube — low\nDisposable gloves (M) — out'}},
+    {group:'Staff &amp; attendance', fields:[
+      {key:'staffTotal', label:'Total on roster', type:'number', ph:'8'},
+      {key:'staffPresent', label:'Present', type:'number', ph:'7'},
+      {key:'staffAbsent', label:'Absent', type:'number', ph:'1'},
+      {key:'staffLate', label:'Late', type:'number', ph:'0'}
+    ], note:{key:'staffNote', label:'Note', ph:'Priya on approved leave, Ravi covering colour bookings'}},
+    {group:'Clients &amp; reviews', fields:[
+      {key:'newClients', label:'New clients today', type:'number', ph:'5'},
+      {key:'avgRating', label:'Avg. rating today', type:'text', ph:'4.8'}
+    ], note:{key:'reviewNote', label:'Notable review / complaint', ph:'5-star Google review for Anitha (stylist)'}},
+    {group:'Appointments', fields:[
+      {key:'apptDone', label:'Completed', type:'number', ph:'22'},
+      {key:'apptCancel', label:'Cancelled', type:'number', ph:'2'},
+      {key:'apptNoShow', label:'No-show', type:'number', ph:'1'},
+      {key:'apptTomorrow', label:"Tomorrow's bookings", type:'number', ph:'19'}
+    ]}
+  ];
+
+  /* Parser labels for "Fill from text" — matches Daily-Report-Format.md */
+  var PARSE_LABELS = [
+    {key:'cash', patterns:['cash']},
+    {key:'upi', patterns:['upi']},
+    {key:'card', patterns:['card']},
+    {key:'invRaised', patterns:['invoices raised','invoices']},
+    {key:'invPending', patterns:['invoices pending','pending invoices']},
+    {key:'stock', patterns:['stock low/out','stock low','stock']},
+    {key:'staffTotal', patterns:['staff total','total staff']},
+    {key:'staffPresent', patterns:['staff present']},
+    {key:'staffAbsent', patterns:['staff absent']},
+    {key:'newClients', patterns:['new clients']},
+    {key:'apptDone', patterns:['appointments done','appts done']},
+    {key:'apptCancel', patterns:['appointments cancelled','appts cancelled']},
+    {key:'apptNoShow', patterns:['appointments no-show','appts no-show','no-show','no show']},
+    {key:'reviewNote', patterns:['notes']}
+  ];
+
+  /* ---- real numbers transcribed from the branch WhatsApp ledger photos ----
+     Kalaburagi uses the "Christalin Mirrors Gulbarga" ledger — Mane'a Salon
+     is a separate business and is intentionally excluded. Only cash/UPI are
+     known from these photos; everything else is left for daily entry. */
+  var SEED = {
+    '2026-09-01': { branches: {
+      branch_blr:{cash:1800, upi:950}, branch_klb:{cash:1500, upi:1160}, branch_bgm:{cash:3000, upi:1118}
+    }},
+    '2026-09-02': { branches: {
+      branch_blr:{cash:0, upi:7020}, branch_klb:{cash:2680, upi:6195}, branch_bgm:{cash:1284, upi:7264}
+    }},
+    '2026-09-03': { branches: {
+      branch_blr:{cash:0, upi:8630}, branch_klb:{cash:1500, upi:5080}, branch_bgm:{cash:13878, upi:16060}
+    }},
+    '2026-09-04': { branches: {
+      branch_blr:{cash:2150, upi:3960}, branch_klb:{cash:0, upi:1200}, branch_bgm:{cash:800, upi:1860}
+    }},
+    '2026-09-05': { branches: {
+      branch_blr:{cash:1680, upi:3314}, branch_klb:{cash:700, upi:1800}, branch_bgm:{cash:2020, upi:6314}
+    }},
+    '2026-09-06': { branches: {
+      branch_blr:{cash:3200, upi:5140}, branch_klb:{cash:3800, upi:3860}, branch_bgm:{cash:7155, upi:3988}
+    }},
+    '2026-09-07': { branches: {
+      branch_blr:{cash:4000, upi:500}, branch_klb:{cash:0, upi:2300}, branch_bgm:{cash:1288, upi:5868}
+    }},
+    '2026-09-08': { branches: {
+      branch_blr:{cash:2500, upi:810}, branch_klb:{cash:300, upi:0}, branch_bgm:{cash:9845, upi:5555}
+    }},
+    '2026-09-09': { branches: {
+      branch_blr:{cash:900, upi:510}
+    }}
+  };
+
+  function fmtINR(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+  function pad(n){ return n<10 ? '0'+n : ''+n; }
+  function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function toDateObj(s){ var p=s.split('-').map(Number); return new Date(Date.UTC(p[0],p[1]-1,p[2])); }
+  function toStr(d){ return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate()); }
+  function shiftDate(s,delta){ var d=toDateObj(s); d.setUTCDate(d.getUTCDate()+delta); return toStr(d); }
+  function weekdayLabel(s){ var d=toDateObj(s); return d.toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'UTC'}); }
+  function el(id){ return document.getElementById(id); }
+  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  /* ---- local store ---- */
+  function loadStore(){
+    try{ return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }catch(e){ return {}; }
+  }
+  function saveStore(store){
+    localStorage.setItem(STORE_KEY, JSON.stringify(store));
+  }
+  (function seedIfNeeded(){
+    if(localStorage.getItem(SEED_FLAG)) return;
+    var store = loadStore();
+    Object.keys(SEED).forEach(function(date){
+      if(!store[date]) store[date] = SEED[date];
+    });
+    saveStore(store);
+    localStorage.setItem(SEED_FLAG, '1');
+  })();
+
+  /* ---- build branch panels ---- */
+  BRANCHES.forEach(function(b){
+    var panel = el('panel-'+b.code);
+    var html = '<h2 style="font-size:19px; margin-bottom:14px;">'+b.name+'</h2>';
+    html += '<div class="paste-box no-print"><div class="label">Fill from WhatsApp text</div>' +
+      '<div class="hint">Paste the branch\'s standard-format message below, then click Fill from text.</div>' +
+      '<textarea id="'+b.code+'-paste" placeholder="Paste the CHRISTALIN MIRRORS — DAILY REPORT message here"></textarea>' +
+      '<button class="btn btn-outline btn-small" type="button" data-parse="'+b.code+'">Fill from text</button></div>';
+    html += '<div class="section-grid">';
+    FIELD_DEFS.forEach(function(g){
+      html += '<div class="card"><h3 class="label">'+g.group+'</h3>';
+      if(g.textarea){
+        var t=g.textarea;
+        html += '<textarea id="'+b.code+'-'+t.key+'" placeholder="'+esc(t.ph)+'"></textarea>';
+      } else {
+        g.fields.forEach(function(f){
+          html += '<div class="field-row"><label for="'+b.code+'-'+f.key+'">'+f.label+'</label>' +
+            '<input type="'+f.type+'" id="'+b.code+'-'+f.key+'" placeholder="'+esc(f.ph)+'"' +
+            (f.type==='number' ? ' min="0" inputmode="numeric"' : '') + '></div>';
+        });
+        if(g.note){
+          html += '<div class="field-row" style="align-items:flex-start; flex-direction:column;">' +
+            '<label for="'+b.code+'-'+g.note.key+'" style="margin-bottom:6px;">'+g.note.label+'</label>' +
+            '<textarea id="'+b.code+'-'+g.note.key+'" placeholder="'+esc(g.note.ph)+'" style="min-height:48px;"></textarea></div>';
+        }
+        if(g.subtotal){
+          html += '<div class="subtotal"><span>Subtotal</span><span class="num tabular" id="'+b.code+'-subtotal">₹0</span></div>';
+        }
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    panel.innerHTML = html;
+  });
+
+  /* ---- tabs ---- */
+  var tabButtons = Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));
+  tabButtons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      tabButtons.forEach(function(b){ b.setAttribute('aria-selected', b===btn ? 'true':'false'); });
+      ['all'].concat(BRANCHES.map(function(b){return b.code;})).forEach(function(code){
+        el('panel-'+code).hidden = (code !== btn.dataset.tab);
+      });
+    });
+  });
+
+  /* ---- value get/set ---- */
+  function branchData(code){
+    var data = {};
+    FIELD_DEFS.forEach(function(g){
+      if(g.textarea){ data[g.textarea.key] = el(code+'-'+g.textarea.key).value; }
+      else {
+        g.fields.forEach(function(f){
+          var v = el(code+'-'+f.key).value;
+          data[f.key] = f.type==='number' ? (parseFloat(v)||0) : v;
+        });
+        if(g.note){ data[g.note.key] = el(code+'-'+g.note.key).value; }
+      }
+    });
+    return data;
+  }
+  function setBranchData(code, data){
+    data = data || {};
+    FIELD_DEFS.forEach(function(g){
+      if(g.textarea){ el(code+'-'+g.textarea.key).value = data[g.textarea.key] || ''; }
+      else {
+        g.fields.forEach(function(f){
+          var v = data[f.key];
+          el(code+'-'+f.key).value = (v===undefined || v===null || v==='' || v===0) ? '' : v;
+        });
+        if(g.note){ el(code+'-'+g.note.key).value = data[g.note.key] || ''; }
+      }
+    });
+  }
+  function stockLines(text){ return (text||'').split('\n').map(function(s){return s.trim();}).filter(Boolean); }
+
+  function collectState(){
+    var s = { date: el('dateInput').value, preparedBy: el('preparedBy').value, flags: el('flags').value, branches:{} };
+    BRANCHES.forEach(function(b){ s.branches[b.id] = branchData(b.code); });
+    return s;
+  }
+
+  function populate(doc){
+    el('preparedBy').value = (doc && doc.preparedBy) || localStorage.getItem('cm-briefing-name') || '';
+    el('flags').value = (doc && doc.flags) || '';
+    BRANCHES.forEach(function(b){ setBranchData(b.code, doc && doc.branches ? doc.branches[b.id] : null); });
+    recompute();
+  }
+
+  /* ---- combined totals + comparison table + print sheet ---- */
+  function recompute(){
+    var totalRevenue=0, totalInvoices=0, totalStaffPresent=0, totalStaffAll=0, totalClients=0, totalApptsDone=0;
+    var rows = [];
+    BRANCHES.forEach(function(b){
+      var d = branchData(b.code);
+      var sub = (d.cash||0)+(d.upi||0)+(d.card||0);
+      var subEl = el(b.code+'-subtotal');
+      if(subEl) subEl.textContent = fmtINR(sub);
+      totalRevenue += sub;
+      totalInvoices += (d.invRaised||0);
+      totalStaffPresent += (d.staffPresent||0);
+      totalStaffAll += (d.staffTotal||0);
+      totalClients += (d.newClients||0);
+      totalApptsDone += (d.apptDone||0);
+      var stockCount = stockLines(d.stock).length;
+
+      el('cmp-'+b.code+'-rev').textContent = fmtINR(sub);
+      el('cmp-'+b.code+'-inv').textContent = (d.invRaised||0) + (d.invPending ? ' (' + d.invPending + ' pending)' : '');
+      el('cmp-'+b.code+'-staff').textContent = (d.staffPresent||0)+'/'+(d.staffTotal||0);
+      el('cmp-'+b.code+'-clients').textContent = d.newClients||0;
+      el('cmp-'+b.code+'-appts').textContent = (d.apptDone||0)+'/'+(d.apptCancel||0)+'/'+(d.apptNoShow||0);
+      el('cmp-'+b.code+'-stock').innerHTML = '<span class="badge '+(stockCount>0?'badge-warn':'badge-ok')+'">'+stockCount+'</span>';
+
+      rows.push({name:b.name, sub:sub, d:d, stockCount:stockCount});
+    });
+
+    el('statRevenue').textContent = totalRevenue.toLocaleString('en-IN');
+    el('statInvoices').textContent = totalInvoices;
+    el('statStaff').textContent = totalStaffPresent;
+    el('statStaffTotal').textContent = totalStaffAll;
+    el('statClients').textContent = totalClients;
+    el('statAppts').textContent = totalApptsDone;
+
+    syncPrintSheet(totalRevenue, totalInvoices, totalStaffPresent, totalStaffAll, totalClients, totalApptsDone, rows);
+    return totalRevenue;
+  }
+
+  function syncPrintSheet(totalRevenue, totalInvoices, staffPresent, staffAll, clients, apptsDone, rows){
+    var flags = stockLines(el('flags').value);
+    var html = '<div style="font-family:Georgia,serif; max-width:720px;">' +
+      '<h1 style="font-family:Georgia,serif; font-size:24px; margin:0;">Christalin Mirrors</h1>' +
+      '<div style="font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:#9B7B5E; margin:4px 0 2px;">Daily Executive Briefing</div>' +
+      '<div style="font-size:13px; color:#555; margin-bottom:14px;">' + esc(weekdayLabel(el('dateInput').value)) + ' &middot; Prepared by ' + esc(el('preparedBy').value || '—') + '</div>' +
+      '<table style="width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:16px;">' +
+      '<tr style="background:#f0ede6;"><th style="text-align:left; padding:6px 8px; border:1px solid #ccc;">Branch</th><th style="text-align:right; padding:6px 8px; border:1px solid #ccc;">Revenue</th><th style="text-align:right; padding:6px 8px; border:1px solid #ccc;">Staff</th><th style="text-align:right; padding:6px 8px; border:1px solid #ccc;">New clients</th><th style="text-align:right; padding:6px 8px; border:1px solid #ccc;">Appts (done/cxl/no-show)</th><th style="text-align:right; padding:6px 8px; border:1px solid #ccc;">Stock flags</th></tr>';
+    rows.forEach(function(r){
+      html += '<tr><td style="padding:6px 8px; border:1px solid #ccc;">'+esc(r.name)+'</td>' +
+        '<td style="text-align:right; padding:6px 8px; border:1px solid #ccc;">'+fmtINR(r.sub)+'</td>' +
+        '<td style="text-align:right; padding:6px 8px; border:1px solid #ccc;">'+(r.d.staffPresent||0)+'/'+(r.d.staffTotal||0)+'</td>' +
+        '<td style="text-align:right; padding:6px 8px; border:1px solid #ccc;">'+(r.d.newClients||0)+'</td>' +
+        '<td style="text-align:right; padding:6px 8px; border:1px solid #ccc;">'+(r.d.apptDone||0)+'/'+(r.d.apptCancel||0)+'/'+(r.d.apptNoShow||0)+'</td>' +
+        '<td style="text-align:right; padding:6px 8px; border:1px solid #ccc;">'+r.stockCount+'</td></tr>';
+    });
+    html += '<tr style="font-weight:bold; background:#f0ede6;"><td style="padding:6px 8px; border:1px solid #ccc;">Total</td>' +
+      '<td style="text-align:right; padding:6px 8px; border:1px solid #ccc;">'+fmtINR(totalRevenue)+'</td>' +
+      '<td style="text-align:right; padding:6px 8px; border:1px solid #ccc;">'+staffPresent+'/'+staffAll+'</td>' +
+      '<td style="text-align:right; padding:6px 8px; border:1px solid #ccc;">'+clients+'</td>' +
+      '<td style="text-align:right; padding:6px 8px; border:1px solid #ccc;">'+apptsDone+'/—/—</td><td></td></tr>' +
+      '</table>';
+    html += '<div style="font-size:13px; font-weight:bold; margin-bottom:6px;">Flags &amp; action items for the CEO</div>';
+    if(flags.length){
+      html += '<ul style="font-size:12.5px; padding-left:18px; margin:0;">' + flags.map(function(f){ return '<li>'+esc(f)+'</li>'; }).join('') + '</ul>';
+    } else {
+      html += '<div style="font-size:12.5px; color:#777;">None today.</div>';
+    }
+    html += '</div>';
+    el('printSheet').innerHTML = html;
+  }
+
+  function whatsappText(){
+    recompute();
+    var lines = [];
+    lines.push('*Christalin Mirrors — Daily Briefing*');
+    lines.push(weekdayLabel(el('dateInput').value));
+    lines.push('Prepared by: ' + (el('preparedBy').value || '—'));
+    lines.push('');
+    BRANCHES.forEach(function(b){
+      var d = branchData(b.code);
+      var sub = (d.cash||0)+(d.upi||0)+(d.card||0);
+      lines.push('*'+b.name+'*');
+      lines.push('Revenue: ' + fmtINR(sub) + ' (Cash ' + fmtINR(d.cash||0) + ' / UPI ' + fmtINR(d.upi||0) + ' / Card ' + fmtINR(d.card||0) + ')');
+      lines.push('Invoices: ' + (d.invRaised||0) + ' raised, ' + (d.invPending||0) + ' pending');
+      lines.push('Staff: ' + (d.staffPresent||0) + '/' + (d.staffTotal||0) + ' present' + (d.staffNote ? ' — ' + d.staffNote : ''));
+      lines.push('New clients: ' + (d.newClients||0) + (d.avgRating ? ', avg rating ' + d.avgRating : ''));
+      lines.push('Appointments: ' + (d.apptDone||0) + ' done, ' + (d.apptCancel||0) + ' cancelled, ' + (d.apptNoShow||0) + ' no-show');
+      var stock = stockLines(d.stock);
+      if(stock.length) lines.push('Stock: ' + stock.join('; '));
+      lines.push('');
+    });
+    var flags = stockLines(el('flags').value);
+    lines.push('*Flags for the CEO*');
+    lines.push(flags.length ? flags.map(function(f){return '• ' + f;}).join('\n') : 'None today.');
+    return lines.join('\n');
+  }
+
+  /* ---- "fill from text" parser ---- */
+  var BRANCH_NAME_TO_CODE = {bengaluru:'blr', kalaburagi:'klb', gulbarga:'klb', belgaum:'bgm', belagavi:'bgm'};
+
+  function parseTemplate(text){
+    var out = {};
+    var lines = text.split('\n');
+    lines.forEach(function(line){
+      var m = line.match(/^\s*([^:]+):\s*(.*)$/);
+      if(!m) return;
+      var rawLabel = m[1].trim().toLowerCase();
+      var value = m[2].trim();
+      if(rawLabel === 'date'){ out.__date = value; return; }
+      if(rawLabel === 'branch'){ out.__branch = value.toLowerCase(); return; }
+      PARSE_LABELS.forEach(function(p){
+        if(out.hasOwnProperty(p.key)) return;
+        for(var i=0;i<p.patterns.length;i++){
+          if(rawLabel === p.patterns[i]){ out[p.key] = value; break; }
+        }
+      });
+    });
+    return out;
+  }
+  function ddmmyyyyToIso(s){
+    var m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if(!m) return null;
+    return m[3]+'-'+pad(parseInt(m[1],10))+'-'+pad(parseInt(m[2],10));
+  }
+
+  document.querySelectorAll('[data-parse]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var code = btn.dataset.parse;
+      var text = el(code+'-paste').value;
+      if(!text.trim()) return;
+      var parsed = parseTemplate(text);
+      if(parsed.__date){
+        var iso = ddmmyyyyToIso(parsed.__date);
+        if(iso){ el('dateInput').value = iso; loadDate(iso); }
+      }
+      Object.keys(parsed).forEach(function(key){
+        if(key==='__date' || key==='__branch') return;
+        var target = el(code+'-'+key);
+        if(target) target.value = parsed[key];
+      });
+      recompute();
+      setStatus('Filled ' + BRANCHES.find(function(b){return b.code===code;}).name + ' from pasted text — check the fields, then Save', true);
+    });
+  });
+
+  /* ---- input wiring ---- */
+  document.getElementById('main').addEventListener('input', recompute);
+  el('flags').addEventListener('input', recompute);
+  el('preparedBy').addEventListener('input', recompute);
+
+  el('copyBtn').addEventListener('click', function(){
+    var text = whatsappText();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ setStatus('Copied — paste into WhatsApp', true); })
+        .catch(function(){ setStatus('Could not copy — select the text manually', false); });
+    }
+  });
+  el('printBtn').addEventListener('click', function(){ recompute(); window.print(); });
+
+  el('dateInput').addEventListener('change', function(){ loadDate(el('dateInput').value); });
+  el('prevDay').addEventListener('click', function(){ el('dateInput').value = shiftDate(el('dateInput').value, -1); loadDate(el('dateInput').value); });
+  el('nextDay').addEventListener('click', function(){ el('dateInput').value = shiftDate(el('dateInput').value, 1); loadDate(el('dateInput').value); });
+
+  function setStatus(text, ok){
+    el('statusText').textContent = text;
+    el('liveDot').style.background = ok ? 'var(--ok)' : 'var(--warn)';
+  }
+
+  function loadDate(dateStr){
+    el('weekdayLine').textContent = weekdayLabel(dateStr);
+    var store = loadStore();
+    var doc = store[dateStr];
+    populate(doc || null);
+    setStatus(doc ? 'Loaded from this browser’s local storage' : 'New briefing — not yet saved', true);
+
+    var prevStr = shiftDate(dateStr, -1);
+    var prevDoc = store[prevStr];
+    var deltaEl = el('statRevenueDelta');
+    if(!prevDoc){ deltaEl.textContent=''; return; }
+    var prevTotal = 0;
+    BRANCHES.forEach(function(b){
+      var bd = prevDoc.branches && prevDoc.branches[b.id];
+      if(bd) prevTotal += (bd.cash||0)+(bd.upi||0)+(bd.card||0);
+    });
+    var current = recompute();
+    if(prevTotal<=0){ deltaEl.textContent=''; return; }
+    var pct = Math.round(((current-prevTotal)/prevTotal)*100);
+    deltaEl.textContent = (pct>=0 ? '▲ +' : '▼ ') + pct + '% vs yesterday';
+    deltaEl.className = 'delta ' + (pct>=0 ? 'up' : 'down');
+  }
+
+  el('saveBtn').addEventListener('click', function(){
+    var s = collectState();
+    s.updatedAt = new Date().toISOString();
+    var store = loadStore();
+    store[s.date] = s;
+    saveStore(store);
+    localStorage.setItem('cm-briefing-name', s.preparedBy || '');
+    setStatus('Saved locally · ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}), true);
+    renderHistory();
+  });
+
+  function renderHistory(){
+    var store = loadStore();
+    var dates = Object.keys(store).sort().reverse();
+    var list = el('historyList');
+    if(!dates.length){ list.innerHTML = '<li class="history-empty">No briefings saved yet.</li>'; return; }
+    list.innerHTML = '';
+    dates.forEach(function(date){
+      var d = store[date];
+      var total = 0;
+      BRANCHES.forEach(function(b){
+        var bd = d.branches && d.branches[b.id];
+        if(bd) total += (bd.cash||0)+(bd.upi||0)+(bd.card||0);
+      });
+      var li = document.createElement('li');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = weekdayLabel(date) + ' — ' + fmtINR(total) + (d.preparedBy ? '  (' + d.preparedBy + ')' : '');
+      btn.addEventListener('click', function(){ el('dateInput').value = date; loadDate(date); });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+  }
+
+  /* ---- init ---- */
+  var start = todayStr();
+  var store0 = loadStore();
+  if(!store0[start]){
+    var mostRecent = Object.keys(store0).sort().pop();
+    if(mostRecent) start = mostRecent;
+  }
+  el('dateInput').value = start;
+  loadDate(start);
+  renderHistory();
+})();
+</script>
+</body>
+</html>
