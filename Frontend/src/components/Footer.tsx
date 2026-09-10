@@ -1,4 +1,5 @@
 import { Instagram, Mail, Phone, ArrowRight } from 'lucide-react'
+import { trackEvent } from '../hooks/useGoogleTag'
 import './Footer.css'
 
 import { Link, useNavigate } from 'react-router-dom'
@@ -77,13 +78,13 @@ export default function Footer() {
                         © {currentYear} Christalin Mirrors. All rights reserved.
                     </span>
                     <div className="footer-social-links">
-                        <a href="https://www.instagram.com/christalin.mirrors/" target="_blank" rel="noopener noreferrer" className="footer-social-link" aria-label="Instagram">
+                        <a href="https://www.instagram.com/christalin.mirrors/" target="_blank" rel="noopener noreferrer" className="footer-social-link" aria-label="Instagram" onClick={() => trackEvent('social_click', { platform: 'instagram' })}>
                             <Instagram size={18} />
                         </a>
-                        <a href="tel:+919900118383" className="footer-social-link" aria-label="Phone">
+                        <a href="tel:+919900118383" className="footer-social-link" aria-label="Phone" onClick={() => trackEvent('contact_attempt', { method: 'call', branch: 'footer' })}>
                             <Phone size={18} />
                         </a>
-                        <a href="mailto:Support@christalinmirrors.com" className="footer-social-link" aria-label="Email">
+                        <a href="mailto:Support@christalinmirrors.com" className="footer-social-link" aria-label="Email" onClick={() => trackEvent('contact_attempt', { method: 'email', branch: 'footer' })}>
                             <Mail size={18} />
                         </a>
                     </div>

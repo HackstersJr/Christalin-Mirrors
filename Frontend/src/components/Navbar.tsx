@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sun, Moon, Menu, X } from 'lucide-react'
 import cmLogo from '../assets/cm-logo-white.png'
+import { trackEvent } from '../hooks/useGoogleTag'
 import './Navbar.css'
 
 interface NavbarProps {
@@ -136,7 +137,7 @@ export default function Navbar({ theme, toggleTheme, isAppLoading }: NavbarProps
                                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                             </button>
 
-                            <Link to="/book" className="navbar-cta desktop-only" onClick={() => setMobileOpen(false)}>
+                            <Link to="/book" className="navbar-cta desktop-only" onClick={() => { setMobileOpen(false); trackEvent('book_appointment_click', { source: 'navbar_desktop' }) }}>
                                 Book Appointment
                             </Link>
 
@@ -182,7 +183,7 @@ export default function Navbar({ theme, toggleTheme, isAppLoading }: NavbarProps
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.4, duration: 0.4 }}
                         >
-                            <Link to="/book" className="navbar-cta" onClick={() => setMobileOpen(false)}>
+                            <Link to="/book" className="navbar-cta" onClick={() => { setMobileOpen(false); trackEvent('book_appointment_click', { source: 'navbar_mobile' }) }}>
                                 Book Appointment
                             </Link>
                         </motion.div>

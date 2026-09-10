@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { StaggerContainer, StaggerItem } from './Animations'
 import { cld, cldSrcSet } from '../lib/cld'
 import { branches, comingSoonBranches } from '../data/branches'
+import { trackEvent } from '../hooks/useGoogleTag'
 import './Branches.css'
 
 export default function Branches() {
@@ -59,15 +60,16 @@ export default function Branches() {
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="branch-link"
+                                            onClick={() => trackEvent('view_location_click', { branch: branch.name })}
                                         >
                                             <Navigation size={14} />
                                             Directions
                                         </a>
-                                        <a href={`tel:${branch.phone.replace(/\s/g, '')}`} className="branch-link">
+                                        <a href={`tel:${branch.phone.replace(/\s/g, '')}`} className="branch-link" onClick={() => trackEvent('contact_attempt', { method: 'call', branch: branch.name })}>
                                             <Phone size={14} />
                                             Call
                                         </a>
-                                        <Link to="/book" state={{ branchId: branch.id }} className="branch-link">
+                                        <Link to="/book" state={{ branchId: branch.id }} className="branch-link" onClick={() => trackEvent('book_appointment_click', { source: 'branch_card', branch: branch.name })}>
                                             <ExternalLink size={14} />
                                             Book
                                         </Link>

@@ -66,6 +66,9 @@ export default function BookAppointment() {
             setIsSubmitting(true)
             const selectedBranchObj = branches.find(b => b.id === data.branchId)
             const branchNameClean = selectedBranchObj ? selectedBranchObj.name.replace('CM — ', '') : 'Bengaluru'
+            // Click intent, independent of whether the save below succeeds —
+            // compare against booking_submitted to see confirm-click vs actual save failures.
+            trackEvent('booking_confirm_click', { branch: branchNameClean })
             try {
                 await appointmentStore.create({
                     clientId: '',

@@ -5,6 +5,7 @@ import { ArrowDown } from 'lucide-react'
 import { HERO_IMAGE } from '../data/assets'
 import { cld, cldSrcSet } from '../lib/cld'
 import cmLogo from '../assets/cm-logo-white.png'
+import { trackEvent } from '../hooks/useGoogleTag'
 import './Hero.css'
 
 export default function Hero({ isAppLoading }: { isAppLoading?: boolean }) {
@@ -59,7 +60,7 @@ export default function Hero({ isAppLoading }: { isAppLoading?: boolean }) {
                     Refine &bull; Reflect &bull; Radiate
                 </p>
                 <div className="hero-cta-row">
-                    <Link to="/book" className="btn btn-primary">
+                    <Link to="/book" className="btn btn-primary" onClick={() => trackEvent('book_appointment_click', { source: 'hero' })}>
                         Book Appointment
                     </Link>
                     <a href="#services" className="btn btn-outline" style={{ borderColor: 'rgba(250,250,250,0.3)', color: '#FAFAFA' }} onClick={(e) => { e.preventDefault(); document.querySelector('#services')?.scrollIntoView({ behavior: 'smooth' }) }}>
