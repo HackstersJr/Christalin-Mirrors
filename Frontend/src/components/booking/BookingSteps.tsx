@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check, MapPin, Clock as ClockIcon, Sparkles, User, Mail, Phone as PhoneIcon } from 'lucide-react'
+import { Check, MapPin, Clock as ClockIcon, Sparkles, User, Mail, Phone as PhoneIcon, Gift } from 'lucide-react'
 import { branches } from '../../data/branches'
 import { services, serviceTabs, type Category } from '../../data/services'
+import { packageStore } from '../../admin/data/store'
+import { trackEvent } from '../../hooks/useGoogleTag'
+import type { ServicePackage } from '../../admin/data/types'
 import WheelDatePicker from './WheelDatePicker'
 import type { StepProps } from './types'
 
@@ -115,6 +118,11 @@ export function StepBranch({ data, update }: StepProps) {
 export function StepServices({ data, update }: StepProps) {
     const [active, setActive] = useState<Category>(serviceTabs[0].value)
     const filtered = services.filter((s) => s.category === active)
+    const [packages, setPackages] = useState<ServicePackage[]>([])
+
+    useEffect(() => {
+        packageStore.getAll().then(pkgs => setPackages(pkgs.filter(p => p.isActive)))
+    }, [])
 
     const toggle = (name: string) => {
         const exists = data.serviceNames.includes(name)
@@ -122,7 +130,23 @@ export function StepServices({ data, update }: StepProps) {
             serviceNames: exists
                 ? data.serviceNames.filter((n) => n !== name)
                 : [...data.serviceNames, name],
+            // Editing services individually after picking a package means it's
+            // no longer exactly that package — keep the summary accurate.
+            selectedPackageName: undefined,
         })
+    }
+
+    const selectPackage = (pkg: ServicePackage) => {
+        const isSelected = data.selectedPackageName === pkg.name
+        if (isSelected) {
+            update({ selectedPackageName: undefined, serviceNames: [] })
+            return
+        }
+        update({
+            selectedPackageName: pkg.name,
+            serviceNames: pkg.services.map(s => s.serviceName),
+        })
+        trackEvent('package_selected', { package_name: pkg.name, bundle_price: pkg.bundlePrice })
     }
 
     return (
@@ -134,6 +158,36 @@ export function StepServices({ data, update }: StepProps) {
             </h2>
             <p className="booking-step-sub">Pick one or more services — combine as you like.</p>
             <p className="booking-hint">Not sure yet? You can always add or change services once you're at the salon.</p>
+
+            {packages.length > 0 && (
+                <div className="booking-package-list">
+                    {packages.map((pkg) => {
+                        const fullPrice = pkg.services.reduce((s, l) => s + l.price * l.quantity, 0)
+                        const savings = fullPrice - pkg.bundlePrice
+                        const checked = data.selectedPackageName === pkg.name
+                        return (
+                            <button
+                                type="button"
+                                key={pkg.id}
+                                className={`booking-package-card ${checked ? 'selected' : ''}`}
+                                onClick={() => selectPackage(pkg)}
+                            >
+                                <span className="booking-package-header">
+                                    <Gift size={14} />
+                                    <span className="booking-package-name">{pkg.name}</span>
+                                    {pkg.badge && <span className="booking-package-badge">{pkg.badge}</span>}
+                                </span>
+                                <span className="booking-package-includes">{pkg.services.map(s => s.serviceName).join(' + ')}</span>
+                                <span className="booking-package-price-row">
+                                    <span className="booking-package-price">₹{pkg.bundlePrice.toLocaleString()}</span>
+                                    {savings > 0 && <span className="booking-package-savings">Save ₹{savings.toLocaleString()}</span>}
+                                </span>
+                                {checked && <span className="booking-check"><Check size={14} /></span>}
+                            </button>
+                        )
+                    })}
+                </div>
+            )}
 
             <div className="booking-tabs">
                 {serviceTabs.map((tab) => (
@@ -236,6 +290,7 @@ export function StepConfirm({ data, onEdit }: StepProps & { onEdit: (step: numbe
         { label: 'Email', value: data.email, step: 0 },
         { label: 'Phone', value: `+91 ${data.phone}`, step: 0 },
         { label: 'Studio', value: branch?.name.replace('CM — ', '') || '', step: 1 },
+        { label: 'Package', value: data.selectedPackageName || '', step: 2 },
         { label: 'Services', value: data.serviceNames.join(', '), step: 2 },
         { label: 'Date', value: data.date ? new Date(data.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '', step: 3 },
         { label: 'Time', value: data.time, step: 3 },

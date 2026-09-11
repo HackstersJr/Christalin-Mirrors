@@ -269,12 +269,13 @@
     }
 }
 
-/* ─── Report Print (A4 — daily/weekly/monthly executive reports) ─
+/* ─── Report Print (A4 — any .print-doc filed document: executive
+   reports, daily sales report, P&L statement) ───────────────────
    Standard letter/A4 output for filing, unlike the 58mm thermal
    receipt below. Forces plain black-on-white regardless of theme,
    since dark-theme text colors would be unreadable on printed paper. */
 @media print {
-    #report-print {
+    .print-doc {
         border: none !important;
         box-shadow: none !important;
         background: #fff !important;
@@ -282,49 +283,137 @@
         padding: 0 !important;
     }
 
-    #report-print * {
+    .print-doc * {
         color: #000 !important;
         background: transparent !important;
     }
 
-    #report-print .report-logo {
+    .print-doc .report-logo {
         filter: brightness(0) !important;
     }
 
-    #report-print .report-totals-row td {
+    .print-doc .report-totals-row td {
         border-top: 2px solid #000 !important;
     }
 
-    #report-print .report-letterhead {
+    .print-doc .report-letterhead {
         border-bottom: 1px solid #000 !important;
     }
 
-    #report-print .report-footer {
+    .print-doc .report-footer {
         border-top: 1px dashed #000 !important;
     }
 
-    #report-print .report-section-title {
+    .print-doc .report-section-title {
         border-bottom: 1px solid #000 !important;
         break-after: avoid;
     }
 
-    #report-print .snapshot-card,
-    #report-print .insight-tile {
+    .print-doc .snapshot-card,
+    .print-doc .insight-tile {
         border: 1px solid #000 !important;
         break-inside: avoid;
     }
 
-    #report-print .report-snapshot-grid,
-    #report-print .report-insights-grid {
+    .print-doc .report-snapshot-grid,
+    .print-doc .report-insights-grid {
         break-inside: avoid;
     }
 
-    #report-print .report-table tr {
+    .print-doc .report-table tr {
         break-inside: avoid;
     }
 
-    #report-print .signoff-block {
+    .print-doc .signoff-block {
         border-top: 1px solid #000 !important;
+    }
+
+    /* .admin-table's default 20px/row cell padding and 13px type are sized
+       for a touch-friendly on-screen UI — left as-is, a report with a
+       dozen-plus rows (P&L, Daily Sales Report) sprawls across 2-3 printed
+       pages. Compact everything for print only; the on-screen page is
+       untouched. */
+    .print-doc .admin-table th {
+        padding: 5px 10px !important;
+        font-size: 9px !important;
+    }
+
+    .print-doc .admin-table td {
+        padding: 5px 10px !important;
+        font-size: 11px !important;
+    }
+
+    /* Daily Sales Report's weekly grid can run 25+ rows across a month —
+       needs tighter rows than the general .admin-table print rule above
+       to reliably hold to one page. */
+    .print-doc .dsr-week-table th {
+        padding: 3px 6px !important;
+        font-size: 8px !important;
+    }
+
+    .print-doc .dsr-week-table td {
+        padding: 3px 6px !important;
+        font-size: 10px !important;
+    }
+
+    .print-doc .dsr-week-label-row td {
+        padding: 4px 6px !important;
+        font-size: 9px !important;
+    }
+
+    /* P&L's Revenue/COGS/Expenses tables are simple label-value line items —
+       tighter than the general .admin-table rule so 5+ short tables still
+       hold to one page. */
+    .print-doc .pl-line-table th {
+        padding: 3px 10px !important;
+        font-size: 8px !important;
+    }
+
+    .print-doc .pl-line-table td {
+        padding: 3px 10px !important;
+        font-size: 10px !important;
+    }
+
+    .print-doc .report-letterhead {
+        margin-bottom: 10px !important;
+        padding-bottom: 8px !important;
+    }
+
+    .print-doc .report-section-title {
+        margin: 10px 0 4px !important;
+        padding-bottom: 3px !important;
+        font-size: 11px !important;
+    }
+
+    .print-doc .report-section-title:first-of-type {
+        margin-top: 0 !important;
+    }
+
+    .print-doc .snapshot-card,
+    .print-doc .insight-tile {
+        padding: 8px 10px !important;
+    }
+
+    .print-doc .report-note {
+        margin-top: 6px !important;
+        font-size: 9px !important;
+    }
+
+    .print-doc .report-signoff {
+        margin-top: 12px !important;
+    }
+
+    /* The on-screen dashed separator between P&L's per-branch pages is
+       redundant in print — break-before already starts a fresh sheet. */
+    .print-doc .pl-page-break {
+        border-top: none !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    .print-doc .report-footer {
+        margin-top: 8px !important;
+        padding-top: 6px !important;
     }
 }
 

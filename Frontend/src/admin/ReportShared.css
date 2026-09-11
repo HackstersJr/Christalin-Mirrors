@@ -1,0 +1,154 @@
+/* Shared look for printable, filed A4 documents — Reports, Daily Sales
+   Report, and the Monthly P&L Statement all use these classes so the
+   letterhead/section/trend/sign-off styling stays consistent across every
+   hardcopy the salon files. Combine the root container with `print-doc`
+   (see AdminLayout.css) to get the forced black-on-white print treatment. */
+
+.report-sheet {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 28px;
+}
+
+.report-letterhead {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.report-letterhead-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.report-logo {
+    height: 30px;
+    width: auto;
+    filter: brightness(0) invert(1);
+}
+
+:root[data-theme="light"] .report-logo {
+    filter: brightness(0);
+}
+
+.report-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-bright);
+}
+
+.report-range {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.report-letterhead-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+    line-height: 1.7;
+}
+
+.report-letterhead-meta span {
+    color: var(--text-muted);
+    margin-right: 6px;
+}
+
+.report-section-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-bright);
+    margin: 26px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.report-section-title:first-of-type {
+    margin-top: 0;
+}
+
+.report-section-trend {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.report-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.report-trend-up { color: var(--success-light, #4ade80); }
+.report-trend-down { color: var(--danger, #f87171); }
+.report-trend-flat { color: var(--text-dim); }
+
+.report-table th,
+.report-table td {
+    white-space: nowrap;
+}
+
+.report-totals-row td {
+    font-weight: 700;
+    color: var(--text-bright);
+    border-top: 2px solid var(--border-strong);
+}
+
+.report-note {
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+.report-signoff {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 36px;
+}
+
+.signoff-block {
+    border-top: 1px solid var(--border-strong);
+    padding-top: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.report-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border-strong);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+@media (max-width: 720px) {
+    .report-letterhead-meta {
+        text-align: left;
+    }
+}

@@ -47,6 +47,25 @@ export interface ServiceRecord {
     description: string
 }
 
+// ─── Packages (bundled services sold at one price) ──────────
+export interface PackageServiceLine {
+    serviceId: string
+    serviceName: string
+    price: number          // component service's own price, for showing savings
+    quantity: number
+}
+
+export interface ServicePackage {
+    id: string
+    name: string
+    description: string
+    bundlePrice: number
+    badge?: string
+    imageUrl?: string
+    isActive: boolean
+    services: PackageServiceLine[]
+}
+
 export type StaffRole =
     | 'hairstylist'
     | 'beautician'
@@ -55,6 +74,7 @@ export type StaffRole =
     | 'housekeeping'
     | 'manager'
     | 'owner'
+    | 'executive_manager'
     | 'stylist'
     | 'therapist'
     | 'receptionist'
@@ -206,4 +226,34 @@ export interface ClientReview {
     status: 'published' | 'pending' | 'flagged'
     source?: 'web' | 'whatsapp_voice' | 'whatsapp_text'
     createdAt: string
+}
+
+// ─── Expenses (Monthly P&L) ───────────────────────────────────
+// Fixed line items from the P&L statement that aren't derivable from
+// existing sales/inventory data (commissions, labor, rent, salaries, etc).
+// One editable amount per (month, branch, category) — needed per-branch
+// (not company-wide) so each branch's own Net Profit can be computed for
+// the CEO Share breakdown, since ownership % differs by branch.
+export type ExpenseCategory =
+    | 'service_commissions'
+    | 'retail_commissions'
+    | 'direct_professional_labor'
+    | 'transaction_fees'
+    | 'salaries_wages'
+    | 'benefits_insurance'
+    | 'payroll_tax'
+    | 'general_admin'
+    | 'utilities'
+    | 'repairs_maintenance'
+    | 'rent_lease'
+    | 'depreciation'
+    | 'debts_loans'
+
+export interface Expense {
+    id: string
+    month: string              // 'YYYY-MM'
+    branch: string
+    category: ExpenseCategory
+    amount: number
+    notes?: string
 }

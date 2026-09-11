@@ -33,6 +33,8 @@ import Calendar from './admin/pages/Calendar'
 import Attendance from './admin/pages/Attendance'
 import Revenue from './admin/pages/Revenue'
 import Reports from './admin/pages/Reports'
+import DailySalesReport from './admin/pages/DailySalesReport'
+import ProfitLoss from './admin/pages/ProfitLoss'
 import Login from './admin/pages/Login'
 import ProtectedRoute from './admin/components/ProtectedRoute'
 import RoleRoute from './admin/components/RoleRoute'
@@ -128,13 +130,15 @@ function App() {
                 <Route path="invoices" element={<InvoiceList />} />
                 <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
                 <Route path="reviews" element={<VoiceReviews />} />
-                <Route path="services" element={<RoleRoute allow={['owner']}><AdminServices /></RoleRoute>} />
-                <Route path="inventory" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Inventory /></RoleRoute>} />
-                <Route path="staff" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Staff /></RoleRoute>} />
-                <Route path="attendance" element={<RoleRoute allow={['owner', 'manager']} redirectTo="/admin/appointments"><Attendance /></RoleRoute>} />
-                <Route path="settings" element={<RoleRoute allow={['owner']}><Settings /></RoleRoute>} />
-                <Route path="revenue" element={<RoleRoute allow={['owner']}><Revenue /></RoleRoute>} />
-                <Route path="reports" element={<RoleRoute allow={['owner']}><Reports /></RoleRoute>} />
+                <Route path="services" element={<RoleRoute allow={['owner', 'executive_manager']}><AdminServices /></RoleRoute>} />
+                <Route path="inventory" element={<RoleRoute allow={['owner', 'executive_manager', 'manager']} redirectTo="/admin/appointments"><Inventory /></RoleRoute>} />
+                <Route path="staff" element={<RoleRoute allow={['owner', 'executive_manager', 'manager']} redirectTo="/admin/appointments"><Staff /></RoleRoute>} />
+                <Route path="attendance" element={<RoleRoute allow={['owner', 'executive_manager', 'manager']} redirectTo="/admin/appointments"><Attendance /></RoleRoute>} />
+                <Route path="settings" element={<RoleRoute allow={['owner', 'executive_manager']}><Settings /></RoleRoute>} />
+                <Route path="revenue" element={<RoleRoute allow={['owner', 'executive_manager']}><Revenue /></RoleRoute>} />
+                <Route path="reports" element={<RoleRoute allow={['owner', 'executive_manager']}><Reports /></RoleRoute>} />
+                <Route path="daily-sales-report" element={<RoleRoute allow={['owner', 'executive_manager']}><DailySalesReport /></RoleRoute>} />
+                <Route path="profit-loss" element={<RoleRoute allow={['owner', 'executive_manager']}><ProfitLoss /></RoleRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
         </Routes>

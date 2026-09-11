@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit2, Trash2, Eye } from 'lucide-react'
 import { clientStore } from '../data/store'
-import { authStore, getBranchScope } from '../data/authStore'
+import { authStore, getBranchScope, isOwnerLevel } from '../data/authStore'
 import type { Client } from '../data/types'
 import '../AdminShared.css'
 
@@ -33,7 +33,7 @@ export default function Clients() {
     const navigate = useNavigate()
     const location = useLocation()
     const branchScope = getBranchScope()
-    const canDelete = authStore.getSession()?.role === 'owner'
+    const canDelete = isOwnerLevel(authStore.getSession()?.role)
     const scopedEmptyForm = { ...emptyForm, branch: branchScope || 'Bengaluru' }
     const [clients, setClients] = useState<Client[]>([])
     const [search, setSearch] = useState('')

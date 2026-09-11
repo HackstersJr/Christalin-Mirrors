@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Edit2, Trash2, Search } from 'lucide-react'
 import { staffStore } from '../data/store'
-import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
+import { authStore, getBranchScope, scopeByBranch, isOwnerLevel } from '../data/authStore'
 import type { StaffMember } from '../data/types'
 import '../AdminShared.css'
 
@@ -13,6 +13,7 @@ const roles = [
     'housekeeping',
     'manager',
     'owner',
+    'executive_manager',
     'stylist',
     'therapist',
     'receptionist'
@@ -26,6 +27,7 @@ const roleLabels: Record<string, string> = {
     housekeeping: 'Housekeeping',
     manager: 'Manager',
     owner: 'Owner',
+    executive_manager: 'Executive Manager',
     stylist: 'Stylist',
     therapist: 'Therapist',
     receptionist: 'Receptionist'
@@ -40,6 +42,7 @@ const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
 const getRoleAvatarColor = (role: string) => {
     switch(role) {
         case 'owner': return '#e11d48';
+        case 'executive_manager': return '#f59e0b';
         case 'manager': return 'var(--accent-alt)';
         case 'hairstylist': return '#3b82f6';
         case 'beautician': return '#ec4899';
@@ -54,7 +57,7 @@ const getRoleAvatarColor = (role: string) => {
 };
 
 export default function Staff() {
-    const isOwner = authStore.getSession()?.role === 'owner'
+    const isOwner = isOwnerLevel(authStore.getSession()?.role)
     const branchScope = getBranchScope()
     const scopedEmptyForm = { ...emptyForm, branch: branchScope || 'Bengaluru' }
     const [staff, setStaff] = useState<StaffMember[]>([])
@@ -79,6 +82,7 @@ export default function Staff() {
 
     const bengaluruCount = staff.filter(s => s.branch === 'Bengaluru').length
     const kalaburagiCount = staff.filter(s => s.branch === 'Kalaburagi').length
+    const belgaumCount = staff.filter(s => s.branch === 'Belgaum').length
 
     const startEdit = (member: StaffMember) => {
         setEditingId(member.id)
@@ -127,7 +131,7 @@ export default function Staff() {
             </div>
 
             {/* Branch Counts */}
-            <div className="admin-stats-grid" style={{ gridTemplateColumns: branchScope ? '1fr' : 'repeat(3, 1fr)' }}>
+            <div className="admin-stats-grid" style={{ gridTemplateColumns: branchScope ? '1fr' : 'repeat(4, 1fr)' }}>
                 {branchScope ? (
                     <div className="admin-stat-card">
                         <div className="stat-label">{branchScope} Staff</div><div className="stat-value">{staff.length}</div>
@@ -142,6 +146,9 @@ export default function Staff() {
                         </div>
                         <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'Kalaburagi' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('Kalaburagi')}>
                             <div className="stat-label">Kalaburagi</div><div className="stat-value accent">{kalaburagiCount}</div>
+                        </div>
+                        <div className="admin-stat-card" style={{ cursor: 'pointer', borderColor: branchFilter === 'Belgaum' ? 'rgba(193,127,89,0.3)' : undefined }} onClick={() => setBranchFilter('Belgaum')}>
+                            <div className="stat-label">Belgaum</div><div className="stat-value accent">{belgaumCount}</div>
                         </div>
                     </>
                 )}
@@ -178,6 +185,7 @@ export default function Staff() {
                                     <select className="admin-form-select" value={form.branch} onChange={e => setForm({ ...form, branch: e.target.value })}>
                                         <option value="Bengaluru">Bengaluru</option>
                                         <option value="Kalaburagi">Kalaburagi</option>
+                                        <option value="Belgaum">Belgaum</option>
                                     </select>
                                 )}
                             </div>
@@ -213,6 +221,7 @@ export default function Staff() {
                         <option value="all">All Branches</option>
                         <option value="Bengaluru">Bengaluru</option>
                         <option value="Kalaburagi">Kalaburagi</option>
+                        <option value="Belgaum">Belgaum</option>
                     </select>
                 )}
             </div>

@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { supabase } from '../../lib/supabase'
-import type { Appointment, Client, ServiceRecord, StaffMember, SalonSettings, ServiceVisit, Invoice, InventoryItem, AttendanceRecord, ClientReview } from './types'
+import type { Appointment, Client, ServiceRecord, StaffMember, SalonSettings, ServiceVisit, Invoice, InventoryItem, AttendanceRecord, ClientReview, Expense, ExpenseCategory, ServicePackage } from './types'
 import { mockAppointments, mockClients, mockServices, mockStaff, defaultSettings, mockVisits, mockInvoices, mockInventory } from './mockData'
 
 const KEYS = {
@@ -522,6 +522,125 @@ export const serviceStore = {
         const filtered = current.filter(s => s.id !== id)
         localStorage.setItem(KEYS.SERVICES, JSON.stringify(filtered))
         return true
+    },
+}
+
+// ─── Packages ────────────────────────────────────────────────
+function mapPackageRow(p: any): ServicePackage {
+    return {
+        id: p.id,
+        name: p.name,
+        description: p.description || '',
+        bundlePrice: paisaToRupees(p.bundlePrice),
+        badge: p.badge || undefined,
+        imageUrl: p.imageUrl || undefined,
+        isActive: p.isActive,
+        services: (p.PackageService || []).map((ps: any) => ({
+            serviceId: ps.serviceId,
+            serviceName: ps.Service?.name || '',
+            price: paisaToRupees(ps.Service?.price || 0),
+            quantity: ps.quantity,
+        })),
+    }
+}
+
+export const packageStore = {
+    getAll: async (): Promise<ServicePackage[]> => {
+        try {
+            const { data, error } = await supabase
+                .from('Package')
+                .select('*, PackageService(quantity, serviceId, Service(id, name, price))')
+                .order('name', { ascending: true })
+            if (!error && data) {
+                return data.map(mapPackageRow)
+            }
+        } catch {}
+        return []
+    },
+
+    create: async (pkg: Omit<ServicePackage, 'id'>): Promise<ServicePackage | undefined> => {
+        try {
+            const { data: created, error } = await supabase
+                .from('Package')
+                .insert({
+                    id: crypto.randomUUID(),
+                    name: pkg.name,
+                    description: pkg.description,
+                    bundlePrice: rupeesToPaisa(pkg.bundlePrice),
+                    badge: pkg.badge || null,
+                    imageUrl: pkg.imageUrl || null,
+                    isActive: pkg.isActive,
+                    updatedAt: new Date().toISOString(),
+                })
+                .select()
+                .single()
+            if (error || !created) return undefined
+
+            if (pkg.services.length > 0) {
+                await supabase.from('PackageService').insert(
+                    pkg.services.map(s => ({
+                        id: crypto.randomUUID(),
+                        packageId: created.id,
+                        serviceId: s.serviceId,
+                        quantity: s.quantity,
+                    }))
+                )
+            }
+            return packageStore.getById(created.id)
+        } catch {}
+        return undefined
+    },
+
+    getById: async (id: string): Promise<ServicePackage | undefined> => {
+        try {
+            const { data, error } = await supabase
+                .from('Package')
+                .select('*, PackageService(quantity, serviceId, Service(id, name, price))')
+                .eq('id', id)
+                .single()
+            if (!error && data) return mapPackageRow(data)
+        } catch {}
+        return undefined
+    },
+
+    update: async (id: string, updates: Partial<ServicePackage>): Promise<ServicePackage | undefined> => {
+        try {
+            const payload: any = {}
+            if (updates.name !== undefined) payload.name = updates.name
+            if (updates.description !== undefined) payload.description = updates.description
+            if (updates.bundlePrice !== undefined) payload.bundlePrice = rupeesToPaisa(updates.bundlePrice)
+            if (updates.badge !== undefined) payload.badge = updates.badge || null
+            if (updates.imageUrl !== undefined) payload.imageUrl = updates.imageUrl || null
+            if (updates.isActive !== undefined) payload.isActive = updates.isActive
+            if (Object.keys(payload).length > 0) {
+                payload.updatedAt = new Date().toISOString()
+                await supabase.from('Package').update(payload).eq('id', id)
+            }
+
+            if (updates.services) {
+                await supabase.from('PackageService').delete().eq('packageId', id)
+                if (updates.services.length > 0) {
+                    await supabase.from('PackageService').insert(
+                        updates.services.map(s => ({
+                            id: crypto.randomUUID(),
+                            packageId: id,
+                            serviceId: s.serviceId,
+                            quantity: s.quantity,
+                        }))
+                    )
+                }
+            }
+            return packageStore.getById(id)
+        } catch {}
+        return undefined
+    },
+
+    delete: async (id: string): Promise<boolean> => {
+        try {
+            await supabase.from('Package').delete().eq('id', id)
+            return true
+        } catch {}
+        return false
     },
 }
 
@@ -1220,6 +1339,72 @@ export const reviewStore = {
             localStorage.setItem('cm_admin_reviews', JSON.stringify(current))
         }
         return true
+    },
+}
+
+// ─── Expenses (Monthly P&L) ───────────────────────────────────
+// Fixed line items the P&L can't derive from existing data (commissions,
+// labor, rent, salaries, etc) — one editable amount per (month, branch,
+// category). Branch-scoped (not company-wide) so each branch's own Net
+// Profit can be computed for the CEO Share breakdown.
+function dbExpenseCategory(category: ExpenseCategory): string {
+    return category.toUpperCase()
+}
+function fromDbExpenseCategory(category: string): ExpenseCategory {
+    return category.toLowerCase() as ExpenseCategory
+}
+
+export const expenseStore = {
+    getForMonth: async (month: string, branch: string): Promise<Expense[]> => {
+        try {
+            const { data, error } = await supabase.from('Expense').select('*').eq('month', month).eq('branchId', getBranchId(branch))
+            if (!error && data) {
+                return data.map((e: any) => ({
+                    id: e.id,
+                    month: e.month,
+                    branch: mapBranch(e.branchId),
+                    category: fromDbExpenseCategory(e.category),
+                    amount: paisaToRupees(e.amount),
+                    notes: e.notes || undefined,
+                }))
+            }
+        } catch {}
+
+        const raw = localStorage.getItem(`cm_admin_expenses_${month}_${branch}`)
+        return raw ? JSON.parse(raw) : []
+    },
+
+    save: async (month: string, branch: string, category: ExpenseCategory, amount: number, notes?: string): Promise<Expense> => {
+        const payload = {
+            month,
+            branchId: getBranchId(branch),
+            category: dbExpenseCategory(category),
+            amount: rupeesToPaisa(amount),
+            notes: notes || null,
+            updatedAt: new Date().toISOString(),
+        }
+        try {
+            const { data, error } = await supabase.from('Expense').upsert(payload, { onConflict: 'month,branchId,category' }).select('*').single()
+            if (!error && data) {
+                return {
+                    id: data.id,
+                    month: data.month,
+                    branch: mapBranch(data.branchId),
+                    category: fromDbExpenseCategory(data.category),
+                    amount: paisaToRupees(data.amount),
+                    notes: data.notes || undefined,
+                }
+            }
+        } catch {}
+
+        const key = `cm_admin_expenses_${month}_${branch}`
+        const current: Expense[] = JSON.parse(localStorage.getItem(key) || '[]')
+        const idx = current.findIndex(e => e.category === category)
+        const record: Expense = { id: idx >= 0 ? current[idx].id : `exp-${Date.now()}`, month, branch, category, amount, notes }
+        if (idx >= 0) current[idx] = record
+        else current.push(record)
+        localStorage.setItem(key, JSON.stringify(current))
+        return record
     },
 }
 

@@ -6,11 +6,11 @@ import {
 } from 'lucide-react';
 import {
     clientStore, serviceStore, staffStore, appointmentStore,
-    inventoryStore, invoiceStore, settingsStore, visitStore
+    inventoryStore, invoiceStore, settingsStore, visitStore, packageStore
 } from '../data/store';
 import { getBranchScope } from '../data/authStore';
 import { getBranchAddress } from '../../data/branches';
-import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice, ClientReview } from '../data/types';
+import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice, ClientReview, ServicePackage } from '../data/types';
 import { useToast } from '../components/Toast';
 import VoiceRecorderModal from '../components/VoiceRecorderModal';
 import cmLogo from '../../assets/cm-logo-white.png';
@@ -29,24 +29,27 @@ export default function Billing() {
     const [allStaff, setAllStaff] = useState<StaffMember[]>([]);
     const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
+    const [packages, setPackages] = useState<ServicePackage[]>([]);
     const [branches, setBranches] = useState<{ name: string; isActive: boolean }[]>([]);
     const [selectedBranch, setSelectedBranch] = useState<string>('Bengaluru');
 
     useEffect(() => {
         const loadAll = async () => {
-            const [cls, svcs, stfs, invs, apts, st] = await Promise.all([
+            const [cls, svcs, stfs, invs, apts, st, pkgs] = await Promise.all([
                 clientStore.getAll(),
                 serviceStore.getAll(),
                 staffStore.getAll(),
                 inventoryStore.getAll(),
                 appointmentStore.getAll(),
                 settingsStore.get(),
+                packageStore.getAll(),
             ])
             setAllClients(cls)
             setServices(svcs.filter(s => s.isActive))
             setAllStaff(stfs.filter(s => s.isActive))
             setInventory(invs.filter(i => i.isActive))
             setAllAppointments(apts)
+            setPackages(pkgs.filter(p => p.isActive))
 
             const activeBranches = st.branches.filter(b => b.isActive).map(b => ({ ...b, name: b.name.replace('CM — ', '') }))
             setBranches(activeBranches)
@@ -151,6 +154,34 @@ export default function Billing() {
     const addServiceItem = () => setItems([...items, { service: '', quantity: 1, unitPrice: 0, total: 0 }]);
     const addCustomServiceItem = () => setItems([...items, { service: 'Custom Service', description: 'Custom', quantity: 1, unitPrice: 0, total: 0, isCustom: true }]);
     const addProductItem = () => setItems([...items, { service: '', description: 'Product', quantity: 1, unitPrice: 0, total: 0 }]);
+
+    // Expands a package into its real component service line items (so
+    // inventory/commission/reporting all still work per-service) plus one
+    // visible negative-price adjustment line for the bundle savings —
+    // keeps the discount transparent on the printed receipt instead of
+    // silently folding it into the top-level discount field.
+    const addPackageItem = (pkg: ServicePackage) => {
+        const componentItems: InvoiceItem[] = pkg.services.map(line => ({
+            service: line.serviceName,
+            quantity: line.quantity,
+            unitPrice: line.price,
+            total: line.price * line.quantity,
+        }));
+        const fullPrice = componentItems.reduce((s, i) => s + i.total, 0);
+        const savings = fullPrice - pkg.bundlePrice;
+        const newItems = [...componentItems];
+        if (savings > 0) {
+            newItems.push({
+                service: `Package Discount — ${pkg.name}`,
+                description: 'Bundle savings',
+                quantity: 1,
+                unitPrice: -savings,
+                total: -savings,
+                isCustom: true,
+            });
+        }
+        setItems([...items, ...newItems]);
+    };
 
     const updateItem = (idx: number, field: keyof InvoiceItem, val: any) => {
         const copy = [...items];
@@ -596,6 +627,22 @@ export default function Billing() {
                         <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={addServiceItem}><Plus size={14} /> Add Catalog Service</button>
                         <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={addCustomServiceItem} style={{ color: '#e11d48', borderColor: 'rgba(225,29,72,0.3)' }}><Plus size={14} /> Add Custom Service</button>
                         <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={addProductItem}><Package size={14} /> Add Retail Product</button>
+                        {packages.length > 0 && (
+                            <select
+                                className="admin-form-select admin-btn-sm"
+                                value=""
+                                onChange={e => {
+                                    const pkg = packages.find(p => p.id === e.target.value)
+                                    if (pkg) addPackageItem(pkg)
+                                }}
+                                style={{ maxWidth: 220 }}
+                            >
+                                <option value="" disabled>🎁 Add Package...</option>
+                                {packages.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name} (₹{p.bundlePrice})</option>
+                                ))}
+                            </select>
+                        )}
                     </div>
                 </div>
 

@@ -1,6 +1,13 @@
 import { supabase } from '../../lib/supabase'
 
-export type AdminRole = 'owner' | 'manager' | 'receptionist'
+export type AdminRole = 'owner' | 'executive_manager' | 'manager' | 'receptionist'
+
+// Executive Manager has the same cross-branch, full-access permissions as
+// Owner (see auth_role() in Postgres, which normalizes it identically for
+// RLS) — this is the single place the frontend treats them as equivalent.
+export function isOwnerLevel(role: AdminRole | undefined): boolean {
+    return role === 'owner' || role === 'executive_manager'
+}
 
 export interface AdminUser {
     email: string
@@ -34,7 +41,7 @@ const SESSION_KEY = 'cm_admin_session'
 
 function normalizeRole(role: unknown): AdminRole {
     const r = String(role || '').toLowerCase()
-    if (r === 'owner' || r === 'manager' || r === 'receptionist') return r
+    if (r === 'owner' || r === 'executive_manager' || r === 'manager' || r === 'receptionist') return r
     return 'receptionist'
 }
 
@@ -57,7 +64,7 @@ export const authStore = {
 
         const meta = { ...data.user.app_metadata, ...data.user.user_metadata } as Record<string, unknown>
         const role = normalizeRole(meta.role)
-        const branch = role === 'owner' ? null : ((meta.branch as string) || null)
+        const branch = isOwnerLevel(role) ? null : ((meta.branch as string) || null)
 
         const session: AdminSession = {
             email: data.user.email || cleanEmail,
@@ -90,8 +97,8 @@ export function getBranchScope(): string | null {
 
 export function scopeByBranch<T extends { branch?: string; branchId?: string; role?: string }>(items: T[]): T[] {
     const session = authStore.getSession()
-    // Owner role always sees all items across all branches
-    if (session?.role === 'owner') {
+    // Owner (and Executive Manager, same access level) always sees all items across all branches
+    if (isOwnerLevel(session?.role)) {
         return items
     }
 
@@ -104,8 +111,8 @@ export function scopeByBranch<T extends { branch?: string; branchId?: string; ro
         const b = (i.branch || '').toLowerCase()
         const bId = (i.branchId || '').toLowerCase()
 
-        // Staff member with owner role or 'All Branches' items are visible in every branch scope
-        if (roleStr === 'owner' || b.includes('all branches') || b === 'all') {
+        // Staff member with owner/executive-manager role or 'All Branches' items are visible in every branch scope
+        if (roleStr === 'owner' || roleStr === 'executive_manager' || b.includes('all branches') || b === 'all') {
             return true
         }
 

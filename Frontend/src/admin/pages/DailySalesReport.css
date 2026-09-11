@@ -1,0 +1,22 @@
+.dsr-week-table th {
+    text-align: center;
+}
+
+.dsr-week-table td {
+    text-align: center;
+}
+
+.dsr-week-table td.cell-primary {
+    text-align: left;
+}
+
+.dsr-week-label-row td {
+    text-align: left;
+    background: var(--bg-card-alt);
+    font-size: 11px;
+}
+
+.dsr-week-total {
+    font-weight: 700;
+    color: var(--text-bright);
+}

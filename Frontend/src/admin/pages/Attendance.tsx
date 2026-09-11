@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { UserCheck } from 'lucide-react'
 import { staffStore, attendanceStore } from '../data/store'
-import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
+import { authStore, getBranchScope, scopeByBranch, isOwnerLevel } from '../data/authStore'
 import type { AttendanceRecord, StaffMember } from '../data/types'
 import '../AdminShared.css'
 import './Attendance.css'
@@ -63,7 +63,7 @@ export default function Attendance() {
 
                 {branchStaff.length === 0 ? (
                     <div className="admin-empty" style={{ padding: 24 }}>
-                        <h3 style={{ fontSize: 14 }}>No active staff{session?.role === 'owner' ? '' : ' at this branch'}</h3>
+                        <h3 style={{ fontSize: 14 }}>No active staff{isOwnerLevel(session?.role) ? '' : ' at this branch'}</h3>
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

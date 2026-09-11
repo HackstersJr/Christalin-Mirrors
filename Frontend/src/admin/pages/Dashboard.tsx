@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Users, TrendingUp, Clock, FileText, Building2, Receipt, UserPlus, UserCheck } from 'lucide-react'
-import { appointmentStore, clientStore, invoiceStore, visitStore, staffStore } from '../data/store'
-import { authStore, getBranchScope, scopeByBranch } from '../data/authStore'
+import { appointmentStore, clientStore, invoiceStore, staffStore } from '../data/store'
+import { authStore, getBranchScope, scopeByBranch, isOwnerLevel } from '../data/authStore'
 import { branches as branchList } from '../../data/branches'
 import { cld } from '../../lib/cld'
 import type { Appointment } from '../data/types'
@@ -14,7 +14,6 @@ export default function Dashboard() {
     const [appointments, setAppointments] = useState<Appointment[]>([])
     const [clients, setClients] = useState<any[]>([])
     const [invoices, setInvoices] = useState<any[]>([])
-    const [visits, setVisits] = useState<any[]>([])
     const [staffList, setStaffList] = useState<any[]>([])
 
     const today = new Date().toISOString().split('T')[0]
@@ -24,17 +23,15 @@ export default function Dashboard() {
 
     useEffect(() => {
         const loadAll = async () => {
-            const [apts, cls, invs, vsts, stfs] = await Promise.all([
+            const [apts, cls, invs, stfs] = await Promise.all([
                 appointmentStore.getAll(),
                 clientStore.getAll(),
                 invoiceStore.getAll(),
-                visitStore.getAll(),
                 staffStore.getAll(),
             ])
             setAppointments(apts)
             setClients(scopeByBranch(cls))
             setInvoices(scopeByBranch(invs))
-            setVisits(scopeByBranch(vsts))
             setStaffList(stfs)
         }
         loadAll()
@@ -52,17 +49,30 @@ export default function Dashboard() {
     const allPaidTotal = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0)
     const todayRevenue = invoices.filter(i => i.status === 'paid' && i.date === today).reduce((s, i) => s + i.total, 0)
 
-    // Top services by frequency
-    const serviceCount: Record<string, number> = {}
-    visits.forEach(v => (v.services || []).forEach((s: any) => { serviceCount[s.name] = (serviceCount[s.name] || 0) + 1 }))
-    const topServices = Object.entries(serviceCount).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    // Utilization: which services and products are actually driving
+    // business, derived from real billed line items on paid invoices —
+    // ServiceVisit (the previous source) is unused/empty across the system.
+    const paidInvoices = invoices.filter(i => i.status === 'paid')
+    const serviceUsage: Record<string, { count: number; revenue: number }> = {}
+    const productUsage: Record<string, { count: number; revenue: number }> = {}
+    paidInvoices.forEach(inv => {
+        (inv.items || []).forEach((item: any) => {
+            if (!item.service || item.isCustom) return
+            const bucket = item.productId ? productUsage : serviceUsage
+            if (!bucket[item.service]) bucket[item.service] = { count: 0, revenue: 0 }
+            bucket[item.service].count += item.quantity
+            bucket[item.service].revenue += item.total
+        })
+    })
+    const topServices = Object.entries(serviceUsage).sort((a, b) => b[1].count - a[1].count).slice(0, 5)
+    const topProducts = Object.entries(productUsage).sort((a, b) => b[1].count - a[1].count).slice(0, 5)
 
     // Recent invoices
     const recentInvoices = invoices.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
 
     // Owner-only: per-branch breakdown (invoices/scopedAppointments/clients
     // are already the full unscoped datasets when branchScope is null).
-    const isOwner = session?.role === 'owner'
+    const isOwner = isOwnerLevel(session?.role)
     const thisMonth = today.slice(0, 7)
     const branchOverview = isOwner ? branchList.map((b) => {
         const displayName = b.name.replace('CM — ', '')
@@ -94,7 +104,7 @@ export default function Dashboard() {
             </div>
 
             {/* Quick Actions */}
-            {session?.role !== 'owner' && (
+            {!isOwner && (
                 <div className="dashboard-quick-actions">
                     <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/billing')}>
                         <Receipt size={14} /> New Bill
@@ -192,7 +202,7 @@ export default function Dashboard() {
 
             {/* Alerts — branch staff only; owner sees all branches, so this
                 per-branch confirmation nudge isn't relevant on their dashboard */}
-            {pendingApts.length > 0 && session?.role !== 'owner' && (
+            {pendingApts.length > 0 && !isOwner && (
                 <div className="dashboard-alerts">
                     <div className="dashboard-alert alert-warning" onClick={() => navigate('/admin/appointments')}>
                         <Clock size={16} className="dashboard-alert-icon" />
@@ -397,18 +407,40 @@ export default function Dashboard() {
                         </div>
                     )}
 
-                    {/* Top Services */}
+                    {/* Utilization: Top Services */}
                     <div className="admin-form-card" style={{ marginBottom: 20 }}>
-                        <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>Popular Services</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {topServices.map(([name, count], i) => (
-                                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0' }}>
-                                    <span style={{ fontFamily: 'monospace', color: 'var(--text-dim)', fontSize: 12, width: 20 }}>{i + 1}.</span>
-                                    <span className="cell-primary" style={{ flex: 1, fontSize: 13 }}>{name}</span>
-                                    <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{count}x</span>
-                                </div>
-                            ))}
-                        </div>
+                        <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>Most Utilized Services</h3>
+                        {topServices.length === 0 ? (
+                            <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>No billed services yet.</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {topServices.map(([name, usage], i) => (
+                                    <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0' }}>
+                                        <span style={{ fontFamily: 'monospace', color: 'var(--text-dim)', fontSize: 12, width: 20 }}>{i + 1}.</span>
+                                        <span className="cell-primary" style={{ flex: 1, fontSize: 13 }}>{name}</span>
+                                        <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{usage.count}x · ₹{usage.revenue.toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Utilization: Top Products */}
+                    <div className="admin-form-card" style={{ marginBottom: 20 }}>
+                        <h3 style={{ margin: '0 0 16px', fontSize: 14 }}>Most Utilized Products</h3>
+                        {topProducts.length === 0 ? (
+                            <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>No retail product sales yet.</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {topProducts.map(([name, usage], i) => (
+                                    <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0' }}>
+                                        <span style={{ fontFamily: 'monospace', color: 'var(--text-dim)', fontSize: 12, width: 20 }}>{i + 1}.</span>
+                                        <span className="cell-primary" style={{ flex: 1, fontSize: 13 }}>{name}</span>
+                                        <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{usage.count}x · ₹{usage.revenue.toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

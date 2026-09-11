@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Printer, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Printer, ChevronLeft, ChevronRight } from 'lucide-react'
 import { invoiceStore, appointmentStore, clientStore, staffStore, inventoryStore } from '../data/store'
 import { branches as branchList } from '../../data/branches'
 import type { Invoice, Appointment, Client, StaffMember, InventoryItem } from '../data/types'
 import cmLogo from '../../assets/cm-logo-white.png'
+import { toIso, todayIso, addDays, Trend } from './reportUtils'
 import '../AdminShared.css'
+import '../ReportShared.css'
 import './Reports.css'
 
 type Period = 'daily' | 'weekly' | 'monthly'
@@ -12,15 +14,6 @@ type Period = 'daily' | 'weekly' | 'monthly'
 // Clean short branch name (e.g. "Belgaum"), matching mapBranch() in store.ts —
 // not branchList's fuller display label (e.g. "Belgaum (Belagavi)").
 const branchNames = branchList.map(b => b.name.replace('CM — ', '').replace(/\s*\([^)]*\)$/, ''))
-
-function pad(n: number) { return String(n).padStart(2, '0') }
-function toIso(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
-function todayIso() { return toIso(new Date()) }
-function addDays(iso: string, n: number) {
-    const d = new Date(iso + 'T00:00:00')
-    d.setDate(d.getDate() + n)
-    return toIso(d)
-}
 
 function getRange(period: Period, anchor: string) {
     const d = new Date(anchor + 'T00:00:00')
@@ -59,26 +52,6 @@ type PeriodAgg = {
     apptPending: number
     newClients: number
     apptTotal: number
-}
-
-function computeTrend(curr: number, prev: number): { label: string; dir: 'up' | 'down' | 'flat' } {
-    if (prev === 0) {
-        if (curr === 0) return { label: '0%', dir: 'flat' }
-        return { label: 'New', dir: 'up' }
-    }
-    const pct = ((curr - prev) / prev) * 100
-    const dir = pct > 0.5 ? 'up' : pct < -0.5 ? 'down' : 'flat'
-    return { label: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`, dir }
-}
-
-function Trend({ curr, prev }: { curr: number; prev: number }) {
-    const t = computeTrend(curr, prev)
-    const Icon = t.dir === 'up' ? TrendingUp : t.dir === 'down' ? TrendingDown : Minus
-    return (
-        <span className={`report-trend report-trend-${t.dir}`}>
-            <Icon size={12} /> {t.label}
-        </span>
-    )
 }
 
 function SnapshotCard({ label, sub, stats, prev }: { label: string; sub: string; stats: PeriodAgg; prev: PeriodAgg }) {
@@ -222,7 +195,7 @@ export default function Reports() {
                 </div>
             </div>
 
-            <div id="report-print" className="report-sheet">
+            <div id="report-print" className="report-sheet print-doc">
                 <div className="report-letterhead">
                     <div className="report-letterhead-main">
                         <img src={cmLogo} alt="Christalin Mirrors" className="report-logo" />

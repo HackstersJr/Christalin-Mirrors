@@ -468,6 +468,90 @@
     background: var(--accent-subtle);
 }
 
+/* ─── Package Cards ───────────────────────────────────────────── */
+.booking-package-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.booking-package-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--accent-muted);
+    border-radius: var(--radius-md);
+    padding: 14px 40px 14px 16px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: var(--font-body);
+}
+
+.booking-package-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.booking-package-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+.booking-package-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+}
+
+.booking-package-name {
+    font-family: var(--font-heading);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.booking-package-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-subtle);
+    color: var(--accent);
+}
+
+.booking-package-includes {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    font-weight: 300;
+}
+
+.booking-package-price-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 2px;
+}
+
+.booking-package-price {
+    font-family: var(--font-heading);
+    font-size: var(--text-md);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.booking-package-savings {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--success, #4ade80);
+}
+
 .booking-checkbox {
     display: flex;
     align-items: center;

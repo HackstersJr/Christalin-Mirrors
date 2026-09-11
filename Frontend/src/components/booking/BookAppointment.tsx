@@ -81,13 +81,16 @@ export default function BookAppointment() {
                     time: data.time,
                     service: data.serviceNames.join(', '),
                     status: 'pending',
-                    notes: data.notes,
+                    notes: data.selectedPackageName
+                        ? `[Package: ${data.selectedPackageName}]${data.notes ? ' ' + data.notes : ''}`
+                        : data.notes,
                     branch: branchNameClean,
                 })
                 // Key event — mark this as a conversion in GA4 (Admin > Events).
                 trackEvent('booking_submitted', {
                     branch: branchNameClean,
                     service_count: data.serviceNames.length,
+                    package_name: data.selectedPackageName,
                 })
             } catch {
                 trackEvent('booking_failed', { branch: branchNameClean })

@@ -1,0 +1,91 @@
+.pl-expense-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+
+.pl-expense-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.pl-expense-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.pl-expense-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.pl-expense-group-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.pl-expense-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: 6px 0;
+}
+
+.pl-expense-row input {
+    width: 130px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input, var(--bg-card));
+    color: var(--text-bright);
+    font-size: 13px;
+    text-align: right;
+}
+
+.pl-summary-table th:not(:first-child),
+.pl-summary-table td:not(:first-child) {
+    text-align: right;
+}
+
+.pl-net-profit-row td {
+    font-size: 16px;
+}
+
+.pl-ceo-row td {
+    font-weight: 600;
+    color: var(--text-bright);
+}
+
+/* Each branch gets its own printed page, followed by an all-branches
+   summary page — break-before only takes effect in paged media (print),
+   so it's harmless on screen. The dashed rule is an on-screen-only cue
+   for where one page ends and the next begins (hidden in print, since
+   break-before already starts a fresh physical page there). */
+.pl-page-break {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 2px dashed var(--border-strong);
+    break-before: page;
+    page-break-before: always;
+}
+
+@media (max-width: 720px) {
+    .pl-expense-columns {
+        grid-template-columns: 1fr;
+    }
+}

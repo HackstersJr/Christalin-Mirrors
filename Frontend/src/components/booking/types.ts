@@ -4,6 +4,7 @@ export interface BookingData {
     phone: string
     branchId: string
     serviceNames: string[]
+    selectedPackageName?: string
     date: string
     time: string
     notes: string
@@ -15,6 +16,7 @@ export const emptyBookingData: BookingData = {
     phone: '',
     branchId: '',
     serviceNames: [],
+    selectedPackageName: undefined,
     date: '',
     time: '',
     notes: '',
