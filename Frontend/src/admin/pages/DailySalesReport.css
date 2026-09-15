@@ -20,3 +20,15 @@
     font-weight: 700;
     color: var(--text-bright);
 }
+
+.dsr-date-cell {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-primary, #b59458);
+}
+
+@media print {
+    .dsr-date-cell {
+        font-size: 7px !important;
+    }
+}

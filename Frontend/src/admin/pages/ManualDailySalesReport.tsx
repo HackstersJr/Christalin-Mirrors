@@ -432,7 +432,7 @@ export default function ManualDailySalesReport() {
                                                 const dayNum = dObj.getDate()
                                                 const monthShort = dObj.toLocaleDateString('en-IN', { month: 'short' })
                                                 return (
-                                                    <td key={i} style={{ fontWeight: 700, fontSize: 12, color: 'var(--color-primary, #b59458)' }}>
+                                                    <td key={i} className="manual-dsr-date-cell" style={{ fontWeight: 700, color: 'var(--color-primary, #b59458)' }}>
                                                         {dayNum} {monthShort}
                                                     </td>
                                                 )
@@ -584,41 +584,47 @@ export default function ManualDailySalesReport() {
                     </table>
                 </div>
 
-                {/* Monthly Totals Summary */}
-                <div className="report-section-title">Monthly Totals — {monthLabel(monthKey)}</div>
-                <div className="table-scroll">
-                    <table className="admin-table report-table" style={{ maxWidth: 460 }}>
-                        <tbody>
-                            <tr>
-                                <td className="cell-primary">Total Client Count</td>
-                                <td style={{ fontWeight: 600 }}>{monthTotals.clientCount.toLocaleString('en-IN')}</td>
-                            </tr>
-                            <tr>
-                                <td className="cell-primary">Total Retail Sales</td>
-                                <td style={{ fontWeight: 600 }}>{money(monthTotals.retail)}</td>
-                            </tr>
-                            <tr>
-                                <td className="cell-primary">Total Service Sales</td>
-                                <td style={{ fontWeight: 600 }}>{money(monthTotals.service)}</td>
-                            </tr>
-                            <tr className="report-totals-row">
-                                <td className="cell-primary">Grand Total Sales</td>
-                                <td style={{ color: 'var(--color-primary, #b59458)' }}>{money(monthTotals.total)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                {/* Monthly Totals & Signoff Bottom Section */}
+                <div className="report-bottom-section">
+                    <div className="report-bottom-totals">
+                        <div className="report-section-title" style={{ marginTop: 0 }}>Monthly Totals — {monthLabel(monthKey)}</div>
+                        <div className="table-scroll">
+                            <table className="admin-table report-table report-totals-table monthly-totals-table">
+                                <tbody>
+                                    <tr>
+                                        <td className="cell-primary">Total Client Count</td>
+                                        <td style={{ fontWeight: 600 }}>{monthTotals.clientCount.toLocaleString('en-IN')}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="cell-primary">Total Retail Sales</td>
+                                        <td style={{ fontWeight: 600 }}>{money(monthTotals.retail)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="cell-primary">Total Service Sales</td>
+                                        <td style={{ fontWeight: 600 }}>{money(monthTotals.service)}</td>
+                                    </tr>
+                                    <tr className="report-totals-row">
+                                        <td className="cell-primary">Grand Total Sales</td>
+                                        <td style={{ color: 'var(--color-primary, #b59458)' }}>{money(monthTotals.total)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                {/* Report Note */}
-                <div className="report-note">
-                    Note: Figures shown above are manually entered and stored locally for {branchLabel === 'All Branches' ? 'all branches combined' : `the ${branchLabel} branch`}. Total Sales is the sum of Retail and Service sales for each day. Days shaded outside the calendar month belong to the adjacent month and are excluded from all totals.
-                </div>
+                    <div className="report-bottom-meta">
+                        {/* Report Note */}
+                        <div className="report-note">
+                            Note: Figures shown above are manually entered and stored locally for {branchLabel === 'All Branches' ? 'all branches combined' : `the ${branchLabel} branch`}. Total Sales is the sum of Retail and Service sales for each day. Days shaded outside the calendar month belong to the adjacent month and are excluded from all totals.
+                        </div>
 
-                {/* Sign-off Blocks */}
-                <div className="report-signoff">
-                    <div className="signoff-block"><span>Prepared by (Branch / Manager)</span></div>
-                    <div className="signoff-block"><span>Reviewed by (Owner / Executive)</span></div>
-                    <div className="signoff-block"><span>Date</span></div>
+                        {/* Sign-off Blocks */}
+                        <div className="report-signoff">
+                            <div className="signoff-block"><span>Prepared by (Branch / Manager)</span></div>
+                            <div className="signoff-block"><span>Reviewed by (Owner / Executive)</span></div>
+                            <div className="signoff-block"><span>Date</span></div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Report Footer */}

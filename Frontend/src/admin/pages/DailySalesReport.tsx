@@ -146,7 +146,7 @@ export default function DailySalesReport() {
                                                 }
                                                 const dObj = new Date(d.iso + 'T00:00:00')
                                                 return (
-                                                    <td key={i} style={{ fontWeight: 700, fontSize: 12, color: 'var(--color-primary, #b59458)' }}>
+                                                    <td key={i} className="dsr-date-cell" style={{ fontWeight: 700, color: 'var(--color-primary, #b59458)' }}>
                                                         {dObj.getDate()} {dObj.toLocaleDateString('en-IN', { month: 'short' })}
                                                     </td>
                                                 )
@@ -182,26 +182,32 @@ export default function DailySalesReport() {
                     </table>
                 </div>
 
-                <div className="report-section-title">Monthly Totals — {monthLabel(monthKey)}</div>
-                <div className="table-scroll">
-                    <table className="admin-table report-table">
-                        <tbody>
-                            <tr><td className="cell-primary">Client Count</td><td>{monthTotals.clientCount.toLocaleString()}</td></tr>
-                            <tr><td className="cell-primary">Retail Sales</td><td>{money(monthTotals.retail)}</td></tr>
-                            <tr><td className="cell-primary">Service Sales</td><td>{money(monthTotals.service)}</td></tr>
-                            <tr className="report-totals-row"><td className="cell-primary">Grand Total Sales</td><td>{money(monthTotals.total)}</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+                <div className="report-bottom-section">
+                    <div className="report-bottom-totals">
+                        <div className="report-section-title" style={{ marginTop: 0 }}>Monthly Totals — {monthLabel(monthKey)}</div>
+                        <div className="table-scroll">
+                            <table className="admin-table report-table report-totals-table monthly-totals-table">
+                                <tbody>
+                                    <tr><td className="cell-primary">Client Count</td><td>{monthTotals.clientCount.toLocaleString()}</td></tr>
+                                    <tr><td className="cell-primary">Retail Sales</td><td>{money(monthTotals.retail)}</td></tr>
+                                    <tr><td className="cell-primary">Service Sales</td><td>{money(monthTotals.service)}</td></tr>
+                                    <tr className="report-totals-row"><td className="cell-primary">Grand Total Sales</td><td>{money(monthTotals.total)}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                <div className="report-note">
-                    Note: figures cover {branchLabel === 'All Branches' ? 'all branches combined' : `the ${branchLabel} branch only`}, drawn from paid invoices only. Client Count is the number of distinct clients billed that day. Days shaded outside the calendar month belong to the adjacent month and are excluded from all totals.
-                </div>
+                    <div className="report-bottom-meta">
+                        <div className="report-note">
+                            Note: figures cover {branchLabel === 'All Branches' ? 'all branches combined' : `the ${branchLabel} branch only`}, drawn from paid invoices only. Client Count is the number of distinct clients billed that day. Days shaded outside the calendar month belong to the adjacent month and are excluded from all totals.
+                        </div>
 
-                <div className="report-signoff">
-                    <div className="signoff-block"><span>Prepared by</span></div>
-                    <div className="signoff-block"><span>Reviewed by</span></div>
-                    <div className="signoff-block"><span>Date</span></div>
+                        <div className="report-signoff">
+                            <div className="signoff-block"><span>Prepared by</span></div>
+                            <div className="signoff-block"><span>Reviewed by</span></div>
+                            <div className="signoff-block"><span>Date</span></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="report-footer">

@@ -110,4 +110,12 @@
         padding: 0 !important;
         color: inherit !important;
     }
+    .manual-pl-table th {
+        padding: 3px 6px !important;
+        font-size: 8.5px !important;
+    }
+    .manual-pl-table td {
+        padding: 2.5px 6px !important;
+        font-size: 9.5px !important;
+    }
 }

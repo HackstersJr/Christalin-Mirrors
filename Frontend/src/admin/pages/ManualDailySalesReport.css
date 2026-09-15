@@ -101,6 +101,12 @@
     font-variant-numeric: tabular-nums;
 }
 
+.manual-dsr-date-cell {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-primary, #b59458);
+}
+
 /* Hidden Private Banner */
 .manual-dsr-hidden-banner {
     display: flex;
@@ -281,13 +287,21 @@
 
     .admin-content {
         padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    .table-scroll {
+        overflow: visible !important;
     }
 
     .report-sheet {
         border: none !important;
         padding: 0 !important;
+        margin: 0 !important;
         background: #fff !important;
         box-shadow: none !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
     .manual-dsr-input {
@@ -297,16 +311,95 @@
     .manual-dsr-val-text {
         display: inline !important;
         color: #000 !important;
+        font-size: 7.5px !important;
+        line-height: 1.15 !important;
+        padding: 0 !important;
     }
 
-    .manual-dsr-table td,
-    .manual-dsr-table th {
-        border-color: #ddd !important;
+    .manual-dsr-calculated-val {
+        font-size: 7.5px !important;
+        line-height: 1.15 !important;
+        padding: 0 !important;
         color: #000 !important;
+        font-weight: 700 !important;
+    }
+
+    .manual-dsr-table {
+        width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        margin: 0 !important;
+    }
+
+    .manual-dsr-table th {
+        border: 1px solid #bbb !important;
+        color: #000 !important;
+        padding: 2px 2px !important;
+        font-size: 7.5px !important;
+        line-height: 1.1 !important;
+        background: #f4f4f4 !important;
+        font-weight: 700 !important;
+        min-width: unset !important;
+    }
+
+    .manual-dsr-table th:first-child,
+    .manual-dsr-table td:first-child {
+        width: 17% !important;
+        min-width: unset !important;
+    }
+
+    .manual-dsr-table th:last-child,
+    .manual-dsr-table td:last-child {
+        width: 13% !important;
+        min-width: unset !important;
+    }
+
+    .manual-dsr-table td {
+        border: 1px solid #ddd !important;
+        color: #000 !important;
+        padding: 1px 2px !important;
+        font-size: 7.5px !important;
+        line-height: 1.15 !important;
+        height: auto !important;
+    }
+
+    .manual-dsr-table td.cell-primary {
+        padding-left: 3px !important;
+        font-size: 7.5px !important;
+        font-weight: 600 !important;
     }
 
     .manual-dsr-week-label td {
-        background: #f4f4f4 !important;
+        background: #eaeaea !important;
+        color: #111 !important;
+        padding: 1.5px 3px !important;
+        font-size: 8px !important;
+        font-weight: 700 !important;
+        border-top: 1.5px solid #888 !important;
+        border-bottom: 1px solid #ccc !important;
+    }
+
+    .manual-dsr-date-row td {
+        background: #fafafa !important;
+        padding: 1px 2px !important;
+        font-size: 7px !important;
         color: #333 !important;
+        line-height: 1.1 !important;
+        font-weight: 700 !important;
+    }
+
+    .manual-dsr-total-col {
+        padding: 1px 2px !important;
+        font-size: 7.5px !important;
+        font-weight: 700 !important;
+        background: #f0f0f0 !important;
+        border-left: 1.5px solid #aaa !important;
+        color: #000 !important;
+    }
+
+    .report-totals-row td {
+        border-top: 1.5px solid #000 !important;
+        background: #fbfbfb !important;
+        font-weight: 700 !important;
     }
 }
