@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './hooks/useTheme'
 import { useGoogleTag } from './hooks/useGoogleTag'
@@ -34,6 +34,7 @@ import Attendance from './admin/pages/Attendance'
 import Revenue from './admin/pages/Revenue'
 import Reports from './admin/pages/Reports'
 import DailySalesReport from './admin/pages/DailySalesReport'
+import ManualDailySalesReport from './admin/pages/ManualDailySalesReport'
 import ProfitLoss from './admin/pages/ProfitLoss'
 import Login from './admin/pages/Login'
 import ProtectedRoute from './admin/components/ProtectedRoute'
@@ -138,8 +139,13 @@ function App() {
                 <Route path="revenue" element={<RoleRoute allow={['owner', 'executive_manager']}><Revenue /></RoleRoute>} />
                 <Route path="reports" element={<RoleRoute allow={['owner', 'executive_manager']}><Reports /></RoleRoute>} />
                 <Route path="daily-sales-report" element={<RoleRoute allow={['owner', 'executive_manager']}><DailySalesReport /></RoleRoute>} />
+                <Route path="daily-sales-report-manual" element={<RoleRoute allow={['owner', 'executive_manager', 'manager', 'receptionist']}><ManualDailySalesReport /></RoleRoute>} />
+                <Route path="manual-sales-report" element={<RoleRoute allow={['owner', 'executive_manager', 'manager', 'receptionist']}><ManualDailySalesReport /></RoleRoute>} />
+                <Route path="manual-daily-sales" element={<RoleRoute allow={['owner', 'executive_manager', 'manager', 'receptionist']}><ManualDailySalesReport /></RoleRoute>} />
                 <Route path="profit-loss" element={<RoleRoute allow={['owner', 'executive_manager']}><ProfitLoss /></RoleRoute>} />
             </Route>
+            <Route path="/daily-sales-report-manual" element={<Navigate to="/admin/daily-sales-report-manual" replace />} />
+            <Route path="/manual-sales-report" element={<Navigate to="/admin/daily-sales-report-manual" replace />} />
             <Route path="*" element={<NotFound />} />
         </Routes>
     )
