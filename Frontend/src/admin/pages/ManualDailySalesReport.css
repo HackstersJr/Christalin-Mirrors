@@ -138,6 +138,34 @@
     color: var(--text-bright, #fff);
 }
 
+.manual-dsr-sync-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.manual-dsr-sync-pill.synced {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.manual-dsr-sync-pill.saving {
+    color: #facc15;
+    background: rgba(250, 204, 21, 0.1);
+    border: 1px solid rgba(250, 204, 21, 0.25);
+}
+
+.manual-dsr-sync-pill.offline {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
 /* Action toolbars */
 .manual-dsr-toolbar {
     display: flex;

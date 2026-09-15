@@ -1,3 +1,4 @@
+import { supabase } from '../../lib/supabase'
 import type { Invoice } from './types'
 
 export interface ManualDayRecord {
@@ -10,8 +11,13 @@ export interface ManualDayRecord {
 export type ManualSalesData = Record<string, Record<string, ManualDayRecord>>
 // schema: { [branch: string]: { [isoDate: string]: ManualDayRecord } }
 
+export type SyncState = 'synced' | 'saving' | 'offline' | 'error'
+
 const STORAGE_KEY = 'cm_manual_daily_sales_v1'
 const DEFAULT_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum']
+
+// Debounce timer map for cell inputs
+const pendingDebounce: Record<string, ReturnType<typeof setTimeout>> = {}
 
 export const manualSalesStore = {
     getAll(): ManualSalesData {
@@ -35,7 +41,6 @@ export const manualSalesStore = {
     getRecord(branch: string, isoDate: string): ManualDayRecord {
         const data = this.getAll()
         if (branch === 'all') {
-            // Aggregate from all individual branches
             let clientCount = 0
             let retail = 0
             let service = 0
@@ -53,7 +58,6 @@ export const manualSalesStore = {
                 }
             }
 
-            // Fallback: if no branch entries found, check if an explicit entry was made under 'all'
             if (!hasBranchEntry && data['all']?.[isoDate]) {
                 const direct = data['all'][isoDate]
                 return {
@@ -76,35 +80,107 @@ export const manualSalesStore = {
         }
     },
 
-    setRecord(branch: string, isoDate: string, update: Partial<ManualDayRecord>) {
+    /**
+     * Fetch month data from Supabase and merge with local storage cache
+     */
+    async fetchMonth(monthKey: string): Promise<{ data: ManualSalesData; fromOnline: boolean }> {
+        const localData = this.getAll()
+        try {
+            const { data: rows, error } = await supabase
+                .from('ManualDailySales')
+                .select('*')
+                .like('date', `${monthKey}%`)
+
+            if (error) {
+                // Table might not be created yet or network issue
+                return { data: localData, fromOnline: false }
+            }
+
+            if (rows && rows.length > 0) {
+                for (const row of rows) {
+                    const b = row.branch || 'Bengaluru'
+                    const d = row.date
+                    if (!localData[b]) localData[b] = {}
+                    localData[b][d] = {
+                        clientCount: Number(row.clientCount) || 0,
+                        retail: Number(row.retail) || 0,
+                        service: Number(row.service) || 0,
+                        notes: row.notes || '',
+                    }
+                }
+                this.saveAll(localData)
+                return { data: localData, fromOnline: true }
+            }
+
+            return { data: localData, fromOnline: true }
+        } catch {
+            return { data: localData, fromOnline: false }
+        }
+    },
+
+    /**
+     * Save a single day's record to local storage and sync to Supabase online
+     */
+    setRecord(
+        branch: string,
+        isoDate: string,
+        update: Partial<ManualDayRecord>,
+        onSyncStatus?: (status: SyncState) => void
+    ) {
         const data = this.getAll()
         if (!data[branch]) data[branch] = {}
         const prev = data[branch][isoDate] || { clientCount: 0, retail: 0, service: 0, notes: '' }
-        data[branch][isoDate] = {
+        
+        const merged: ManualDayRecord = {
             clientCount: update.clientCount !== undefined ? Math.max(0, update.clientCount) : prev.clientCount,
             retail: update.retail !== undefined ? Math.max(0, update.retail) : prev.retail,
             service: update.service !== undefined ? Math.max(0, update.service) : prev.service,
             notes: update.notes !== undefined ? update.notes : prev.notes,
         }
-        this.saveAll(data)
-    },
 
-    setBatch(branch: string, entries: Record<string, Partial<ManualDayRecord>>) {
-        const data = this.getAll()
-        if (!data[branch]) data[branch] = {}
-        for (const [isoDate, update] of Object.entries(entries)) {
-            const prev = data[branch][isoDate] || { clientCount: 0, retail: 0, service: 0, notes: '' }
-            data[branch][isoDate] = {
-                clientCount: update.clientCount !== undefined ? Math.max(0, update.clientCount) : prev.clientCount,
-                retail: update.retail !== undefined ? Math.max(0, update.retail) : prev.retail,
-                service: update.service !== undefined ? Math.max(0, update.service) : prev.service,
-                notes: update.notes !== undefined ? update.notes : prev.notes,
-            }
+        data[branch][isoDate] = merged
+        this.saveAll(data)
+
+        // Inform UI it's saving online
+        onSyncStatus?.('saving')
+
+        // Debounce cloud upsert to avoid spamming network while typing numbers
+        const debounceKey = `${branch}_${isoDate}`
+        if (pendingDebounce[debounceKey]) {
+            clearTimeout(pendingDebounce[debounceKey])
         }
-        this.saveAll(data)
+
+        pendingDebounce[debounceKey] = setTimeout(async () => {
+            delete pendingDebounce[debounceKey]
+            try {
+                const { error } = await supabase
+                    .from('ManualDailySales')
+                    .upsert({
+                        branch,
+                        date: isoDate,
+                        clientCount: merged.clientCount,
+                        retail: merged.retail,
+                        service: merged.service,
+                        notes: merged.notes || '',
+                        updatedAt: new Date().toISOString()
+                    }, { onConflict: 'branch,date' })
+
+                if (error) {
+                    console.warn('Supabase upsert note:', error.message)
+                    onSyncStatus?.('offline')
+                } else {
+                    onSyncStatus?.('synced')
+                }
+            } catch {
+                onSyncStatus?.('offline')
+            }
+        }, 600)
     },
 
-    clearMonth(branch: string, monthKey: string) {
+    /**
+     * Clear month records locally and from Supabase
+     */
+    async clearMonth(branch: string, monthKey: string): Promise<boolean> {
         const data = this.getAll()
         const targetBranches = branch === 'all' ? [...DEFAULT_BRANCHES, 'all'] : [branch]
         for (const b of targetBranches) {
@@ -117,12 +193,35 @@ export const manualSalesStore = {
             }
         }
         this.saveAll(data)
+
+        try {
+            let query = supabase.from('ManualDailySales').delete().like('date', `${monthKey}%`)
+            if (branch !== 'all') {
+                query = query.eq('branch', branch)
+            }
+            await query
+            return true
+        } catch {
+            return false
+        }
     },
 
-    prefillFromInvoices(invoices: Invoice[], monthKey: string, branch: string): number {
+    /**
+     * Prefill from invoiceStore and sync batch to Supabase
+     */
+    async prefillFromInvoices(invoices: Invoice[], monthKey: string, branch: string): Promise<number> {
         const data = this.getAll()
         const targetBranches = branch === 'all' ? DEFAULT_BRANCHES : [branch]
         let populatedDays = 0
+        const upsertBatch: Array<{
+            branch: string
+            date: string
+            clientCount: number
+            retail: number
+            service: number
+            notes: string
+            updatedAt: string
+        }> = []
 
         for (const b of targetBranches) {
             if (!data[b]) data[b] = {}
@@ -145,17 +244,40 @@ export const manualSalesStore = {
             }
 
             for (const [isoDate, stats] of Object.entries(dateMap)) {
-                data[b][isoDate] = {
+                const rec: ManualDayRecord = {
                     clientCount: stats.clientIds.size,
                     retail: Math.round(stats.retail),
                     service: Math.round(stats.service),
                     notes: `Prefilled from ${branchInvoices.filter(i => i.date === isoDate).length} system invoices`,
                 }
+                data[b][isoDate] = rec
                 populatedDays++
+
+                upsertBatch.push({
+                    branch: b,
+                    date: isoDate,
+                    clientCount: rec.clientCount,
+                    retail: rec.retail,
+                    service: rec.service,
+                    notes: rec.notes || '',
+                    updatedAt: new Date().toISOString()
+                })
             }
         }
 
         this.saveAll(data)
+
+        // Sync batch to Supabase
+        if (upsertBatch.length > 0) {
+            try {
+                await supabase
+                    .from('ManualDailySales')
+                    .upsert(upsertBatch, { onConflict: 'branch,date' })
+            } catch (err) {
+                console.warn('Batch Supabase sync note:', err)
+            }
+        }
+
         return populatedDays
     }
 }

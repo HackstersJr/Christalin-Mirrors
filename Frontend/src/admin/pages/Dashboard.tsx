@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Users, TrendingUp, Clock, FileText, Building2, Receipt, UserPlus, UserCheck } from 'lucide-react'
+import { Calendar, Users, TrendingUp, Clock, FileText, Building2, Receipt, UserPlus, UserCheck, FileSpreadsheet, ClipboardList, PieChart } from 'lucide-react'
 import { appointmentStore, clientStore, invoiceStore, staffStore } from '../data/store'
 import { authStore, getBranchScope, scopeByBranch, isOwnerLevel } from '../data/authStore'
 import { branches as branchList } from '../../data/branches'
@@ -104,21 +104,41 @@ export default function Dashboard() {
             </div>
 
             {/* Quick Actions */}
-            {!isOwner && (
-                <div className="dashboard-quick-actions">
-                    <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/billing')}>
-                        <Receipt size={14} /> New Bill
-                    </button>
-                    <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/clients', { state: { openForm: true } })}>
-                        <UserPlus size={14} /> New Client
-                    </button>
-                    {session?.role === 'manager' && (
-                        <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/attendance')}>
-                            <UserCheck size={14} /> Take Attendance
+            <div className="dashboard-quick-actions">
+                {isOwner ? (
+                    <>
+                        <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/daily-sales-report-manual')}>
+                            <FileSpreadsheet size={14} /> Manual Daily Sales
                         </button>
-                    )}
-                </div>
-            )}
+                        <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/daily-sales-report')}>
+                            <ClipboardList size={14} /> Daily Sales Report
+                        </button>
+                        <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/revenue')}>
+                            <TrendingUp size={14} /> Revenue
+                        </button>
+                        <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/profit-loss')}>
+                            <PieChart size={14} /> Profit & Loss
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/billing')}>
+                            <Receipt size={14} /> New Bill
+                        </button>
+                        <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/clients', { state: { openForm: true } })}>
+                            <UserPlus size={14} /> New Client
+                        </button>
+                        <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/daily-sales-report-manual')}>
+                            <FileSpreadsheet size={14} /> Manual Daily Sales
+                        </button>
+                        {session?.role === 'manager' && (
+                            <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/attendance')}>
+                                <UserCheck size={14} /> Take Attendance
+                            </button>
+                        )}
+                    </>
+                )}
+            </div>
 
             {/* Branch Overview (Owner only) */}
             {isOwner && (
@@ -222,6 +242,9 @@ export default function Dashboard() {
                         <div className="admin-form-card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                                 <h3 style={{ margin: 0, fontSize: 14 }}>Branch Performance — This Month</h3>
+                                <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate('/admin/daily-sales-report-manual')}>
+                                    <FileSpreadsheet size={13} /> Manual Daily Sales →
+                                </button>
                             </div>
                             <div className="admin-table-wrapper mobile-table-wrapper" style={{ marginBottom: 0 }}>
                                 <table className="admin-table">

@@ -4,7 +4,8 @@ import {
     LayoutDashboard, Calendar, Users, Scissors,
     UserCog, Settings, Menu, X, LogOut,
     FileText, CalendarDays, Receipt, UserCheck, TrendingUp,
-    Sun, Moon, Mic, Package, Printer, ClipboardList, PieChart
+    Sun, Moon, Mic, Package, Printer, ClipboardList, PieChart,
+    FileSpreadsheet
 } from 'lucide-react'
 import { ToastProvider } from './components/Toast'
 import { authStore, isOwnerLevel } from './data/authStore'
@@ -41,9 +42,14 @@ const ownerOnlyNavItems = [
     { label: 'Revenue', icon: TrendingUp, path: '/admin/revenue' },
     { label: 'Reports', icon: Printer, path: '/admin/reports' },
     { label: 'Daily Sales Report', icon: ClipboardList, path: '/admin/daily-sales-report' },
+    { label: 'Manual Daily Sales', icon: FileSpreadsheet, path: '/admin/daily-sales-report-manual' },
     { label: 'Profit & Loss', icon: PieChart, path: '/admin/profit-loss' },
     { label: 'Services', icon: Scissors, path: '/admin/services' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
+]
+
+const managerNavItems = [
+    { label: 'Manual Daily Sales', icon: FileSpreadsheet, path: '/admin/daily-sales-report-manual' },
 ]
 
 export default function AdminLayout() {
@@ -55,9 +61,11 @@ export default function AdminLayout() {
     const session = authStore.getSession()
     const navItems = isOwnerLevel(session?.role)
         ? [...baseNavItems, ...ownerOnlyNavItems]
-        : session?.role === 'receptionist'
-            ? receptionistNavItems
-            : baseNavItems
+        : session?.role === 'manager'
+            ? [...baseNavItems, ...managerNavItems]
+            : session?.role === 'receptionist'
+                ? receptionistNavItems
+                : baseNavItems
 
     const handleLogout = () => {
         authStore.logout()

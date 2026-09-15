@@ -1,14 +1,14 @@
-import { Fragment, useState, useEffect, useMemo } from 'react'
+import { Fragment, useState, useEffect, useMemo, useCallback } from 'react'
 import {
     Printer, ChevronLeft, ChevronRight, Edit3, Eye,
     RotateCcw, Download, Copy, Check, FileText,
-    Sparkles, Lock
+    Sparkles, Lock, Cloud, CloudOff, RefreshCw, CheckCircle2, Loader2
 } from 'lucide-react'
 import { branches as branchList } from '../../data/branches'
 import { invoiceStore } from '../data/store'
 import cmLogo from '../../assets/cm-logo-white.png'
 import { toIso, todayIso, monthKeyOf, shiftMonth, monthLabel } from './reportUtils'
-import { manualSalesStore, type ManualSalesData, type ManualDayRecord } from '../data/manualSalesStore'
+import { manualSalesStore, type ManualSalesData, type ManualDayRecord, type SyncState } from '../data/manualSalesStore'
 import { useToast } from '../components/Toast'
 import '../AdminShared.css'
 import '../ReportShared.css'
@@ -66,15 +66,31 @@ export default function ManualDailySalesReport() {
     const [isEditMode, setIsEditMode] = useState(true)
     const [data, setData] = useState<ManualSalesData>(() => manualSalesStore.getAll())
     const [copiedUrl, setCopiedUrl] = useState(false)
+    const [syncStatus, setSyncStatus] = useState<SyncState>('synced')
+    const [isSyncing, setIsSyncing] = useState(false)
 
     // Modal state
     const [isPasteModalOpen, setIsPasteModalOpen] = useState(false)
     const [pasteText, setPasteText] = useState('')
 
-    // Refresh store on mount
-    useEffect(() => {
-        setData(manualSalesStore.getAll())
+    // Load month data from Supabase (with fallback to local storage)
+    const loadOnlineData = useCallback(async (mKey: string) => {
+        setIsSyncing(true)
+        try {
+            const { data: remoteData, fromOnline } = await manualSalesStore.fetchMonth(mKey)
+            setData(remoteData)
+            setSyncStatus(fromOnline ? 'synced' : 'offline')
+        } catch {
+            setSyncStatus('offline')
+        } finally {
+            setIsSyncing(false)
+        }
     }, [])
+
+    // Refresh store on mount and on monthKey change
+    useEffect(() => {
+        loadOnlineData(monthKey)
+    }, [monthKey, loadOnlineData])
 
     const weeks = useMemo(() => buildWeeks(monthKey), [monthKey])
 
@@ -123,12 +139,17 @@ export default function ManualDailySalesReport() {
         }
     }
 
-    // Update single field
+    // Update single field with online sync callback
     const handleCellChange = (iso: string, field: 'clientCount' | 'retail' | 'service', rawValue: string) => {
         const num = rawValue === '' ? 0 : Math.max(0, parseInt(rawValue, 10) || 0)
         const targetBranch = branch === 'all' ? 'Bengaluru' : branch // default to first branch if editing directly in all
         
-        manualSalesStore.setRecord(targetBranch, iso, { [field]: num })
+        manualSalesStore.setRecord(
+            targetBranch,
+            iso,
+            { [field]: num },
+            (status) => setSyncStatus(status)
+        )
         setData(manualSalesStore.getAll())
     }
 
@@ -158,11 +179,13 @@ export default function ManualDailySalesReport() {
     }
 
     // Clear month data
-    const handleClearMonth = () => {
+    const handleClearMonth = async () => {
         const branchNotice = branch === 'all' ? 'all branches' : `branch "${branch}"`
         if (window.confirm(`Clear all typed sales numbers for ${monthLabel(monthKey)} for ${branchNotice}?`)) {
-            manualSalesStore.clearMonth(branch, monthKey)
+            setSyncStatus('saving')
+            await manualSalesStore.clearMonth(branch, monthKey)
             setData(manualSalesStore.getAll())
+            setSyncStatus('synced')
             showToast('info', 'Monthly sales data cleared')
         }
     }
@@ -170,9 +193,11 @@ export default function ManualDailySalesReport() {
     // Prefill from system invoices
     const handlePrefillFromInvoices = async () => {
         if (window.confirm(`Populate ${monthLabel(monthKey)} from recorded system invoices as a starting template? Existing manual entries for this month will be overwritten.`)) {
+            setSyncStatus('saving')
             const invs = await invoiceStore.getAll()
-            const count = manualSalesStore.prefillFromInvoices(invs, monthKey, branch)
+            const count = await manualSalesStore.prefillFromInvoices(invs, monthKey, branch)
             setData(manualSalesStore.getAll())
+            setSyncStatus('synced')
             showToast('success', `Prefilled ${count} day entries from system invoices`)
         }
     }
@@ -269,12 +294,43 @@ export default function ManualDailySalesReport() {
         <div className="manual-dsr-container">
             {/* Private Hidden URL Banner */}
             <div className="manual-dsr-hidden-banner no-print">
-                <div className="manual-dsr-badge">
-                    <Lock size={14} />
-                    <span>Hidden Manual Feature (URL-only Access)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div className="manual-dsr-badge" style={{ borderColor: 'rgba(255, 255, 255, 0.15)', color: 'var(--text-bright)' }}>
+                        <Cloud size={14} />
+                        <span>Cloud Synced Report</span>
+                    </div>
+
+                    {/* Online Sync Status */}
+                    {syncStatus === 'saving' || isSyncing ? (
+                        <div className="manual-dsr-sync-pill saving">
+                            <Loader2 size={12} className="animate-spin" />
+                            <span>Saving online...</span>
+                        </div>
+                    ) : syncStatus === 'synced' ? (
+                        <div className="manual-dsr-sync-pill synced">
+                            <Cloud size={12} />
+                            <span>Saved online (Supabase)</span>
+                        </div>
+                    ) : (
+                        <div className="manual-dsr-sync-pill offline">
+                            <CloudOff size={12} />
+                            <span>Offline / Local Cache</span>
+                        </div>
+                    )}
                 </div>
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11 }}>Bookmark or share URL:</span>
+                    <button
+                        className="admin-btn admin-btn-ghost admin-btn-sm"
+                        onClick={() => loadOnlineData(monthKey)}
+                        title="Reload latest numbers from Supabase"
+                        style={{ height: 28, padding: '0 8px', fontSize: 11 }}
+                        disabled={isSyncing}
+                    >
+                        <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
+                        <span>Sync</span>
+                    </button>
+                    <span style={{ fontSize: 11 }}>URL:</span>
                     <span className="manual-dsr-url-pill">/admin/daily-sales-report-manual</span>
                     <button
                         className="admin-btn admin-btn-ghost admin-btn-sm"
