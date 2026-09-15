@@ -1,14 +1,13 @@
 import { Fragment, useState, useEffect, useMemo, useCallback } from 'react'
 import {
     Printer, ChevronLeft, ChevronRight, Edit3, Eye,
-    RotateCcw, Download, Copy, Check, FileText,
-    Sparkles, Lock, Cloud, CloudOff, RefreshCw, CheckCircle2, Loader2
+    RotateCcw, Download, FileText, Sparkles
 } from 'lucide-react'
 import { branches as branchList } from '../../data/branches'
 import { invoiceStore } from '../data/store'
 import cmLogo from '../../assets/cm-logo-white.png'
 import { toIso, todayIso, monthKeyOf, shiftMonth, monthLabel } from './reportUtils'
-import { manualSalesStore, type ManualSalesData, type ManualDayRecord, type SyncState } from '../data/manualSalesStore'
+import { manualSalesStore, type ManualSalesData, type ManualDayRecord } from '../data/manualSalesStore'
 import { useToast } from '../components/Toast'
 import '../AdminShared.css'
 import '../ReportShared.css'
@@ -65,8 +64,6 @@ export default function ManualDailySalesReport() {
     const [branch, setBranch] = useState('all')
     const [isEditMode, setIsEditMode] = useState(true)
     const [data, setData] = useState<ManualSalesData>(() => manualSalesStore.getAll())
-    const [copiedUrl, setCopiedUrl] = useState(false)
-    const [syncStatus, setSyncStatus] = useState<SyncState>('synced')
     const [isSyncing, setIsSyncing] = useState(false)
 
     // Modal state
@@ -77,11 +74,10 @@ export default function ManualDailySalesReport() {
     const loadOnlineData = useCallback(async (mKey: string) => {
         setIsSyncing(true)
         try {
-            const { data: remoteData, fromOnline } = await manualSalesStore.fetchMonth(mKey)
+            const { data: remoteData } = await manualSalesStore.fetchMonth(mKey)
             setData(remoteData)
-            setSyncStatus(fromOnline ? 'synced' : 'offline')
         } catch {
-            setSyncStatus('offline')
+            // fallback remains in local storage
         } finally {
             setIsSyncing(false)
         }
@@ -139,17 +135,12 @@ export default function ManualDailySalesReport() {
         }
     }
 
-    // Update single field with online sync callback
+    // Update single field
     const handleCellChange = (iso: string, field: 'clientCount' | 'retail' | 'service', rawValue: string) => {
         const num = rawValue === '' ? 0 : Math.max(0, parseInt(rawValue, 10) || 0)
         const targetBranch = branch === 'all' ? 'Bengaluru' : branch // default to first branch if editing directly in all
         
-        manualSalesStore.setRecord(
-            targetBranch,
-            iso,
-            { [field]: num },
-            (status) => setSyncStatus(status)
-        )
+        manualSalesStore.setRecord(targetBranch, iso, { [field]: num })
         setData(manualSalesStore.getAll())
     }
 
@@ -169,23 +160,12 @@ export default function ManualDailySalesReport() {
             }, { clientCount: 0, retail: 0, service: 0, total: 0 })
     }, [weeks, data, branch])
 
-    // Copy URL helper
-    const handleCopyUrl = () => {
-        const fullUrl = `${window.location.origin}/admin/daily-sales-report-manual`
-        navigator.clipboard.writeText(fullUrl)
-        setCopiedUrl(true)
-        showToast('info', 'Private URL copied to clipboard')
-        setTimeout(() => setCopiedUrl(false), 2500)
-    }
-
     // Clear month data
     const handleClearMonth = async () => {
         const branchNotice = branch === 'all' ? 'all branches' : `branch "${branch}"`
         if (window.confirm(`Clear all typed sales numbers for ${monthLabel(monthKey)} for ${branchNotice}?`)) {
-            setSyncStatus('saving')
             await manualSalesStore.clearMonth(branch, monthKey)
             setData(manualSalesStore.getAll())
-            setSyncStatus('synced')
             showToast('info', 'Monthly sales data cleared')
         }
     }
@@ -193,11 +173,9 @@ export default function ManualDailySalesReport() {
     // Prefill from system invoices
     const handlePrefillFromInvoices = async () => {
         if (window.confirm(`Populate ${monthLabel(monthKey)} from recorded system invoices as a starting template? Existing manual entries for this month will be overwritten.`)) {
-            setSyncStatus('saving')
             const invs = await invoiceStore.getAll()
             const count = await manualSalesStore.prefillFromInvoices(invs, monthKey, branch)
             setData(manualSalesStore.getAll())
-            setSyncStatus('synced')
             showToast('success', `Prefilled ${count} day entries from system invoices`)
         }
     }
@@ -292,58 +270,6 @@ export default function ManualDailySalesReport() {
 
     return (
         <div className="manual-dsr-container">
-            {/* Private Hidden URL Banner */}
-            <div className="manual-dsr-hidden-banner no-print">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <div className="manual-dsr-badge" style={{ borderColor: 'rgba(255, 255, 255, 0.15)', color: 'var(--text-bright)' }}>
-                        <Cloud size={14} />
-                        <span>Cloud Synced Report</span>
-                    </div>
-
-                    {/* Online Sync Status */}
-                    {syncStatus === 'saving' || isSyncing ? (
-                        <div className="manual-dsr-sync-pill saving">
-                            <Loader2 size={12} className="animate-spin" />
-                            <span>Saving online...</span>
-                        </div>
-                    ) : syncStatus === 'synced' ? (
-                        <div className="manual-dsr-sync-pill synced">
-                            <Cloud size={12} />
-                            <span>Saved online (Supabase)</span>
-                        </div>
-                    ) : (
-                        <div className="manual-dsr-sync-pill offline">
-                            <CloudOff size={12} />
-                            <span>Offline / Local Cache</span>
-                        </div>
-                    )}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <button
-                        className="admin-btn admin-btn-ghost admin-btn-sm"
-                        onClick={() => loadOnlineData(monthKey)}
-                        title="Reload latest numbers from Supabase"
-                        style={{ height: 28, padding: '0 8px', fontSize: 11 }}
-                        disabled={isSyncing}
-                    >
-                        <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
-                        <span>Sync</span>
-                    </button>
-                    <span style={{ fontSize: 11 }}>URL:</span>
-                    <span className="manual-dsr-url-pill">/admin/daily-sales-report-manual</span>
-                    <button
-                        className="admin-btn admin-btn-ghost admin-btn-sm"
-                        onClick={handleCopyUrl}
-                        title="Copy direct link"
-                        style={{ height: 28, padding: '0 8px', fontSize: 11 }}
-                    >
-                        {copiedUrl ? <Check size={12} color="#4ade80" /> : <Copy size={12} />}
-                        <span>{copiedUrl ? 'Copied' : 'Copy Link'}</span>
-                    </button>
-                </div>
-            </div>
-
             {/* Header and Title */}
             <div className="no-print manual-dsr-toolbar">
                 <div>
@@ -490,8 +416,29 @@ export default function ManualDailySalesReport() {
                                 return (
                                     <Fragment key={wi}>
                                         <tr className="manual-dsr-week-label">
-                                            <td colSpan={9} className="cell-primary">
-                                                Week {wi + 1} — {weekLabel}
+                                            <td colSpan={9} className="cell-primary" style={{ fontWeight: 700, letterSpacing: '0.5px' }}>
+                                                Week {wi + 1}
+                                            </td>
+                                        </tr>
+
+                                        {/* Date Row - arranges the exact date in each respective column */}
+                                        <tr className="manual-dsr-date-row" style={{ background: 'rgba(181, 148, 88, 0.06)' }}>
+                                            <td className="cell-primary" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Date</td>
+                                            {week.days.map((d, i) => {
+                                                if (!d.inMonth) {
+                                                    return <td key={i}><span className="manual-dsr-val-dim">—</span></td>
+                                                }
+                                                const dObj = new Date(d.iso + 'T00:00:00')
+                                                const dayNum = dObj.getDate()
+                                                const monthShort = dObj.toLocaleDateString('en-IN', { month: 'short' })
+                                                return (
+                                                    <td key={i} style={{ fontWeight: 700, fontSize: 12, color: 'var(--color-primary, #b59458)' }}>
+                                                        {dayNum} {monthShort}
+                                                    </td>
+                                                )
+                                            })}
+                                            <td className="manual-dsr-total-col" style={{ fontWeight: 600, fontSize: 11, color: 'var(--text-muted)' }}>
+                                                Week {wi + 1}
                                             </td>
                                         </tr>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Printer, ChevronLeft, ChevronRight, Save } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Printer, ChevronLeft, ChevronRight, Save, FileSpreadsheet } from 'lucide-react'
 import { invoiceStore, inventoryStore, serviceStore, expenseStore } from '../data/store'
 import { branches as branchList } from '../../data/branches'
 import type { Invoice, InventoryItem, ServiceRecord, ExpenseCategory } from '../data/types'
@@ -281,7 +282,12 @@ export default function ProfitLoss() {
                     <h1 className="admin-page-title" style={{ marginBottom: 0 }}>Profit &amp; Loss</h1>
                     <p className="admin-page-sub">Prints one full statement per branch, followed by an all-branches summary with CEO Share</p>
                 </div>
-                <button className="admin-btn admin-btn-primary" onClick={() => window.print()}><Printer size={14} /> Print</button>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <Link to="/admin/profit-loss-manual" className="admin-btn admin-btn-secondary">
+                        <FileSpreadsheet size={14} /> Manual Profit &amp; Loss
+                    </Link>
+                    <button className="admin-btn admin-btn-primary" onClick={() => window.print()}><Printer size={14} /> Print</button>
+                </div>
             </div>
 
             <div className="no-print" style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -1,0 +1,113 @@
+.manual-pl-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.manual-pl-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.manual-pl-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.manual-pl-metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.manual-pl-metric-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.manual-pl-metric-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-bright);
+}
+
+.manual-pl-metric-val.positive {
+    color: #10b981;
+}
+
+.manual-pl-metric-val.negative {
+    color: #ef4444;
+}
+
+.manual-pl-input {
+    width: 140px;
+    max-width: 100%;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input, var(--bg-card));
+    color: var(--text-bright);
+    font-size: 13px;
+    text-align: right;
+    font-family: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.manual-pl-input:focus {
+    outline: none;
+    border-color: var(--color-primary, #b59458);
+    box-shadow: 0 0 0 2px rgba(181, 148, 88, 0.2);
+}
+
+.manual-pl-input-notes {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input, var(--bg-card));
+    color: var(--text-bright);
+    font-size: 13px;
+}
+
+.manual-pl-badge-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(181, 148, 88, 0.12);
+    color: var(--color-primary, #b59458);
+}
+
+.manual-pl-table th:not(:first-child),
+.manual-pl-table td:not(:first-child) {
+    text-align: right;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    .manual-pl-input {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        color: inherit !important;
+    }
+}

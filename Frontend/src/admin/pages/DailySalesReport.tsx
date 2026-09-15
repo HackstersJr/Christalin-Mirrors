@@ -134,7 +134,26 @@ export default function DailySalesReport() {
                                 return (
                                     <Fragment key={wi}>
                                         <tr className="dsr-week-label-row">
-                                            <td colSpan={9} className="cell-primary">Week {wi + 1} — {weekLabel}</td>
+                                            <td colSpan={9} className="cell-primary" style={{ fontWeight: 700, letterSpacing: '0.5px' }}>
+                                                Week {wi + 1}
+                                            </td>
+                                        </tr>
+                                        <tr className="dsr-date-row" style={{ background: 'rgba(181, 148, 88, 0.06)' }}>
+                                            <td className="cell-primary" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Date</td>
+                                            {week.days.map((d, i) => {
+                                                if (!d.inMonth) {
+                                                    return <td key={i}><span className="text-muted">—</span></td>
+                                                }
+                                                const dObj = new Date(d.iso + 'T00:00:00')
+                                                return (
+                                                    <td key={i} style={{ fontWeight: 700, fontSize: 12, color: 'var(--color-primary, #b59458)' }}>
+                                                        {dObj.getDate()} {dObj.toLocaleDateString('en-IN', { month: 'short' })}
+                                                    </td>
+                                                )
+                                            })}
+                                            <td className="dsr-week-total" style={{ fontWeight: 600, fontSize: 11, color: 'var(--text-muted)' }}>
+                                                Week {wi + 1}
+                                            </td>
                                         </tr>
                                         <tr>
                                             <td className="cell-primary">Client Count</td>
