@@ -11,7 +11,12 @@ import {
     FileSpreadsheet,
     DollarSign,
     TrendingUp,
-    Briefcase
+    Briefcase,
+    Upload,
+    Download,
+    Layers,
+    Trash2,
+    Sparkles
 } from 'lucide-react'
 import cmLogo from '../../assets/cm-logo-white.png'
 import { branches as branchList } from '../../data/branches'
@@ -23,6 +28,9 @@ import {
     OPEX_KEYS,
     type ManualBranchPL,
 } from '../data/manualProfitLossStore'
+import { manualSalesStore } from '../data/manualSalesStore'
+import ImportExcelExpensesModal from '../components/ImportExcelExpensesModal'
+import { downloadSampleExcelTemplate, type ImportExpenseSummary } from '../data/excelExpenseParser'
 import './Reports.css'
 import './ProfitLoss.css'
 import './ManualProfitLoss.css'
@@ -80,66 +88,117 @@ export default function ManualProfitLoss() {
     const [selectedBranch, setSelectedBranch] = useState<string>(branchNames[0])
     const [isEditMode, setIsEditMode] = useState<boolean>(true)
     const [loading, setLoading] = useState<boolean>(true)
-    const [extracting, setExtracting] = useState<boolean>(false)
+    const [syncing, setSyncing] = useState<boolean>(false)
     const [statusMsg, setStatusMsg] = useState<string | null>(null)
     const [branchData, setBranchData] = useState<Record<string, ManualBranchPL>>({})
+    const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false)
 
     const prevMonthKey = shiftMonth(monthKey, -1)
     const editModeId = useId()
 
-    // Fetch on month change
+    // Fetch on month change and sync revenue strictly from Manual Daily Sales
     useEffect(() => {
         let active = true
         setLoading(true)
-        manualProfitLossStore.fetchMonth(monthKey).then(allData => {
+        Promise.all([
+            manualProfitLossStore.fetchMonth(monthKey),
+            manualSalesStore.fetchMonth(monthKey),
+        ]).then(([allPL]) => {
             if (!active) return
-            const monthObj = allData[monthKey] || {}
-            // Initialize for all branches
+            const monthObj = allPL[monthKey] || {}
+            const allSales = manualSalesStore.getAll()
+
             const init: Record<string, ManualBranchPL> = {}
             for (const b of branchNames) {
-                init[b] = monthObj[b] || manualProfitLossStore.getBranchData(monthKey, b)
+                const saved = monthObj[b] || manualProfitLossStore.getBranchData(monthKey, b)
+
+                // Sum actual service and retail sales from Manual Daily Sales for this branch & month
+                let manualService = 0
+                let manualRetail = 0
+                let activeDays = 0
+                const bSales = allSales[b] || {}
+                for (const [date, rec] of Object.entries(bSales)) {
+                    if (date.startsWith(monthKey)) {
+                        const s = Number(rec.service) || 0
+                        const r = Number(rec.retail) || 0
+                        manualService += s
+                        manualRetail += r
+                        if (s > 0 || r > 0) activeDays++
+                    }
+                }
+
+                // If saved exists, keep user expenses/customizations & capex but take sales strictly from manual daily sales
+                if (saved && (saved.hairServices > 0 || saved.retailSales > 0 || saved.salaries_wages > 0 || (saved.capex || 0) > 0)) {
+                    init[b] = {
+                        ...saved,
+                        hairServices: manualService,
+                        retailSales: manualRetail,
+                        capex: saved.capex || 0,
+                        capex_items: saved.capex_items || [],
+                        opex_items: saved.opex_items || [],
+                    }
+                } else {
+                    const totalSales = manualService + manualRetail
+                    init[b] = {
+                        ...zeroBranchPL(),
+                        hairServices: manualService,
+                        retailSales: manualRetail,
+                        productCost: Math.round(manualRetail * 0.25),
+                        service_commissions: Math.round(manualService * 0.1),
+                        retail_commissions: Math.round(manualRetail * 0.05),
+                        transaction_fees: Math.round(totalSales * 0.015),
+                        salaries_wages: 65000,
+                        benefits_insurance: 5000,
+                        payroll_tax: 3500,
+                        general_admin: 4000,
+                        utilities: 8500,
+                        repairs_maintenance: 3000,
+                        rent_lease: b === 'Bengaluru' ? 45000 : 30000,
+                        depreciation: 4000,
+                        debts_loans: 0,
+                        capex: 0,
+                        capex_items: [],
+                        opex_items: [],
+                        notes: activeDays > 0 ? `Synced from Manual Daily Sales (${activeDays} active days).` : undefined,
+                    }
+                }
+                manualProfitLossStore.setBranchData(monthKey, b, init[b])
             }
+
             setBranchData(init)
             setLoading(false)
-
-            // Auto-prefill if completely empty
-            const hasData = branchNames.some((b: string) => {
-                const d = init[b]
-                return d && (d.hairServices > 0 || d.otherServices > 0 || d.retailSales > 0)
-            })
-            if (!hasData) {
-                handleExtractFromInvoices(false)
-            }
         })
         return () => {
             active = false
         }
     }, [monthKey])
 
-    async function handleExtractFromInvoices(notify = true) {
-        setExtracting(true)
+    async function handleSyncFromManualDailySales(notify = true) {
+        setSyncing(true)
         try {
             const updated: Record<string, ManualBranchPL> = { ...branchData }
-            let totalInvoices = 0
+            let totalSales = 0
+            let activeDays = 0
 
             for (const b of branchNames) {
-                const res = await manualProfitLossStore.extractFromInvoices(monthKey, b)
+                const res = await manualProfitLossStore.extractFromManualDailySales(monthKey, b)
                 updated[b] = res.data
-                totalInvoices += res.invoiceCount
+                totalSales += res.totalSales
+                activeDays += res.daysWithSales
                 manualProfitLossStore.setBranchData(monthKey, b, res.data)
             }
 
             setBranchData(updated)
             if (notify) {
-                setStatusMsg(`Successfully extracted data from ${totalInvoices} paid invoices for ${monthLabel(monthKey)}!`)
-                setTimeout(() => setStatusMsg(null), 4000)
+                setStatusMsg(`Successfully synced with Manual Daily Sales (Total Sales: ₹${totalSales.toLocaleString('en-IN')}, ${activeDays} active daily records) for ${monthLabel(monthKey)}!`)
+                setTimeout(() => setStatusMsg(null), 4500)
             }
         } catch (err) {
-            console.error('Failed to extract from invoices', err)
-            setStatusMsg('Error extracting from invoices.')
+            console.error('Failed to sync from manual daily sales', err)
+            setStatusMsg('Error syncing from Manual Daily Sales.')
             setTimeout(() => setStatusMsg(null), 3000)
         } finally {
-            setExtracting(false)
+            setSyncing(false)
         }
     }
 
@@ -151,6 +210,25 @@ export default function ManualProfitLoss() {
             manualProfitLossStore.setBranchData(monthKey, branch, { [key]: numVal })
             return { ...prev, [branch]: updatedBranch }
         })
+    }
+
+    function handleRemoveCapExItem(branch: string, itemId: string) {
+        manualProfitLossStore.removeCapExItem(monthKey, branch, itemId)
+        const updated = manualProfitLossStore.getBranchData(monthKey, branch)
+        setBranchData(prev => ({ ...prev, [branch]: updated }))
+        setStatusMsg('CapEx item removed.')
+        setTimeout(() => setStatusMsg(null), 2500)
+    }
+
+    function handleImportSuccess(summary: ImportExpenseSummary, affectedMonths: string[]) {
+        // Refresh local branchData
+        const refreshed: Record<string, ManualBranchPL> = {}
+        for (const b of branchNames) {
+            refreshed[b] = manualProfitLossStore.getBranchData(monthKey, b)
+        }
+        setBranchData(refreshed)
+        setStatusMsg(`Successfully imported ${summary.totalRows} expenses (OpEx: ₹${Math.round(summary.totalOpEx).toLocaleString('en-IN')}, CapEx: ₹${Math.round(summary.totalCapEx).toLocaleString('en-IN')}) across ${summary.months.length} month(s).`)
+        setTimeout(() => setStatusMsg(null), 5000)
     }
 
     function handleNotesChange(branch: string, notes: string) {
@@ -172,7 +250,7 @@ export default function ManualProfitLoss() {
         const cleared: Record<string, ManualBranchPL> = {}
         for (const b of branchNames) cleared[b] = zeroBranchPL()
         setBranchData(cleared)
-        setStatusMsg(`Cleared P&L data for ${monthLabel(monthKey)}. Click "Prefill from Invoices" to reload.`)
+        setStatusMsg(`Cleared P&L data for ${monthLabel(monthKey)}. Click "Sync from Manual Daily Sales" to reload.`)
         setTimeout(() => setStatusMsg(null), 3500)
     }
 
@@ -205,23 +283,35 @@ export default function ManualProfitLoss() {
             rent_lease: acc.rent_lease + d.rent_lease,
             depreciation: acc.depreciation + d.depreciation,
             debts_loans: acc.debts_loans + d.debts_loans,
+            capex: (acc.capex || 0) + (d.capex || 0),
+            capex_items: [...(acc.capex_items || []), ...(d.capex_items || [])],
+            opex_items: [...(acc.opex_items || []), ...(d.opex_items || [])],
         }
     }, zeroBranchPL())
 
     const consolidatedMetrics = computePLMetrics(consolidatedPL)
 
-    const branchResults: { branch: string; data: ManualBranchPL; metrics: ReturnType<typeof computePLMetrics>; ceoShare: number }[] = branchNames.map((b: string) => {
+    const branchResults: {
+        branch: string
+        data: ManualBranchPL
+        metrics: ReturnType<typeof computePLMetrics>
+        ceoShare: number
+        ceoCashShare: number
+    }[] = branchNames.map((b: string) => {
         const d = branchData[b] || zeroBranchPL()
         const m = computePLMetrics(d)
+        const ceoPct = ceoPctOf(b) / 100
         return {
             branch: b,
             data: d,
             metrics: m,
-            ceoShare: m.netProfit * (ceoPctOf(b) / 100),
+            ceoShare: m.netProfit * ceoPct,
+            ceoCashShare: m.netCashFlow * ceoPct,
         }
     })
 
     const totalCeoShare = branchResults.reduce((s: number, r: { ceoShare: number }) => s + r.ceoShare, 0)
+    const totalCeoCashShare = branchResults.reduce((s: number, r: { ceoCashShare: number }) => s + r.ceoCashShare, 0)
 
     return (
         <div>
@@ -233,7 +323,7 @@ export default function ManualProfitLoss() {
                         Manual Profit &amp; Loss
                     </h1>
                     <p className="admin-page-sub">
-                        Direct editable statement with automatic extraction from saved invoices and multi-branch CEO Share calculations
+                        Direct editable statement taking revenue directly from Manual Daily Sales with multi-branch CEO Share calculations
                     </p>
                 </div>
 
@@ -281,16 +371,28 @@ export default function ManualProfitLoss() {
                         <option value="all">All Branches (Consolidated)</option>
                     </select>
 
-                    {/* Prefill from Invoices Button */}
+                    {/* Sync from Manual Daily Sales Button */}
                     <button
-                        id="manual-pl-extract-invoices-btn"
+                        id="manual-pl-sync-daily-sales-btn"
                         className="admin-btn admin-btn-secondary admin-btn-sm"
-                        onClick={() => handleExtractFromInvoices(true)}
-                        disabled={extracting}
-                        title="Pull real revenue and product costs directly from paid invoices for this month"
+                        onClick={() => handleSyncFromManualDailySales(true)}
+                        disabled={syncing}
+                        title="Pull service and retail sales directly from Manual Daily Sales records for this month"
                     >
-                        <RefreshCw size={14} className={extracting ? 'spin' : ''} />
-                        {extracting ? 'Extracting…' : 'Prefill from Invoices'}
+                        <RefreshCw size={14} className={syncing ? 'spin' : ''} />
+                        {syncing ? 'Syncing…' : 'Sync Sales'}
+                    </button>
+
+                    {/* Import OpEx & CapEx from Excel */}
+                    <button
+                        id="manual-pl-import-excel-btn"
+                        className="admin-btn admin-btn-secondary admin-btn-sm"
+                        onClick={() => setIsImportModalOpen(true)}
+                        title="Import operating expenses and capital expenditure investments from Excel spreadsheet"
+                        style={{ gap: 6 }}
+                    >
+                        <FileSpreadsheet size={14} className="text-primary" />
+                        Import OpEx &amp; CapEx
                     </button>
 
                     {/* Edit Mode Toggle */}
@@ -339,31 +441,37 @@ export default function ManualProfitLoss() {
                     </span>
                 </div>
                 <div className="manual-pl-metric-card">
-                    <span className="manual-pl-metric-title">Total COGS</span>
-                    <span className="manual-pl-metric-val">
-                        {money(selectedBranch === 'all' ? consolidatedMetrics.totalCogs : activeMetrics.totalCogs)}
-                    </span>
-                </div>
-                <div className="manual-pl-metric-card">
                     <span className="manual-pl-metric-title">Gross Profit</span>
                     <span className="manual-pl-metric-val">
                         {money(selectedBranch === 'all' ? consolidatedMetrics.grossProfit : activeMetrics.grossProfit)}
                     </span>
                 </div>
                 <div className="manual-pl-metric-card">
-                    <span className="manual-pl-metric-title">Total Expenses</span>
+                    <span className="manual-pl-metric-title">Operating Expenses (OpEx)</span>
                     <span className="manual-pl-metric-val">
                         {money(selectedBranch === 'all' ? consolidatedMetrics.totalExpenses : activeMetrics.totalExpenses)}
                     </span>
                 </div>
                 <div className="manual-pl-metric-card">
-                    <span className="manual-pl-metric-title">Net Profit</span>
+                    <span className="manual-pl-metric-title">Operating Net Profit</span>
                     <span className={`manual-pl-metric-val ${(selectedBranch === 'all' ? consolidatedMetrics.netProfit : activeMetrics.netProfit) >= 0 ? 'positive' : 'negative'}`}>
                         {money(selectedBranch === 'all' ? consolidatedMetrics.netProfit : activeMetrics.netProfit)}
                     </span>
                 </div>
                 <div className="manual-pl-metric-card">
-                    <span className="manual-pl-metric-title">Total CEO Share</span>
+                    <span className="manual-pl-metric-title">CapEx Outlay (Assets)</span>
+                    <span className="manual-pl-metric-val" style={{ color: '#a855f7' }}>
+                        {money(selectedBranch === 'all' ? consolidatedMetrics.capex : activeMetrics.capex)}
+                    </span>
+                </div>
+                <div className="manual-pl-metric-card">
+                    <span className="manual-pl-metric-title">Net Cash Retained</span>
+                    <span className={`manual-pl-metric-val ${(selectedBranch === 'all' ? consolidatedMetrics.netCashFlow : activeMetrics.netCashFlow) >= 0 ? 'positive' : 'negative'}`}>
+                        {money(selectedBranch === 'all' ? consolidatedMetrics.netCashFlow : activeMetrics.netCashFlow)}
+                    </span>
+                </div>
+                <div className="manual-pl-metric-card">
+                    <span className="manual-pl-metric-title">Total CEO Profit Share</span>
                     <span className="manual-pl-metric-val text-primary">
                         {money(totalCeoShare)}
                     </span>
@@ -386,7 +494,7 @@ export default function ManualProfitLoss() {
                             </div>
                             <div className="report-letterhead-meta">
                                 <div><span>Report No.</span> CM/PL-MANUAL/{selectedBranch.slice(0, 3).toUpperCase()}/{monthKey.replace('-', '')}</div>
-                                <div><span>Source</span> Saved Invoices &amp; Manual Override</div>
+                                <div><span>Source</span> Manual Daily Sales &amp; Custom Expenses</div>
                                 <div><span>Generated</span> {generatedAt}</div>
                             </div>
                         </div>
@@ -501,7 +609,7 @@ export default function ManualProfitLoss() {
                                                         type="number"
                                                         min="0"
                                                         className="manual-pl-input"
-                                                        value={activeData[c.key] || ''}
+                                                        value={(activeData[c.key] as number) || ''}
                                                         onChange={e => handleFieldChange(selectedBranch, c.key, e.target.value)}
                                                         placeholder="0"
                                                     />
@@ -543,7 +651,7 @@ export default function ManualProfitLoss() {
                                                         type="number"
                                                         min="0"
                                                         className="manual-pl-input"
-                                                        value={activeData[c.key] || ''}
+                                                        value={(activeData[c.key] as number) || ''}
                                                         onChange={e => handleFieldChange(selectedBranch, c.key, e.target.value)}
                                                         placeholder="0"
                                                     />
@@ -554,28 +662,121 @@ export default function ManualProfitLoss() {
                                         </tr>
                                     ))}
                                     <tr className="report-totals-row">
-                                        <td className="cell-primary">Total Operating Expenses</td>
+                                        <td className="cell-primary">Total Operating Expenses (OpEx)</td>
                                         <td>{money(activeMetrics.totalExpenses)}</td>
                                     </tr>
                                     <tr className="report-totals-row pl-net-profit-row" style={{ background: activeMetrics.netProfit >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)' }}>
-                                        <td className="cell-primary">Net Profit (Gross Profit − Total Expenses)</td>
+                                        <td className="cell-primary">Operating Net Profit (Gross Profit − Total OpEx)</td>
                                         <td style={{ fontWeight: 700, fontSize: 16, color: activeMetrics.netProfit >= 0 ? '#10b981' : '#ef4444' }}>
                                             {money(activeMetrics.netProfit)}
+                                        </td>
+                                    </tr>
+
+                                    {/* Capital Expenditures (CapEx) Row */}
+                                    <tr>
+                                        <td className="cell-primary" style={{ paddingTop: 12 }}>
+                                            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ color: '#a855f7' }}>●</span> Capital Expenditures (CapEx)
+                                            </div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                Fixed assets, salon equipment, chairs, machines, AC installations, renovation (imported from Excel)
+                                            </div>
+                                        </td>
+                                        <td style={{ verticalAlign: 'middle' }}>
+                                            {isEditMode ? (
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    className="manual-pl-input"
+                                                    value={activeData.capex || ''}
+                                                    onChange={e => handleFieldChange(selectedBranch, 'capex', e.target.value)}
+                                                    placeholder="0"
+                                                />
+                                            ) : (
+                                                <span style={{ fontWeight: 600, color: '#a855f7' }}>
+                                                    {money(activeData.capex || 0)}
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+
+                                    {/* Net Cash Retained Row */}
+                                    <tr className="report-totals-row" style={{ background: activeMetrics.netCashFlow >= 0 ? 'rgba(59, 130, 246, 0.08)' : 'rgba(239, 68, 68, 0.1)' }}>
+                                        <td className="cell-primary" style={{ fontWeight: 700 }}>
+                                            Net Cash Retained (Operating Profit − CapEx)
+                                        </td>
+                                        <td style={{ fontWeight: 700, fontSize: 16, color: activeMetrics.netCashFlow >= 0 ? '#3b82f6' : '#ef4444' }}>
+                                            {money(activeMetrics.netCashFlow)}
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
 
+                        {/* Itemized CapEx Asset Breakdown if present */}
+                        {activeData.capex_items && activeData.capex_items.length > 0 && (
+                            <div style={{ marginTop: 16, marginBottom: 20 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                    <div className="report-section-title" style={{ margin: 0, fontSize: 13 }}>
+                                        Itemized CapEx Assets for {currMonthLabel} ({activeData.capex_items.length} recorded items)
+                                    </div>
+                                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                        Imported from Excel CapEx Sheet
+                                    </span>
+                                </div>
+                                <div className="table-scroll">
+                                    <table className="admin-table report-table" style={{ fontSize: 12 }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ width: 110 }}>Date</th>
+                                                <th>Asset / Equipment Description</th>
+                                                <th style={{ width: 160 }}>Category</th>
+                                                <th style={{ textAlign: 'right', width: 140 }}>Amount</th>
+                                                {isEditMode && <th style={{ width: 44 }}></th>}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {activeData.capex_items.map(item => (
+                                                <tr key={item.id}>
+                                                    <td style={{ whiteSpace: 'nowrap' }}>{item.date}</td>
+                                                    <td style={{ fontWeight: 600 }}>{item.title}</td>
+                                                    <td>
+                                                        <span style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#a855f7', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+                                                            {item.category.toUpperCase()}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(item.amount)}</td>
+                                                    {isEditMode && (
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <button
+                                                                type="button"
+                                                                className="admin-btn-icon text-muted"
+                                                                onClick={() => handleRemoveCapExItem(selectedBranch, item.id)}
+                                                                title="Remove asset"
+                                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Profit Split Table */}
-                        <div className="report-section-title">Profit Split — {selectedBranch}</div>
+                        <div className="report-section-title">Profit &amp; Cash Split — {selectedBranch}</div>
                         <div className="table-scroll">
                             <table className="admin-table report-table pl-line-table">
                                 <thead>
                                     <tr>
                                         <th>Shareholder / Partner</th>
                                         <th>Ownership %</th>
-                                        <th>Share of Net Profit</th>
+                                        <th>Share of Operating Profit</th>
+                                        <th>Share of Net Cash Flow (After CapEx)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -584,6 +785,9 @@ export default function ManualProfitLoss() {
                                             <td className="cell-primary">{sh.label}</td>
                                             <td>{sh.pct}%</td>
                                             <td style={{ fontWeight: 600 }}>{money(activeMetrics.netProfit * (sh.pct / 100))}</td>
+                                            <td style={{ fontWeight: 700, color: (activeMetrics.netCashFlow * (sh.pct / 100)) >= 0 ? '#3b82f6' : '#ef4444' }}>
+                                                {money(activeMetrics.netCashFlow * (sh.pct / 100))}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -597,7 +801,7 @@ export default function ManualProfitLoss() {
                                 <textarea
                                     className="manual-pl-input-notes"
                                     rows={2}
-                                    placeholder="Add optional notes, invoice verification details, or auditor remarks..."
+                                    placeholder="Add optional notes, daily sales verification details, or auditor remarks..."
                                     value={activeData.notes || ''}
                                     onChange={e => handleNotesChange(selectedBranch, e.target.value)}
                                 />
@@ -642,13 +846,13 @@ export default function ManualProfitLoss() {
                             </div>
                             <div className="report-letterhead-meta">
                                 <div><span>Report No.</span> CM/PL-MANUAL/ALL/{monthKey.replace('-', '')}</div>
-                                <div><span>Source</span> Aggregated Invoices &amp; Branch Records</div>
+                                <div><span>Source</span> Aggregated Manual Daily Sales &amp; Branch Records</div>
                                 <div><span>Generated</span> {generatedAt}</div>
                             </div>
                         </div>
 
                         {/* Branch-by-Branch Comparison Table */}
-                        <div className="report-section-title">All Branches Revenue &amp; Profit Summary</div>
+                        <div className="report-section-title">All Branches Revenue, CapEx &amp; Profit Summary</div>
                         <div className="table-scroll">
                             <table className="admin-table report-table manual-pl-table">
                                 <thead>
@@ -657,14 +861,23 @@ export default function ManualProfitLoss() {
                                         <th>Gross Revenue</th>
                                         <th>Total COGS</th>
                                         <th>Gross Profit</th>
-                                        <th>Operating Expenses</th>
-                                        <th>Net Profit</th>
-                                        <th>CEO Ownership %</th>
-                                        <th>CEO Share</th>
+                                        <th>OpEx</th>
+                                        <th>Operating Profit</th>
+                                        <th>CapEx Outlay</th>
+                                        <th>Net Cash Retained</th>
+                                        <th>CEO Ownership</th>
+                                        <th>CEO Profit Share</th>
+                                        <th>CEO Cash Share</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {branchResults.map((r: { branch: string; data: ManualBranchPL; metrics: ReturnType<typeof computePLMetrics>; ceoShare: number }) => (
+                                    {branchResults.map((r: {
+                                        branch: string
+                                        data: ManualBranchPL
+                                        metrics: ReturnType<typeof computePLMetrics>
+                                        ceoShare: number
+                                        ceoCashShare: number
+                                    }) => (
                                         <tr key={r.branch}>
                                             <td className="cell-primary" style={{ fontWeight: 600 }}>{r.branch}</td>
                                             <td>{money(r.metrics.revenue)}</td>
@@ -674,9 +887,18 @@ export default function ManualProfitLoss() {
                                             <td style={{ fontWeight: 600, color: r.metrics.netProfit >= 0 ? '#10b981' : '#ef4444' }}>
                                                 {money(r.metrics.netProfit)}
                                             </td>
+                                            <td style={{ fontWeight: 600, color: '#a855f7' }}>
+                                                {money(r.metrics.capex)}
+                                            </td>
+                                            <td style={{ fontWeight: 600, color: r.metrics.netCashFlow >= 0 ? '#3b82f6' : '#ef4444' }}>
+                                                {money(r.metrics.netCashFlow)}
+                                            </td>
                                             <td>{ceoPctOf(r.branch)}%</td>
                                             <td style={{ fontWeight: 700, color: 'var(--color-primary, #b59458)' }}>
                                                 {money(r.ceoShare)}
+                                            </td>
+                                            <td style={{ fontWeight: 700, color: '#3b82f6' }}>
+                                                {money(r.ceoCashShare)}
                                             </td>
                                         </tr>
                                     ))}
@@ -689,9 +911,18 @@ export default function ManualProfitLoss() {
                                         <td style={{ fontWeight: 700, color: consolidatedMetrics.netProfit >= 0 ? '#10b981' : '#ef4444' }}>
                                             {money(consolidatedMetrics.netProfit)}
                                         </td>
+                                        <td style={{ fontWeight: 700, color: '#a855f7' }}>
+                                            {money(consolidatedMetrics.capex)}
+                                        </td>
+                                        <td style={{ fontWeight: 700, color: consolidatedMetrics.netCashFlow >= 0 ? '#3b82f6' : '#ef4444' }}>
+                                            {money(consolidatedMetrics.netCashFlow)}
+                                        </td>
                                         <td>—</td>
                                         <td style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-primary, #b59458)' }}>
                                             {money(totalCeoShare)}
+                                        </td>
+                                        <td style={{ fontWeight: 800, fontSize: 15, color: '#3b82f6' }}>
+                                            {money(totalCeoCashShare)}
                                         </td>
                                     </tr>
                                 </tbody>
@@ -785,6 +1016,15 @@ export default function ManualProfitLoss() {
                     </div>
                 )}
             </div>
+
+            {/* Excel OpEx & CapEx Import Modal */}
+            <ImportExcelExpensesModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                defaultBranch={selectedBranch === 'all' ? branchNames[0] : selectedBranch}
+                currentMonthKey={monthKey}
+                onImportSuccess={handleImportSuccess}
+            />
         </div>
     )
 }

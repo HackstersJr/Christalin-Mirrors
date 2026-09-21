@@ -9,5 +9,8 @@
     "build": "npm run build --workspace=Frontend && mkdir -p dist && cp -r Frontend/dist/* dist/",
     "lint": "npm run lint --workspace=Frontend",
     "preview": "npm run preview --workspace=Frontend"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
   }
 }

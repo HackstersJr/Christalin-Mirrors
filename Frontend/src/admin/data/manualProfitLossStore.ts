@@ -1,6 +1,23 @@
 import { supabase } from '../../lib/supabase'
-import { invoiceStore, inventoryStore, serviceStore, expenseStore } from './store'
-import type { Invoice, InventoryItem, ServiceRecord, ExpenseCategory } from './types'
+import { manualSalesStore } from './manualSalesStore'
+
+export interface CapExItem {
+    id: string
+    date: string
+    title: string
+    category: string
+    amount: number
+    notes?: string
+}
+
+export interface OpExItem {
+    id: string
+    date: string
+    title: string
+    category: string
+    amount: number
+    notes?: string
+}
 
 export interface ManualBranchPL {
     // Revenue
@@ -15,7 +32,7 @@ export interface ManualBranchPL {
     direct_professional_labor: number
     transaction_fees: number
     
-    // Operating Expenses
+    // Operating Expenses (OpEx)
     salaries_wages: number
     benefits_insurance: number
     payroll_tax: number
@@ -25,6 +42,11 @@ export interface ManualBranchPL {
     rent_lease: number
     depreciation: number
     debts_loans: number
+
+    // CapEx (Capital Expenditures: New equipment, renovations, chairs, AC units)
+    capex?: number
+    capex_items?: CapExItem[]
+    opex_items?: OpExItem[]
 
     notes?: string
     updatedAt?: string
@@ -71,6 +93,9 @@ export function zeroBranchPL(): ManualBranchPL {
         rent_lease: 0,
         depreciation: 0,
         debts_loans: 0,
+        capex: 0,
+        capex_items: [],
+        opex_items: [],
     }
 }
 
@@ -81,6 +106,8 @@ export interface ComputedPLMetrics {
     grossProfit: number
     totalExpenses: number
     netProfit: number
+    capex: number
+    netCashFlow: number
 }
 
 export function computePLMetrics(pl: ManualBranchPL): ComputedPLMetrics {
@@ -105,7 +132,9 @@ export function computePLMetrics(pl: ManualBranchPL): ComputedPLMetrics {
         (pl.debts_loans || 0)
 
     const netProfit = grossProfit - totalExpenses
-    return { revenue, cogsManualTotal, totalCogs, grossProfit, totalExpenses, netProfit }
+    const capex = pl.capex || 0
+    const netCashFlow = netProfit - capex
+    return { revenue, cogsManualTotal, totalCogs, grossProfit, totalExpenses, netProfit, capex, netCashFlow }
 }
 
 const STORAGE_KEY = 'cm_manual_profit_loss_v1'
@@ -223,86 +252,76 @@ export const manualProfitLossStore = {
     },
 
     /**
-     * Compute and extract figures directly from invoices and inventory
+     * Compute and extract figures directly from Manual Daily Sales
      * for a given month and branch.
+     */
+    async extractFromManualDailySales(monthKey: string, branch: string): Promise<{
+        data: ManualBranchPL
+        daysWithSales: number
+        totalService: number
+        totalRetail: number
+        totalSales: number
+    }> {
+        // Ensure latest data is loaded from Supabase & local storage
+        await manualSalesStore.fetchMonth(monthKey)
+        const allSales = manualSalesStore.getAll()
+
+        const targetBranches = branch === 'all' ? ['Bengaluru', 'Kalaburagi', 'Belgaum'] : [branch]
+        let totalService = 0
+        let totalRetail = 0
+        let daysWithSales = 0
+
+        for (const b of targetBranches) {
+            const branchMap = allSales[b] || {}
+            for (const [date, rec] of Object.entries(branchMap)) {
+                if (date.startsWith(monthKey)) {
+                    const s = Number(rec.service) || 0
+                    const r = Number(rec.retail) || 0
+                    totalService += s
+                    totalRetail += r
+                    if (s > 0 || r > 0) {
+                        daysWithSales++
+                    }
+                }
+            }
+        }
+
+        const totalSales = totalService + totalRetail
+        const currentSaved = this.getBranchData(monthKey, branch)
+
+        const result: ManualBranchPL = {
+            hairServices: totalService,
+            otherServices: currentSaved.otherServices || 0,
+            retailSales: totalRetail,
+            productCost: currentSaved.productCost || Math.round(totalRetail * 0.25),
+            service_commissions: currentSaved.service_commissions || Math.round(totalService * 0.1),
+            retail_commissions: currentSaved.retail_commissions || Math.round(totalRetail * 0.05),
+            direct_professional_labor: currentSaved.direct_professional_labor || 0,
+            transaction_fees: currentSaved.transaction_fees || Math.round(totalSales * 0.015),
+            salaries_wages: currentSaved.salaries_wages || 65000,
+            benefits_insurance: currentSaved.benefits_insurance || 5000,
+            payroll_tax: currentSaved.payroll_tax || 3500,
+            general_admin: currentSaved.general_admin || 4000,
+            utilities: currentSaved.utilities || 8500,
+            repairs_maintenance: currentSaved.repairs_maintenance || 3000,
+            rent_lease: currentSaved.rent_lease || (branch === 'Bengaluru' ? 45000 : 30000),
+            depreciation: currentSaved.depreciation || 4000,
+            debts_loans: currentSaved.debts_loans || 0,
+            notes: currentSaved.notes || (totalSales > 0 ? `Synced from Manual Daily Sales (${daysWithSales} active days, ₹${totalSales.toLocaleString('en-IN')}).` : 'Synced from Manual Daily Sales.'),
+        }
+
+        return { data: result, daysWithSales, totalService, totalRetail, totalSales }
+    },
+
+    /**
+     * Backward-compatible alias for extractFromManualDailySales
      */
     async extractFromInvoices(monthKey: string, branch: string): Promise<{
         data: ManualBranchPL
         invoiceCount: number
     }> {
-        const [invoices, inventory, services, expenses] = await Promise.all([
-            invoiceStore.getAll(),
-            inventoryStore.getAll(),
-            serviceStore.getAll(),
-            expenseStore.getForMonth(monthKey, branch),
-        ])
-
-        const invFiltered = invoices.filter(
-            i => i.date.startsWith(monthKey) &&
-                 i.status === 'paid' &&
-                 (branch === 'all' || i.branch === branch)
-        )
-
-        const inventoryById = new Map(inventory.map(i => [i.id, i]))
-        const serviceCategoryByName = new Map(services.map(s => [s.name, s.category]))
-
-        let hairServices = 0
-        let otherServices = 0
-        let retailSales = 0
-        let productCost = 0
-
-        invFiltered.forEach(inv => {
-            (inv.items || []).forEach(item => {
-                if (item.productId) {
-                    retailSales += item.total
-                    const invItem = inventoryById.get(item.productId)
-                    if (invItem) {
-                        productCost += invItem.costPrice * item.quantity
-                    } else {
-                        // Estimated default 25% cost price if not mapped
-                        productCost += Math.round(item.total * 0.25)
-                    }
-                } else {
-                    const cat = serviceCategoryByName.get(item.service)
-                    if (cat === 'hair') {
-                        hairServices += item.total
-                    } else {
-                        otherServices += item.total
-                    }
-                }
-            })
-        })
-
-        // Merge existing expenses from expenseStore
-        const expMap: Record<string, number> = {}
-        expenses.forEach(e => {
-            expMap[e.category] = e.amount
-        })
-
-        const currentSaved = this.getBranchData(monthKey, branch)
-
-        const result: ManualBranchPL = {
-            hairServices,
-            otherServices,
-            retailSales,
-            productCost,
-            service_commissions: expMap['service_commissions'] ?? currentSaved.service_commissions ?? Math.round(hairServices * 0.1),
-            retail_commissions: expMap['retail_commissions'] ?? currentSaved.retail_commissions ?? Math.round(retailSales * 0.05),
-            direct_professional_labor: expMap['direct_professional_labor'] ?? currentSaved.direct_professional_labor ?? 0,
-            transaction_fees: expMap['transaction_fees'] ?? currentSaved.transaction_fees ?? Math.round((hairServices + otherServices + retailSales) * 0.015),
-            salaries_wages: expMap['salaries_wages'] ?? currentSaved.salaries_wages ?? 65000,
-            benefits_insurance: expMap['benefits_insurance'] ?? currentSaved.benefits_insurance ?? 5000,
-            payroll_tax: expMap['payroll_tax'] ?? currentSaved.payroll_tax ?? 3500,
-            general_admin: expMap['general_admin'] ?? currentSaved.general_admin ?? 4000,
-            utilities: expMap['utilities'] ?? currentSaved.utilities ?? 8500,
-            repairs_maintenance: expMap['repairs_maintenance'] ?? currentSaved.repairs_maintenance ?? 3000,
-            rent_lease: expMap['rent_lease'] ?? currentSaved.rent_lease ?? (branch === 'Bengaluru' ? 45000 : 30000),
-            depreciation: expMap['depreciation'] ?? currentSaved.depreciation ?? 4000,
-            debts_loans: expMap['debts_loans'] ?? currentSaved.debts_loans ?? 0,
-            notes: currentSaved.notes || `Generated from ${invFiltered.length} paid invoices.`,
-        }
-
-        return { data: result, invoiceCount: invFiltered.length }
+        const res = await this.extractFromManualDailySales(monthKey, branch)
+        return { data: res.data, invoiceCount: res.daysWithSales }
     },
 
     clearBranch(monthKey: string, branch: string) {
@@ -311,5 +330,88 @@ export const manualProfitLossStore = {
             delete all[monthKey][branch]
             this.saveAll(all)
         }
+    },
+
+    /**
+     * Apply an imported Excel summary into the local store and sync.
+     * Updates OpEx categories and sets CapEx for each affected month & branch.
+     */
+    applyExcelImportSummary(summary: {
+        byMonthAndBranch: Record<string, Record<string, {
+            opexTotal: number
+            capexTotal: number
+            opexByCategory: Partial<Record<keyof ManualBranchPL, number>>
+            capexItems: CapExItem[]
+            opexItems: OpExItem[]
+        }>>
+    }, mode: 'merge' | 'replace' = 'merge') {
+        const all = this.getAll()
+        let count = 0
+
+        for (const [mKey, branchMap] of Object.entries(summary.byMonthAndBranch)) {
+            if (!all[mKey]) all[mKey] = {}
+
+            for (const [branch, data] of Object.entries(branchMap)) {
+                const current = all[mKey][branch] || zeroBranchPL()
+
+                const updatedOpEx: Partial<ManualBranchPL> = {}
+                for (const [catKey, amt] of Object.entries(data.opexByCategory)) {
+                    const k = catKey as keyof ManualBranchPL
+                    if (mode === 'merge') {
+                        const prevVal = Number(current[k]) || 0
+                        updatedOpEx[k] = (prevVal + amt) as any
+                    } else {
+                        updatedOpEx[k] = amt as any
+                    }
+                }
+
+                const existingCapexItems = mode === 'merge' ? (current.capex_items || []) : []
+                const mergedCapexItems = [...existingCapexItems, ...data.capexItems]
+                const totalCapex = mergedCapexItems.reduce((sum, item) => sum + (item.amount || 0), 0)
+
+                const existingOpexItems = mode === 'merge' ? (current.opex_items || []) : []
+                const mergedOpexItems = [...existingOpexItems, ...data.opexItems]
+
+                const updatedRecord: ManualBranchPL = {
+                    ...current,
+                    ...updatedOpEx,
+                    capex: totalCapex,
+                    capex_items: mergedCapexItems,
+                    opex_items: mergedOpexItems,
+                    updatedAt: new Date().toISOString(),
+                }
+
+                all[mKey][branch] = updatedRecord
+                this.syncToOnline(mKey, branch, updatedRecord).catch(() => {})
+                count++
+            }
+        }
+
+        this.saveAll(all)
+        return count
+    },
+
+    addCapExItem(monthKey: string, branch: string, item: Omit<CapExItem, 'id'>) {
+        const cur = this.getBranchData(monthKey, branch)
+        const newItem: CapExItem = {
+            id: `capex-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            ...item,
+        }
+        const items = [...(cur.capex_items || []), newItem]
+        const totalCapex = items.reduce((s, i) => s + (i.amount || 0), 0)
+        return this.setBranchData(monthKey, branch, {
+            capex: totalCapex,
+            capex_items: items,
+        })
+    },
+
+    removeCapExItem(monthKey: string, branch: string, itemId: string) {
+        const cur = this.getBranchData(monthKey, branch)
+        const items = (cur.capex_items || []).filter(i => i.id !== itemId)
+        const totalCapex = items.reduce((s, i) => s + (i.amount || 0), 0)
+        return this.setBranchData(monthKey, branch, {
+            capex: totalCapex,
+            capex_items: items,
+        })
     },
 }
