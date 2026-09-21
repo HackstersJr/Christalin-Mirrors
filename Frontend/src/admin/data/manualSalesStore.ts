@@ -144,6 +144,10 @@ export const manualSalesStore = {
         data[branch][isoDate] = merged
         this.saveAll(data)
 
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('cm_sales_record_updated'))
+        }
+
         // Inform UI it's saving online
         onSyncStatus?.('saving')
 

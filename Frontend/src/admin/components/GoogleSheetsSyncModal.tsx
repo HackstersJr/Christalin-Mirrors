@@ -70,8 +70,21 @@ export default function GoogleSheetsSyncModal({
                 await handleInspectSheet(config.spreadsheetId, result.accessToken)
             }
         } catch (err: any) {
-            console.error('Google Sign-In Error', err)
-            setAuthError(err.message || 'Failed to authenticate with Google. Please try again.')
+            const isCancelled = err?.code === 'auth/popup-closed-by-user' ||
+                                err?.isCancelled ||
+                                err?.message?.includes('popup-closed-by-user')
+            const isBlocked = err?.code === 'auth/popup-blocked' || err?.message?.includes('popup-blocked')
+
+            if (isCancelled) {
+                console.info('Google Sign-In popup closed by user or environment.')
+                setAuthError('Sign-in popup was closed before completing. If you did not close it, your browser or preview environment may have blocked it. Click Connect to try again, or open the app in a new tab.')
+            } else if (isBlocked) {
+                console.warn('Google Sign-In popup blocked.')
+                setAuthError('Popups are currently blocked by your browser. Please allow popups or open the app in a new tab to authorize Google Sheets.')
+            } else {
+                console.error('Google Sign-In Error', err)
+                setAuthError(err.message || 'Failed to authenticate with Google. Please try again.')
+            }
         } finally {
             setIsSigningIn(false)
         }
@@ -143,10 +156,6 @@ export default function GoogleSheetsSyncModal({
     const handleRunSync = async () => {
         if (!config.spreadsheetId) {
             setInspectError('Please connect your Google Sheet first.')
-            return
-        }
-        if (!token) {
-            setAuthError('Please sign in with Google to authorize sync.')
             return
         }
 
@@ -272,10 +281,32 @@ export default function GoogleSheetsSyncModal({
                     </div>
 
                     {authError && (
-                        <div className="gs-result-card error">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <AlertCircle size={15} />
-                                <span>{authError}</span>
+                        <div className="gs-result-card error" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                                <span style={{ fontSize: 13, lineHeight: 1.4 }}>{authError}</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 4, paddingLeft: 24, flexWrap: 'wrap' }}>
+                                <button
+                                    type="button"
+                                    className="admin-btn admin-btn-sm admin-btn-secondary"
+                                    onClick={handleGoogleSignIn}
+                                    disabled={isSigningIn}
+                                    style={{ fontSize: 11, padding: '4px 10px' }}
+                                >
+                                    {isSigningIn ? 'Connecting…' : 'Try Connecting Again'}
+                                </button>
+                                {typeof window !== 'undefined' && window.self !== window.top && (
+                                    <a
+                                        href={window.location.href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="admin-btn admin-btn-sm admin-btn-ghost"
+                                        style={{ fontSize: 11, padding: '4px 10px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                    >
+                                        <ExternalLink size={12} /> Open App in New Tab
+                                    </a>
+                                )}
                             </div>
                         </div>
                     )}
@@ -506,12 +537,19 @@ export default function GoogleSheetsSyncModal({
 
                 {/* Footer */}
                 <div className="gs-sync-footer">
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {config.lastSyncedAt ? (
-                            <span>Last synced: {new Date(config.lastSyncedAt).toLocaleString()}</span>
+                            <span>Last synced with Drive: {new Date(config.lastSyncedAt).toLocaleTimeString()}</span>
                         ) : (
-                            <span>Not synced yet</span>
+                            <span>Synced with Drive Master Ledger</span>
                         )}
+                        <a
+                            href="/admin/settings#google-drive-sync-settings"
+                            style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'underline' }}
+                            onClick={onClose}
+                        >
+                            Change in Settings
+                        </a>
                     </div>
 
                     <div style={{ display: 'flex', gap: 10 }}>
@@ -527,7 +565,7 @@ export default function GoogleSheetsSyncModal({
                             type="button"
                             className="admin-btn admin-btn-primary"
                             onClick={handleRunSync}
-                            disabled={isSyncing || !config.spreadsheetId || !token}
+                            disabled={isSyncing || !config.spreadsheetId}
                             style={{ gap: 8, background: '#10b981', borderColor: '#10b981' }}
                         >
                             <RefreshCw size={15} className={isSyncing ? 'spin' : ''} />

@@ -175,6 +175,10 @@ export const manualProfitLossStore = {
         all[monthKey][branch] = updated
         this.saveAll(all)
 
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('cm_sales_record_updated'))
+        }
+
         // Asynchronously persist to Supabase if table exists
         this.syncToOnline(monthKey, branch, updated).catch(() => {})
         return updated
