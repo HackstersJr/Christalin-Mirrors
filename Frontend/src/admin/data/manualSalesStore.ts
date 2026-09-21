@@ -14,7 +14,9 @@ export type ManualSalesData = Record<string, Record<string, ManualDayRecord>>
 export type SyncState = 'synced' | 'saving' | 'offline' | 'error'
 
 const STORAGE_KEY = 'cm_manual_daily_sales_v1'
-const DEFAULT_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum']
+export const OPERATIONAL_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum', 'Manea']
+export const UPCOMING_BRANCHES = ['Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)']
+export const DEFAULT_BRANCHES = [...OPERATIONAL_BRANCHES, ...UPCOMING_BRANCHES]
 
 // Debounce timer map for cell inputs
 const pendingDebounce: Record<string, ReturnType<typeof setTimeout>> = {}
@@ -40,14 +42,15 @@ export const manualSalesStore = {
 
     getRecord(branch: string, isoDate: string): ManualDayRecord {
         const data = this.getAll()
-        if (branch === 'all') {
+        if (branch === 'all' || branch === 'all_operational' || branch === 'consolidated_all') {
             let clientCount = 0
             let retail = 0
             let service = 0
             let notes = ''
 
+            const targetList = branch === 'all_operational' ? OPERATIONAL_BRANCHES : DEFAULT_BRANCHES
             let hasBranchEntry = false
-            for (const b of DEFAULT_BRANCHES) {
+            for (const b of targetList) {
                 const rec = data[b]?.[isoDate]
                 if (rec) {
                     hasBranchEntry = true
@@ -58,8 +61,8 @@ export const manualSalesStore = {
                 }
             }
 
-            if (!hasBranchEntry && data['all']?.[isoDate]) {
-                const direct = data['all'][isoDate]
+            if (!hasBranchEntry && data[branch]?.[isoDate]) {
+                const direct = data[branch][isoDate]
                 return {
                     clientCount: direct.clientCount || 0,
                     retail: direct.retail || 0,

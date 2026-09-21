@@ -266,7 +266,11 @@ export const manualProfitLossStore = {
         await manualSalesStore.fetchMonth(monthKey)
         const allSales = manualSalesStore.getAll()
 
-        const targetBranches = branch === 'all' ? ['Bengaluru', 'Kalaburagi', 'Belgaum'] : [branch]
+        const targetBranches = (branch === 'all' || branch === 'all_operational')
+            ? ['Bengaluru', 'Kalaburagi', 'Belgaum', 'Manea']
+            : (branch === 'consolidated_all'
+                ? ['Bengaluru', 'Kalaburagi', 'Belgaum', 'Manea', 'Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)']
+                : [branch])
         let totalService = 0
         let totalRetail = 0
         let daysWithSales = 0
@@ -288,6 +292,7 @@ export const manualProfitLossStore = {
 
         const totalSales = totalService + totalRetail
         const currentSaved = this.getBranchData(monthKey, branch)
+        const isUpcoming = branch.startsWith('Upcoming')
 
         const result: ManualBranchPL = {
             hairServices: totalService,
@@ -298,16 +303,21 @@ export const manualProfitLossStore = {
             retail_commissions: currentSaved.retail_commissions || Math.round(totalRetail * 0.05),
             direct_professional_labor: currentSaved.direct_professional_labor || 0,
             transaction_fees: currentSaved.transaction_fees || Math.round(totalSales * 0.015),
-            salaries_wages: currentSaved.salaries_wages || 65000,
-            benefits_insurance: currentSaved.benefits_insurance || 5000,
-            payroll_tax: currentSaved.payroll_tax || 3500,
-            general_admin: currentSaved.general_admin || 4000,
-            utilities: currentSaved.utilities || 8500,
-            repairs_maintenance: currentSaved.repairs_maintenance || 3000,
-            rent_lease: currentSaved.rent_lease || (branch === 'Bengaluru' ? 45000 : 30000),
-            depreciation: currentSaved.depreciation || 4000,
+            salaries_wages: currentSaved.salaries_wages || (isUpcoming ? 0 : 65000),
+            benefits_insurance: currentSaved.benefits_insurance || (isUpcoming ? 0 : 5000),
+            payroll_tax: currentSaved.payroll_tax || (isUpcoming ? 0 : 3500),
+            general_admin: currentSaved.general_admin || (isUpcoming ? 2000 : 4000),
+            utilities: currentSaved.utilities || (isUpcoming ? 2500 : 8500),
+            repairs_maintenance: currentSaved.repairs_maintenance || (isUpcoming ? 0 : 3000),
+            rent_lease: currentSaved.rent_lease || (
+                branch === 'Bengaluru' ? 45000 :
+                branch === 'Manea' ? 50000 :
+                branch.includes('Upcoming Branch 1') ? 35000 :
+                branch.includes('Upcoming Branch 2') ? 25000 : 30000
+            ),
+            depreciation: currentSaved.depreciation || (isUpcoming ? 0 : 4000),
             debts_loans: currentSaved.debts_loans || 0,
-            notes: currentSaved.notes || (totalSales > 0 ? `Synced from Manual Daily Sales (${daysWithSales} active days, ₹${totalSales.toLocaleString('en-IN')}).` : 'Synced from Manual Daily Sales.'),
+            notes: currentSaved.notes || (totalSales > 0 ? `Synced from Manual Daily Sales (${daysWithSales} active days, ₹${totalSales.toLocaleString('en-IN')}).` : (isUpcoming ? 'Upcoming branch — Pre-launch fitout and advance rent stage.' : 'Synced from Manual Daily Sales.')),
         }
 
         return { data: result, daysWithSales, totalService, totalRetail, totalSales }
@@ -412,6 +422,26 @@ export const manualProfitLossStore = {
         return this.setBranchData(monthKey, branch, {
             capex: totalCapex,
             capex_items: items,
+        })
+    },
+
+    addOpExItem(monthKey: string, branch: string, item: Omit<OpExItem, 'id'>) {
+        const cur = this.getBranchData(monthKey, branch)
+        const newItem: OpExItem = {
+            id: `opex-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            ...item,
+        }
+        const items = [...(cur.opex_items || []), newItem]
+        return this.setBranchData(monthKey, branch, {
+            opex_items: items,
+        })
+    },
+
+    removeOpExItem(monthKey: string, branch: string, itemId: string) {
+        const cur = this.getBranchData(monthKey, branch)
+        const items = (cur.opex_items || []).filter(i => i.id !== itemId)
+        return this.setBranchData(monthKey, branch, {
+            opex_items: items,
         })
     },
 }

@@ -1,20 +1,27 @@
 import { Fragment, useState, useEffect, useMemo, useCallback } from 'react'
 import {
     Printer, ChevronLeft, ChevronRight, Edit3, Eye,
-    RotateCcw, Download, FileText, Sparkles
+    RotateCcw, Download, FileText, Sparkles, ArrowLeftRight
 } from 'lucide-react'
-import { branches as branchList } from '../../data/branches'
+import {
+    branches as branchList,
+    OPERATIONAL_BRANCH_NAMES,
+    UPCOMING_BRANCH_NAMES,
+    ALL_SALON_BRANCH_NAMES,
+} from '../../data/branches'
 import { invoiceStore } from '../data/store'
 import cmLogo from '../../assets/cm-logo-white.png'
 import { toIso, todayIso, monthKeyOf, shiftMonth, monthLabel } from './reportUtils'
 import { manualSalesStore, type ManualSalesData, type ManualDayRecord } from '../data/manualSalesStore'
+import { googleSheetsSyncService } from '../data/googleSheetsSyncService'
+import GoogleSheetsSyncModal from '../components/GoogleSheetsSyncModal'
 import { useToast } from '../components/Toast'
 import '../AdminShared.css'
 import '../ReportShared.css'
 import './DailySalesReport.css'
 import './ManualDailySalesReport.css'
 
-const branchNames = branchList.map(b => b.name.replace('CM — ', '').replace(/\s*\([^)]*\)$/, ''))
+const branchNames = ALL_SALON_BRANCH_NAMES
 
 type DayCell = { iso: string; inMonth: boolean; dayNum: number }
 type Week = { days: DayCell[] }
@@ -69,6 +76,8 @@ export default function ManualDailySalesReport() {
     // Modal state
     const [isPasteModalOpen, setIsPasteModalOpen] = useState(false)
     const [pasteText, setPasteText] = useState('')
+    const [isGoogleSheetsModalOpen, setIsGoogleSheetsModalOpen] = useState(false)
+    const hasGoogleSheetConnected = !!googleSheetsSyncService.getConfig().spreadsheetId
 
     // Load month data from Supabase (with fallback to local storage)
     const loadOnlineData = useCallback(async (mKey: string) => {
@@ -264,7 +273,11 @@ export default function ManualDailySalesReport() {
         }
     }
 
-    const branchLabel = branch === 'all' ? 'All Branches' : branch
+    const isUnderCeo = branch === 'Manea'
+    const isUpcoming = branch.startsWith('Upcoming')
+    const branchLabel = branch === 'all'
+        ? 'All Operational Salons (Combined)'
+        : (isUnderCeo ? 'Manea Salon (Under CEO Direct Portfolio)' : branch)
     const reportNo = `CM/DSR-MANUAL/${branch === 'all' ? 'ALL' : branch.slice(0, 3).toUpperCase()}/${monthKey.replace('-', '')}`
     const generatedAt = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -281,6 +294,18 @@ export default function ManualDailySalesReport() {
                     </p>
                 </div>
                 <div className="manual-dsr-controls">
+                    <button
+                        className="admin-btn admin-btn-secondary"
+                        onClick={() => setIsGoogleSheetsModalOpen(true)}
+                        title="Two-way synchronization with existing Google Spreadsheet"
+                        style={{ gap: 6, borderColor: hasGoogleSheetConnected ? '#10b981' : undefined }}
+                    >
+                        <ArrowLeftRight size={14} style={{ color: '#10b981' }} />
+                        <span>Google Sheets Sync</span>
+                        {hasGoogleSheetConnected && (
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+                        )}
+                    </button>
                     <button
                         className={`admin-btn ${isEditMode ? 'admin-btn-primary' : 'admin-btn-secondary'}`}
                         onClick={() => setIsEditMode(!isEditMode)}
@@ -323,17 +348,40 @@ export default function ManualDailySalesReport() {
                     </button>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <select className="admin-filter-select" value={branch} onChange={e => setBranch(e.target.value)}>
-                        <option value="all">All Branches (Combined)</option>
-                        {branchNames.map(name => (
-                            <option key={name} value={name}>{name}</option>
-                        ))}
+                        <option value="all">All Operational Salons (Combined)</option>
+                        <optgroup label="Operational Salons">
+                            {OPERATIONAL_BRANCH_NAMES.map(name => (
+                                <option key={name} value={name}>
+                                    {name === 'Manea' ? '★ Manea (Under CEO)' : name}
+                                </option>
+                            ))}
+                        </optgroup>
+                        <optgroup label="Upcoming / Pre-Launch Branches">
+                            {UPCOMING_BRANCH_NAMES.map(name => (
+                                <option key={name} value={name}>
+                                    🏗️ {name}
+                                </option>
+                            ))}
+                        </optgroup>
                     </select>
+
+                    {isUnderCeo && (
+                        <span style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, background: 'rgba(217, 119, 6, 0.12)', color: '#d97706', fontWeight: 600, border: '1px solid rgba(217, 119, 6, 0.28)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <span>★</span> Under CEO Direct Portfolio
+                        </span>
+                    )}
+
+                    {isUpcoming && (
+                        <span style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.12)', color: '#6366f1', fontWeight: 600, border: '1px solid rgba(99, 102, 241, 0.28)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <span>🏗️</span> Pre-Launch Phase
+                        </span>
+                    )}
 
                     {branch === 'all' && isEditMode && (
                         <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                            * Editing in All Branches saves under Bengaluru by default. Select a specific branch above to target it directly.
+                            * Editing in All Salons saves under Bengaluru by default. Select a specific branch above to target it directly.
                         </span>
                     )}
                 </div>
@@ -664,6 +712,17 @@ export default function ManualDailySalesReport() {
                     </div>
                 </div>
             )}
+            {/* Google Sheets Two-Way Sync Modal */}
+            <GoogleSheetsSyncModal
+                isOpen={isGoogleSheetsModalOpen}
+                onClose={() => setIsGoogleSheetsModalOpen(false)}
+                onSyncComplete={result => {
+                    if (result.success) {
+                        setData(manualSalesStore.getAll())
+                        showToast('success', `Google Sheets synced! (${result.pulledSales} pulled, ${result.pushedSales} pushed)`)
+                    }
+                }}
+            />
         </div>
     )
 }

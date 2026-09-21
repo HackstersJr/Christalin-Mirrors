@@ -82,9 +82,12 @@ const CAPEX_KEYWORDS = [
 export function normalizeBranchName(val: any, defaultBranch: string = 'Bengaluru'): string {
     if (!val) return defaultBranch
     const str = String(val).toLowerCase().trim()
-    if (str.includes('bengaluru') || str.includes('bangalore') || str === 'blr') return 'Bengaluru'
+    if (str.includes('manea') || str.includes('mane')) return 'Manea'
     if (str.includes('kalaburagi') || str.includes('gulbarga') || str === 'klb') return 'Kalaburagi'
     if (str.includes('belgaum') || str.includes('belagavi') || str === 'bgm') return 'Belgaum'
+    if (str.includes('yelahanka') || str.includes('upcoming 1') || str.includes('upc 1')) return 'Upcoming Branch 1 (Yelahanka)'
+    if (str.includes('hassan') || str.includes('upcoming 2') || str.includes('upc 2')) return 'Upcoming Branch 2 (Hassan)'
+    if (str.includes('bengaluru') || str.includes('bangalore') || str === 'blr') return 'Bengaluru'
     return defaultBranch
 }
 

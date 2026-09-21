@@ -1,6 +1,6 @@
 {
   "name": "Christalin Mirrors — Refined Unisex Salon",
-  "description": "Christalin Mirrors — A refined unisex salon combining skilled artistry with premium products and personalised attention. Located in Bengaluru and Kalaburagi.",
+  "description": "Christalin Mirrors — Luxury unisex salon network across Bengaluru, Kalaburagi, Belgaum, and Manea, featuring executive daily sales reporting, multi-branch P&L, dedicated OpEx/CapEx management, and two-way Google Sheets synchronization.",
   "requestFramePermissions": [
     "microphone"
   ],

@@ -31,16 +31,22 @@ function rupeesToPaisa(rupees: number): number {
 function mapBranch(nameOrId: string): string {
     if (!nameOrId) return 'Bengaluru'
     const lower = nameOrId.toLowerCase()
-    if (lower.includes('kalaburagi') || lower.includes('kalburgi') || lower.includes('klb')) return 'Kalaburagi'
+    if (lower.includes('manea') || lower.includes('mane')) return 'Manea'
+    if (lower.includes('kalaburagi') || lower.includes('kalburgi') || lower.includes('klb') || lower.includes('gulbarga')) return 'Kalaburagi'
     if (lower.includes('belgaum') || lower.includes('belagavi') || lower.includes('bgm')) return 'Belgaum'
+    if (lower.includes('yelahanka') || lower.includes('upcoming 1') || lower.includes('upc_1')) return 'Upcoming Branch 1 (Yelahanka)'
+    if (lower.includes('hassan') || lower.includes('upcoming 2') || lower.includes('upc_2')) return 'Upcoming Branch 2 (Hassan)'
     return 'Bengaluru'
 }
 
 function getBranchId(branchName: string): string {
     if (!branchName) return 'branch_blr'
     const lower = branchName.toLowerCase()
-    if (lower.includes('kalaburagi') || lower.includes('kalburgi') || lower.includes('klb')) return 'branch_klb'
+    if (lower.includes('manea') || lower.includes('mane')) return 'branch_manea'
+    if (lower.includes('kalaburagi') || lower.includes('kalburgi') || lower.includes('klb') || lower.includes('gulbarga')) return 'branch_klb'
     if (lower.includes('belgaum') || lower.includes('belagavi') || lower.includes('bgm')) return 'branch_bgm'
+    if (lower.includes('yelahanka') || lower.includes('upcoming 1') || lower.includes('upc_1')) return 'branch_upc_1'
+    if (lower.includes('hassan') || lower.includes('upcoming 2') || lower.includes('upc_2')) return 'branch_upc_2'
     return 'branch_blr'
 }
 

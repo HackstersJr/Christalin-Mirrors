@@ -11,6 +11,7 @@
     "preview": "npm run preview --workspace=Frontend"
   },
   "dependencies": {
+    "firebase": "^12.19.0",
     "xlsx": "^0.18.5"
   }
 }
