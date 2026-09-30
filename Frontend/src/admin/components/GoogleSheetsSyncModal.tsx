@@ -70,19 +70,23 @@ export default function GoogleSheetsSyncModal({
                 await handleInspectSheet(config.spreadsheetId, result.accessToken)
             }
         } catch (err: any) {
+            const errStr = String(err?.message || err)
             const isCancelled = err?.code === 'auth/popup-closed-by-user' ||
                                 err?.isCancelled ||
-                                err?.message?.includes('popup-closed-by-user')
-            const isBlocked = err?.code === 'auth/popup-blocked' || err?.message?.includes('popup-blocked')
+                                err?.message?.includes('popup-closed-by-user') ||
+                                errStr.includes('popup-closed-by-user')
+            const isBlocked = err?.code === 'auth/popup-blocked' ||
+                              err?.message?.includes('popup-blocked') ||
+                              errStr.includes('popup-blocked')
 
             if (isCancelled) {
-                console.info('Google Sign-In popup closed by user or environment.')
-                setAuthError('Sign-in popup was closed before completing. If you did not close it, your browser or preview environment may have blocked it. Click Connect to try again, or open the app in a new tab.')
+                console.info('Google Sign-In popup closed by user or dismissed.')
+                setAuthError('Sign-in popup was closed before completing. If you wish to connect, please click Connect Google Account again, or open the app in a new tab.')
             } else if (isBlocked) {
                 console.warn('Google Sign-In popup blocked.')
                 setAuthError('Popups are currently blocked by your browser. Please allow popups or open the app in a new tab to authorize Google Sheets.')
             } else {
-                console.error('Google Sign-In Error', err)
+                console.warn('Google Sign-In note:', err?.message || err)
                 setAuthError(err.message || 'Failed to authenticate with Google. Please try again.')
             }
         } finally {

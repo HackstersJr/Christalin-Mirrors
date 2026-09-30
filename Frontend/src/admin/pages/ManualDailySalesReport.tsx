@@ -407,6 +407,47 @@ export default function ManualDailySalesReport() {
                 </div>
             </div>
 
+            {/* Pre-launch notification banner when viewing an upcoming branch */}
+            {isUpcoming && (
+                <div className="no-print" style={{
+                    background: 'rgba(99, 102, 241, 0.08)',
+                    border: '1px solid rgba(99, 102, 241, 0.25)',
+                    borderRadius: 8,
+                    padding: '14px 18px',
+                    marginBottom: 20,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 12
+                }}>
+                    <div>
+                        <div style={{ fontWeight: 700, color: '#6366f1', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+                            <span>🏗️</span> {branch} — Pre-Opening &amp; Fitout Phase
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                            Daily client ticket sales begin upon official grand launch. To record fitout CapEx, advance premises rent, and pre-opening holding costs, visit the Profit &amp; Loss Statement.
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <a
+                            href="/admin/capital-investments"
+                            className="admin-btn admin-btn-sm"
+                            style={{ textDecoration: 'none', background: 'rgba(181, 148, 88, 0.15)', color: 'var(--color-primary, #b59458)', border: '1px solid rgba(181, 148, 88, 0.3)' }}
+                        >
+                            CEO &amp; Partner Equity Ledger
+                        </a>
+                        <a
+                            href="/admin/manual-profit-loss"
+                            className="admin-btn admin-btn-sm admin-btn-primary"
+                            style={{ textDecoration: 'none' }}
+                        >
+                            View Pre-Opening Statement
+                        </a>
+                    </div>
+                </div>
+            )}
+
             {/* Printable & Filed A4 Document */}
             <div className="report-sheet print-doc">
                 {/* Letterhead */}
@@ -668,9 +709,25 @@ export default function ManualDailySalesReport() {
 
                         {/* Sign-off Blocks */}
                         <div className="report-signoff">
-                            <div className="signoff-block"><span>Prepared by (Branch / Manager)</span></div>
-                            <div className="signoff-block"><span>Reviewed by (Owner / Executive)</span></div>
-                            <div className="signoff-block"><span>Date</span></div>
+                            {isUpcoming ? (
+                                <>
+                                    <div className="signoff-block"><span>Pre-Opening Project Director / CEO Signature</span></div>
+                                    <div className="signoff-block"><span>Auditor / Accounts Review</span></div>
+                                    <div className="signoff-block"><span>Date</span></div>
+                                </>
+                            ) : isUnderCeo ? (
+                                <>
+                                    <div className="signoff-block"><span>Direct Operations Lead</span></div>
+                                    <div className="signoff-block"><span>CEO / Managing Director</span></div>
+                                    <div className="signoff-block"><span>Date</span></div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="signoff-block"><span>Prepared by (Branch / Manager)</span></div>
+                                    <div className="signoff-block"><span>Reviewed by (Owner / Executive)</span></div>
+                                    <div className="signoff-block"><span>Date</span></div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -346,7 +346,23 @@ export function BookingSuccess({ data }: { data: StepProps['data'] }) {
                 appointment on <strong>{data.date && new Date(data.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}</strong> at <strong>{data.time}</strong> within 24 hours.
             </p>
             <p className="booking-success-note">
-                For urgent bookings, call or WhatsApp {branch?.name.replace('CM — ', '')} directly at {branch?.phone}.
+                For urgent bookings, call{' '}
+                {branch?.phone ? (
+                    <a href={`tel:${branch.phone.replace(/\s/g, '')}`} style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                        {branch.phone}
+                    </a>
+                ) : null}{' '}
+                or WhatsApp{' '}
+                {branch?.phone ? (
+                    <a
+                        href={`https://wa.me/${branch.phone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--accent)', fontWeight: 600 }}
+                    >
+                        {branch.name.replace('CM — ', '')} directly
+                    </a>
+                ) : null}.
             </p>
         </motion.div>
     )

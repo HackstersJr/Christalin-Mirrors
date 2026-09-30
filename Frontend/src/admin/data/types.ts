@@ -99,11 +99,17 @@ export interface SalonSettings {
     phone: string
     hours: string
     branches: {
+        id?: string
         name: string
         city: string
         address: string
         phone: string
         isActive: boolean
+        status?: 'operational' | 'upcoming'
+        targetLaunch?: string
+        isUnderCeo?: boolean
+        manager?: string
+        ownershipNote?: string
     }[]
     socialLinks: {
         instagram?: string

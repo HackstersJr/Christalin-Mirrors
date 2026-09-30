@@ -140,9 +140,28 @@ export default function BookAppointment() {
                 </Link>
             </header>
 
-            <div className="booking-help-bar">
+            <div className="booking-help-bar" style={{ flexWrap: 'wrap', rowGap: 4 }}>
                 <Phone size={13} />
-                <span>Need help? Call us at <a href="tel:+919900118383">+91 99001 18383</a></span>
+                {data.branchId ? (() => {
+                    const sel = branches.find(b => b.id === data.branchId)
+                    const cleanName = sel ? sel.name.replace('CM — ', '') : 'Salon'
+                    const branchPhone = sel?.phone || '+91 72042 36981'
+                    return (
+                        <span>
+                            Need help? Call {cleanName} branch:{' '}
+                            <a href={`tel:${branchPhone.replace(/\s/g, '')}`}>{branchPhone}</a>
+                        </span>
+                    )
+                })() : (
+                    <span>
+                        Need help? Call branch:{' '}
+                        <a href="tel:+917204236981" title="Call Bengaluru Salon">Bengaluru (+91 72042 36981)</a>
+                        {' · '}
+                        <a href="tel:+918050153999" title="Call Belgaum Salon">Belgaum (+91 80501 53999)</a>
+                        {' · '}
+                        <a href="tel:+91918715909" title="Call Kalaburagi Salon">Kalaburagi (+91 91871 5909)</a>
+                    </span>
+                )}
             </div>
 
             {/* Content */}

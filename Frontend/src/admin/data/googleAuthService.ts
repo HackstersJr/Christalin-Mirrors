@@ -89,13 +89,17 @@ export const googleAuthService = {
         } catch (error: any) {
             const code = error?.code || ''
             const message = error?.message || ''
+            const errorStr = String(error)
             const isCancelled = code === 'auth/popup-closed-by-user' ||
                                 code === 'auth/cancelled-popup-request' ||
-                                message.includes('popup-closed-by-user')
-            const isBlocked = code === 'auth/popup-blocked' || message.includes('popup-blocked')
+                                message.includes('popup-closed-by-user') ||
+                                errorStr.includes('popup-closed-by-user')
+            const isBlocked = code === 'auth/popup-blocked' ||
+                              message.includes('popup-blocked') ||
+                              errorStr.includes('popup-blocked')
 
             if (isCancelled) {
-                // Non-fatal user cancellation or popup dismissal — log as info, not error
+                // Non-fatal user cancellation or popup dismissal — log as info, never error
                 console.info('Google Sign-In popup was closed or dismissed.')
                 const customErr = new Error('The sign-in popup was closed before completing authentication. Please click Connect to try again, or open the app in a new tab if your browser blocks popups.')
                 ;(customErr as any).code = 'auth/popup-closed-by-user'
@@ -108,7 +112,7 @@ export const googleAuthService = {
                 throw customErr
             }
 
-            console.error('Google Sign-in failed:', error)
+            console.warn('Google Sign-in not completed:', message || error)
             throw error
         } finally {
             isSigningIn = false

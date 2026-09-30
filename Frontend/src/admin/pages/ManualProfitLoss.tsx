@@ -23,6 +23,7 @@ import {
     Hammer,
     ShieldCheck,
     Calendar,
+    Wallet,
     ArrowUpRight,
     Tag,
 } from 'lucide-react'
@@ -682,56 +683,107 @@ export default function ManualProfitLoss() {
             {activeTab === 'statement' && (
                 <div>
                     {/* Executive KPI Overview Cards */}
-                    <div className="no-print manual-pl-metrics-grid">
-                        <div className="manual-pl-metric-card">
-                            <span className="manual-pl-metric-title">Gross Revenue</span>
-                            <span className="manual-pl-metric-val">{money(activeMetrics.revenue)}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                Hair: {money(activeData.hairServices)} · Retail: {money(activeData.retailSales)}
-                            </span>
+                    {isSelectedUpcoming ? (
+                        <div className="no-print manual-pl-metrics-grid">
+                            <div className="manual-pl-metric-card" style={{ borderLeft: '3px solid #6366f1' }}>
+                                <span className="manual-pl-metric-title">Dedicated Fitout CapEx</span>
+                                <span className="manual-pl-metric-val" style={{ color: '#6366f1' }}>{money(activeData.capex || 0)}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    {activeData.capex_items?.length || 0} fitout works &amp; capital assets
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card" style={{ borderLeft: '3px solid #f59e0b' }}>
+                                <span className="manual-pl-metric-title">Pre-Opening OpEx (Holding Costs)</span>
+                                <span className="manual-pl-metric-val" style={{ color: '#f59e0b' }}>{money(activeMetrics.totalExpenses)}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Rent: {money(Number(activeData.rent_lease) || 0)} · Power: {money(Number(activeData.utilities) || 0)}
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card" style={{ borderLeft: '3px solid #a855f7' }}>
+                                <span className="manual-pl-metric-title">Total Pre-Opening Outlay</span>
+                                <span className="manual-pl-metric-val" style={{ color: '#a855f7' }}>{money((activeData.capex || 0) + activeMetrics.totalExpenses)}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Fitout CapEx + Pre-Launch OpEx
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card">
+                                <span className="manual-pl-metric-title">Project Setup Budget</span>
+                                <span className="manual-pl-metric-val">{money(UPCOMING_METADATA[selectedBranch]?.budget || 1500000)}</span>
+                                <span style={{ fontSize: 11, color: '#10b981' }}>
+                                    {UPCOMING_METADATA[selectedBranch]?.fitoutPct || 65}% progress reached
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card">
+                                <span className="manual-pl-metric-title">Target Opening Date</span>
+                                <span className="manual-pl-metric-val" style={{ fontSize: 18, color: 'var(--text-bright)' }}>
+                                    {UPCOMING_METADATA[selectedBranch]?.targetLaunch || 'Q4 2026'}
+                                </span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    {UPCOMING_METADATA[selectedBranch]?.location}
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card" style={{ borderLeft: '3px solid var(--color-primary, #b59458)' }}>
+                                <span className="manual-pl-metric-title">CEO Equity Outlay (100%)</span>
+                                <span className="manual-pl-metric-val" style={{ color: 'var(--color-primary, #b59458)' }}>
+                                    {money((activeData.capex || 0) + activeMetrics.totalExpenses)}
+                                </span>
+                                <span style={{ fontSize: 11, color: '#3b82f6' }}>
+                                    Sole Owner — 100% Pre-Launch
+                                </span>
+                            </div>
                         </div>
-                        <div className="manual-pl-metric-card">
-                            <span className="manual-pl-metric-title">Gross Profit (Margin)</span>
-                            <span className="manual-pl-metric-val">{money(activeMetrics.grossProfit)}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                {activeMetrics.revenue > 0 ? `${((activeMetrics.grossProfit / activeMetrics.revenue) * 100).toFixed(1)}% margin` : '0%'}
-                            </span>
+                    ) : (
+                        <div className="no-print manual-pl-metrics-grid">
+                            <div className="manual-pl-metric-card">
+                                <span className="manual-pl-metric-title">Gross Revenue</span>
+                                <span className="manual-pl-metric-val">{money(activeMetrics.revenue)}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Hair: {money(activeData.hairServices)} · Retail: {money(activeData.retailSales)}
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card">
+                                <span className="manual-pl-metric-title">Gross Profit (Margin)</span>
+                                <span className="manual-pl-metric-val">{money(activeMetrics.grossProfit)}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    {activeMetrics.revenue > 0 ? `${((activeMetrics.grossProfit / activeMetrics.revenue) * 100).toFixed(1)}% margin` : '0%'}
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card">
+                                <span className="manual-pl-metric-title">Operating Expenses (OpEx)</span>
+                                <span className="manual-pl-metric-val" style={{ color: '#f59e0b' }}>{money(activeMetrics.totalExpenses)}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Rent: {money(Number(activeData.rent_lease) || 0)} · Wages: {money(Number(activeData.salaries_wages) || 0)}
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card">
+                                <span className="manual-pl-metric-title">Operating Net Profit</span>
+                                <span className={`manual-pl-metric-val ${activeMetrics.netProfit >= 0 ? 'positive' : 'negative'}`}>
+                                    {money(activeMetrics.netProfit)}
+                                </span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    {activeMetrics.revenue > 0 ? `${((activeMetrics.netProfit / activeMetrics.revenue) * 100).toFixed(1)}% net margin` : '0%'}
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card">
+                                <span className="manual-pl-metric-title">CapEx Outlay</span>
+                                <span className="manual-pl-metric-val" style={{ color: '#a855f7' }}>{money(activeData.capex || 0)}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    {activeData.capex_items?.length || 0} capital assets recorded
+                                </span>
+                            </div>
+                            <div className="manual-pl-metric-card" style={{ borderLeft: '3px solid var(--color-primary, #b59458)' }}>
+                                <span className="manual-pl-metric-title">
+                                    {isViewingConsolidated ? 'Total CEO Share' : `CEO Share (${ceoPctOf(selectedBranch)}%)`}
+                                </span>
+                                <span className="manual-pl-metric-val" style={{ color: 'var(--color-primary, #b59458)' }}>
+                                    {money(isViewingConsolidated ? operationalCeoShare : (activeMetrics.netProfit * (ceoPctOf(selectedBranch) / 100)))}
+                                </span>
+                                <span style={{ fontSize: 11, color: '#3b82f6' }}>
+                                    Cash after CapEx: {money(isViewingConsolidated ? masterCeoCashShare : (activeMetrics.netCashFlow * (ceoPctOf(selectedBranch) / 100)))}
+                                </span>
+                            </div>
                         </div>
-                        <div className="manual-pl-metric-card">
-                            <span className="manual-pl-metric-title">Operating Expenses (OpEx)</span>
-                            <span className="manual-pl-metric-val" style={{ color: '#f59e0b' }}>{money(activeMetrics.totalExpenses)}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                Rent: {money(Number(activeData.rent_lease) || 0)} · Wages: {money(Number(activeData.salaries_wages) || 0)}
-                            </span>
-                        </div>
-                        <div className="manual-pl-metric-card">
-                            <span className="manual-pl-metric-title">Operating Net Profit</span>
-                            <span className={`manual-pl-metric-val ${activeMetrics.netProfit >= 0 ? 'positive' : 'negative'}`}>
-                                {money(activeMetrics.netProfit)}
-                            </span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                {activeMetrics.revenue > 0 ? `${((activeMetrics.netProfit / activeMetrics.revenue) * 100).toFixed(1)}% net margin` : '0%'}
-                            </span>
-                        </div>
-                        <div className="manual-pl-metric-card">
-                            <span className="manual-pl-metric-title">CapEx Outlay</span>
-                            <span className="manual-pl-metric-val" style={{ color: '#a855f7' }}>{money(activeData.capex || 0)}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                {activeData.capex_items?.length || 0} capital assets recorded
-                            </span>
-                        </div>
-                        <div className="manual-pl-metric-card" style={{ borderLeft: '3px solid var(--color-primary, #b59458)' }}>
-                            <span className="manual-pl-metric-title">
-                                {isViewingConsolidated ? 'Total CEO Share' : `CEO Share (${ceoPctOf(selectedBranch)}%)`}
-                            </span>
-                            <span className="manual-pl-metric-val" style={{ color: 'var(--color-primary, #b59458)' }}>
-                                {money(isViewingConsolidated ? operationalCeoShare : (activeMetrics.netProfit * (ceoPctOf(selectedBranch) / 100)))}
-                            </span>
-                            <span style={{ fontSize: 11, color: '#3b82f6' }}>
-                                Cash after CapEx: {money(isViewingConsolidated ? masterCeoCashShare : (activeMetrics.netCashFlow * (ceoPctOf(selectedBranch) / 100)))}
-                            </span>
-                        </div>
-                    </div>
+                    )}
 
                     {/* Pre-launch Project banner if viewing an upcoming branch */}
                     {isSelectedUpcoming && (
@@ -745,7 +797,14 @@ export default function ManualProfitLoss() {
                                     Target Opening: <strong>{UPCOMING_METADATA[selectedBranch]?.targetLaunch}</strong> · Location: {UPCOMING_METADATA[selectedBranch]?.location}
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: 10 }}>
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                <a
+                                    href="/admin/capital-investments"
+                                    className="admin-btn admin-btn-sm"
+                                    style={{ textDecoration: 'none', background: 'rgba(181, 148, 88, 0.15)', color: 'var(--color-primary, #b59458)', border: '1px solid rgba(181, 148, 88, 0.3)' }}
+                                >
+                                    <Wallet size={13} /> CEO &amp; Partner Equity Ledger
+                                </a>
                                 <button
                                     className="admin-btn admin-btn-sm admin-btn-secondary"
                                     onClick={() => {
@@ -768,27 +827,293 @@ export default function ManualProfitLoss() {
                     {/* Document Printable Statement Sheet */}
                     <div className="report-sheet print-doc">
                         {!isViewingConsolidated ? (
-                            /* Single Branch View */
-                            <div>
-                                {/* Letterhead */}
-                                <div className="report-letterhead">
-                                    <div className="report-letterhead-main">
-                                        <img src={cmLogo} alt="Christalin Mirrors" className="report-logo" />
-                                        <div>
-                                            <div className="report-title">
-                                                Christalin Mirrors — {selectedBranch}
-                                                {selectedBranch === 'Manea' ? ' (Under CEO)' : ''}
+                            isSelectedUpcoming ? (
+                                /* Dedicated Pre-Opening Capital & Fitout Statement (Upcoming / Fitout Stage) */
+                                <div>
+                                    {/* Letterhead */}
+                                    <div className="report-letterhead">
+                                        <div className="report-letterhead-main">
+                                            <img src={cmLogo} alt="Christalin Mirrors" className="report-logo" />
+                                            <div>
+                                                <div className="report-title">
+                                                    Christalin Mirrors — {selectedBranch}
+                                                </div>
+                                                <div className="report-range">For the Month Ended {currMonthLabel} · Pre-Opening Statement</div>
                                             </div>
-                                            <div className="report-range">For the Month Ended {currMonthLabel} · {isSelectedUpcoming ? 'Pre-Opening Statement' : 'Operational P&L'}</div>
+                                        </div>
+                                        <div className="report-letterhead-meta">
+                                            <div><span>Report No.</span> CM/PL-MANUAL/{selectedBranch.includes('1') ? 'UPC1' : 'UPC2'}/{monthKey.replace('-', '')}</div>
+                                            <div><span>Status</span> Pre-Launch / CapEx Phase</div>
+                                            <div><span>Ownership</span> CEO (Sole Owner — 100% Pre-Launch)</div>
+                                            <div><span>Generated</span> {generatedAt}</div>
                                         </div>
                                     </div>
-                                    <div className="report-letterhead-meta">
-                                        <div><span>Report No.</span> CM/PL-MANUAL/{selectedBranch.slice(0, 3).toUpperCase()}/{monthKey.replace('-', '')}</div>
-                                        <div><span>Status</span> {isSelectedUpcoming ? 'Pre-Launch / CapEx Phase' : 'Operational Branch'}</div>
-                                        <div><span>Ownership</span> {OWNERSHIP[selectedBranch]?.[0]?.label || 'CEO'}</div>
-                                        <div><span>Generated</span> {generatedAt}</div>
+
+                                    {/* Project Milestone & Location Banner */}
+                                    <div style={{
+                                        padding: '14px 18px',
+                                        borderRadius: 8,
+                                        background: 'rgba(99, 102, 241, 0.05)',
+                                        border: '1px solid rgba(99, 102, 241, 0.18)',
+                                        marginBottom: 20,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        flexWrap: 'wrap',
+                                        gap: 14
+                                    }}>
+                                        <div>
+                                            <div style={{ fontSize: 11, color: '#6366f1', textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700 }}>
+                                                Pre-Opening Milestone &amp; Premises
+                                            </div>
+                                            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-bright)', marginTop: 2 }}>
+                                                Target Grand Launch: {UPCOMING_METADATA[selectedBranch]?.targetLaunch || 'Q4 2026'}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                Premises: {UPCOMING_METADATA[selectedBranch]?.location || 'Karnataka, India'}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: 20 }}>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Fitout Completion</div>
+                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#10b981' }}>
+                                                    {UPCOMING_METADATA[selectedBranch]?.fitoutPct || 65}%
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Estimated Setup Budget</div>
+                                                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-bright)' }}>
+                                                    {money(UPCOMING_METADATA[selectedBranch]?.budget || 1500000)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Section 1: Pre-Opening OpEx (Holding Costs) */}
+                                    <div className="report-section-title">
+                                        Dedicated Operating Expenses (OpEx)
+                                        {isEditMode && <span className="no-print" style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-primary, #b59458)' }}>· Editable fields active</span>}
+                                    </div>
+                                    <div className="table-scroll">
+                                        <table className="admin-table report-table manual-pl-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Expense Category</th>
+                                                    <th style={{ width: 180 }}>Amount (₹)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {OPEX_KEYS.map(c => (
+                                                    <tr key={c.key}>
+                                                        <td className="cell-primary">
+                                                            {c.label}
+                                                            {c.key === 'rent_lease' && <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>(Premises Lease / Advance)</span>}
+                                                            {c.key === 'utilities' && <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>(Site Electricity &amp; Water)</span>}
+                                                            {c.key === 'general_admin' && <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>(Pre-Opening Licenses &amp; Permits)</span>}
+                                                        </td>
+                                                        <td>
+                                                            {isEditMode ? (
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    className="manual-pl-input"
+                                                                    value={(activeData[c.key] as number) || ''}
+                                                                    onChange={e => handleFieldChange(selectedBranch, c.key, e.target.value)}
+                                                                    placeholder="0"
+                                                                />
+                                                            ) : (
+                                                                money(Number(activeData[c.key]) || 0)
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                <tr className="report-totals-row">
+                                                    <td className="cell-primary">Total Operating Expenses (OpEx)</td>
+                                                    <td style={{ fontWeight: 700, color: '#f59e0b' }}>{money(activeMetrics.totalExpenses)}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Section 2: Dedicated Capital Expenditures (CapEx) */}
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 8 }}>
+                                        <div className="report-section-title" style={{ margin: 0 }}>
+                                            Dedicated Capital Expenditures (CapEx)
+                                        </div>
+                                        {isEditMode && (
+                                            <button
+                                                type="button"
+                                                className="no-print admin-btn admin-btn-xs admin-btn-primary"
+                                                onClick={() => {
+                                                    setAddExpenseModalType('capex')
+                                                    setIsAddExpenseModalOpen(true)
+                                                }}
+                                                style={{ gap: 4 }}
+                                            >
+                                                <Plus size={12} /> Add Fitout CapEx Asset
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="table-scroll">
+                                        <table className="admin-table report-table manual-pl-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: 110 }}>Date</th>
+                                                    <th>Asset / Fitout Works Line</th>
+                                                    <th style={{ width: 150 }}>Category</th>
+                                                    <th style={{ width: 180, textAlign: 'right' }}>Amount (₹)</th>
+                                                    {isEditMode && <th style={{ width: 44 }}></th>}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(activeData.capex_items && activeData.capex_items.length > 0) ? (
+                                                    activeData.capex_items.map(item => (
+                                                        <tr key={item.id}>
+                                                            <td style={{ whiteSpace: 'nowrap' }}>{item.date}</td>
+                                                            <td className="cell-primary" style={{ fontWeight: 600 }}>{item.title}</td>
+                                                            <td>
+                                                                <span style={{
+                                                                    background: 'rgba(99, 102, 241, 0.12)',
+                                                                    color: '#818cf8',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: 4,
+                                                                    fontSize: 10,
+                                                                    fontWeight: 700,
+                                                                    textTransform: 'uppercase'
+                                                                }}>
+                                                                    {item.category.replace('_', ' ')}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(item.amount)}</td>
+                                                            {isEditMode && (
+                                                                <td style={{ textAlign: 'center' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="admin-btn-icon text-muted"
+                                                                        onClick={() => handleRemoveCapExItem(selectedBranch, item.id)}
+                                                                        title="Remove item"
+                                                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                                                                    >
+                                                                        <Trash2 size={13} />
+                                                                    </button>
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={isEditMode ? 5 : 4} style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
+                                                            Total recorded CapEx: {money(activeData.capex || 0)}. Use "Add Fitout CapEx Asset" above to itemize entries.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                                <tr className="report-totals-row">
+                                                    <td colSpan={isEditMode ? 3 : 2} className="cell-primary">Total Capital Expenditures (CapEx)</td>
+                                                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#a855f7' }}>{money(activeData.capex || 0)}</td>
+                                                    {isEditMode && <td />}
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Section 3: Monthly Pre-Opening Cash Outflow & Funding */}
+                                    <div className="report-section-title" style={{ marginTop: 24 }}>
+                                        Pre-Opening Cash Outflow &amp; Funding Summary
+                                    </div>
+                                    <div className="table-scroll">
+                                        <table className="admin-table report-table pl-line-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Capital Allocation</th>
+                                                    <th>Monthly Amount (₹)</th>
+                                                    <th>Funding Source</th>
+                                                    <th>Owner Responsibility</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td className="cell-primary">Dedicated Fitout &amp; Fixed Assets (CapEx)</td>
+                                                    <td style={{ fontWeight: 600 }}>{money(activeData.capex || 0)}</td>
+                                                    <td>CEO Capital Contribution</td>
+                                                    <td>100% CEO Outlay</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="cell-primary">Pre-Opening Holding OpEx (Rent, Power, Licenses)</td>
+                                                    <td style={{ fontWeight: 600 }}>{money(activeMetrics.totalExpenses)}</td>
+                                                    <td>CEO Capital Contribution</td>
+                                                    <td>100% CEO Outlay</td>
+                                                </tr>
+                                                <tr className="report-totals-row" style={{ background: 'rgba(99, 102, 241, 0.08)' }}>
+                                                    <td className="cell-primary" style={{ fontWeight: 800 }}>Total Monthly Pre-Opening Cash Outflow</td>
+                                                    <td style={{ fontWeight: 800, fontSize: 16, color: '#6366f1' }}>
+                                                        {money((activeData.capex || 0) + activeMetrics.totalExpenses)}
+                                                    </td>
+                                                    <td style={{ fontWeight: 600 }}>CEO Equity Infusion</td>
+                                                    <td style={{ fontWeight: 700, color: 'var(--color-primary, #b59458)' }}>100% (Sole Owner Pre-Launch)</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Section 4: Project Notes */}
+                                    <div className="report-section-title" style={{ marginTop: 24 }}>Project &amp; Fitout Remarks</div>
+                                    <div style={{ marginBottom: 24 }}>
+                                        {isEditMode ? (
+                                            <textarea
+                                                className="manual-pl-input-notes"
+                                                rows={2}
+                                                placeholder="Add pre-opening remarks, contractor milestones, handover dates..."
+                                                value={activeData.notes || ''}
+                                                onChange={e => handleNotesChange(selectedBranch, e.target.value)}
+                                            />
+                                        ) : (
+                                            <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                {activeData.notes || 'Fitout on schedule. Pre-opening advance rent, styling equipment, and civil fitout recorded.'}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Section 5: Pre-Opening Certification (NO Branch Manager Signature!) */}
+                                    <div className="report-sign-grid" style={{ maxWidth: 420, margin: '28px auto 20px' }}>
+                                        <div className="report-sign-block">
+                                            <div className="report-sign-line" />
+                                            <div className="report-sign-role">Pre-Opening Project Director / CEO Signature</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="report-footer">
+                                        <div className="report-footer-left">
+                                            Christalin Mirrors Luxury Salon · {selectedBranch} · Pre-Opening Fitout Statement
+                                        </div>
+                                        <div className="report-footer-right">
+                                            Confidential · Management Eyes Only
+                                        </div>
                                     </div>
                                 </div>
+                            ) : (
+                                /* Operational Salon P&L Statement */
+                                <div>
+                                    {/* Letterhead */}
+                                    <div className="report-letterhead">
+                                        <div className="report-letterhead-main">
+                                            <img src={cmLogo} alt="Christalin Mirrors" className="report-logo" />
+                                            <div>
+                                                <div className="report-title">
+                                                    Christalin Mirrors — {selectedBranch}
+                                                    {selectedBranch === 'Manea' ? ' (Under CEO)' : ''}
+                                                </div>
+                                                <div className="report-range">For the Month Ended {currMonthLabel} · Operational P&amp;L</div>
+                                            </div>
+                                        </div>
+                                        <div className="report-letterhead-meta">
+                                            <div><span>Report No.</span> CM/PL-MANUAL/{selectedBranch.slice(0, 3).toUpperCase()}/{monthKey.replace('-', '')}</div>
+                                            <div><span>Status</span> Operational Branch</div>
+                                            <div><span>Ownership</span> {OWNERSHIP[selectedBranch]?.[0]?.label || 'CEO'}</div>
+                                            <div><span>Generated</span> {generatedAt}</div>
+                                        </div>
+                                    </div>
 
                                 {/* Revenue Section */}
                                 <div className="report-section-title">
@@ -1101,14 +1426,23 @@ export default function ManualProfitLoss() {
                                 </div>
 
                                 <div className="report-sign-grid">
-                                    <div className="report-sign-block">
-                                        <div className="report-sign-line" />
-                                        <div className="report-sign-role">Branch Manager Signature</div>
-                                    </div>
-                                    <div className="report-sign-block">
-                                        <div className="report-sign-line" />
-                                        <div className="report-sign-role">CEO / Managing Partner</div>
-                                    </div>
+                                    {selectedBranch === 'Manea' ? (
+                                        <div className="report-sign-block" style={{ gridColumn: 'span 2', maxWidth: 360, margin: '0 auto' }}>
+                                            <div className="report-sign-line" />
+                                            <div className="report-sign-role">CEO / Managing Director Signature (Direct Operations)</div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="report-sign-block">
+                                                <div className="report-sign-line" />
+                                                <div className="report-sign-role">Branch Manager Signature</div>
+                                            </div>
+                                            <div className="report-sign-block">
+                                                <div className="report-sign-line" />
+                                                <div className="report-sign-role">CEO / Managing Partner</div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="report-footer">
@@ -1120,6 +1454,7 @@ export default function ManualProfitLoss() {
                                     </div>
                                 </div>
                             </div>
+                        )
                         ) : (
                             /* Consolidated Multi-Branch View */
                             <div>

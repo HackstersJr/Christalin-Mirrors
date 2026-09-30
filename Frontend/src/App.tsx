@@ -37,6 +37,7 @@ import DailySalesReport from './admin/pages/DailySalesReport'
 import ManualDailySalesReport from './admin/pages/ManualDailySalesReport'
 import ProfitLoss from './admin/pages/ProfitLoss'
 import ManualProfitLoss from './admin/pages/ManualProfitLoss'
+import CapitalInvestments from './admin/pages/CapitalInvestments'
 import Login from './admin/pages/Login'
 import ProtectedRoute from './admin/components/ProtectedRoute'
 import RoleRoute from './admin/components/RoleRoute'
@@ -146,7 +147,9 @@ function App() {
                 <Route path="profit-loss" element={<RoleRoute allow={['owner', 'executive_manager']}><ProfitLoss /></RoleRoute>} />
                 <Route path="profit-loss-manual" element={<RoleRoute allow={['owner', 'executive_manager', 'manager']}><ManualProfitLoss /></RoleRoute>} />
                 <Route path="manual-profit-loss" element={<RoleRoute allow={['owner', 'executive_manager', 'manager']}><ManualProfitLoss /></RoleRoute>} />
+                <Route path="capital-investments" element={<RoleRoute allow={['owner', 'executive_manager']}><CapitalInvestments /></RoleRoute>} />
             </Route>
+            <Route path="/capital-investments" element={<Navigate to="/admin/capital-investments" replace />} />
             <Route path="/daily-sales-report-manual" element={<Navigate to="/admin/daily-sales-report-manual" replace />} />
             <Route path="/manual-sales-report" element={<Navigate to="/admin/daily-sales-report-manual" replace />} />
             <Route path="/profit-loss-manual" element={<Navigate to="/admin/profit-loss-manual" replace />} />

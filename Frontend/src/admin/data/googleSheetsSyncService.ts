@@ -133,6 +133,83 @@ export const googleSheetsSyncService = {
         }
 
         manualSalesStore.saveAll(updated)
+
+        // Seed P&L statements from Drive Ledger if empty
+        try {
+            const plAll = manualProfitLossStore.getAll()
+            const currentMonthKey = '2026-09'
+            if (!plAll[currentMonthKey] || !plAll[currentMonthKey]['Upcoming Branch 1 (Yelahanka)']) {
+                const yelahankaCapEx = [
+                    { id: 'upc1-c1', title: 'Salon Hydraulic Styling Chairs & Wash Units (Advance)', amount: 120000, category: 'equipment', date: '2026-09-08' },
+                    { id: 'upc1-c2', title: 'Styling Mirrors, Console Joinery & Reception Desk', amount: 85000, category: 'furniture', date: '2026-09-12' },
+                    { id: 'upc1-c3', title: 'Electrical Fitout, Architectural Track Lights & Wiring', amount: 70000, category: 'electrical', date: '2026-09-16' },
+                ]
+                const yelahankaTotalCapex = yelahankaCapEx.reduce((s, i) => s + i.amount, 0)
+
+                const hassanCapEx = [
+                    { id: 'upc2-c1', title: 'Salon Plumbing Lines & Wash Basin Infrastructure', amount: 95000, category: 'plumbing', date: '2026-09-10' },
+                    { id: 'upc2-c2', title: 'HVAC Air Conditioning Advance', amount: 70000, category: 'hvac', date: '2026-09-18' },
+                ]
+                const hassanTotalCapex = hassanCapEx.reduce((s, i) => s + i.amount, 0)
+
+                const seededPL: Record<string, ManualBranchPL> = {
+                    'Upcoming Branch 1 (Yelahanka)': {
+                        hairServices: 0,
+                        otherServices: 0,
+                        retailSales: 0,
+                        productCost: 0,
+                        service_commissions: 0,
+                        retail_commissions: 0,
+                        direct_professional_labor: 0,
+                        transaction_fees: 0,
+                        salaries_wages: 0,
+                        benefits_insurance: 0,
+                        payroll_tax: 0,
+                        general_admin: 2000,
+                        utilities: 2500,
+                        repairs_maintenance: 0,
+                        rent_lease: 35000,
+                        depreciation: 0,
+                        debts_loans: 0,
+                        capex: yelahankaTotalCapex,
+                        capex_items: yelahankaCapEx,
+                        opex_items: [],
+                        notes: 'Upcoming branch in pre-launch stage. Advance rent & fit-out CapEx active.',
+                        updatedAt: new Date().toISOString(),
+                    },
+                    'Upcoming Branch 2 (Hassan)': {
+                        hairServices: 0,
+                        otherServices: 0,
+                        retailSales: 0,
+                        productCost: 0,
+                        service_commissions: 0,
+                        retail_commissions: 0,
+                        direct_professional_labor: 0,
+                        transaction_fees: 0,
+                        salaries_wages: 0,
+                        benefits_insurance: 0,
+                        payroll_tax: 0,
+                        general_admin: 2000,
+                        utilities: 2500,
+                        repairs_maintenance: 0,
+                        rent_lease: 25000,
+                        depreciation: 0,
+                        debts_loans: 0,
+                        capex: hassanTotalCapex,
+                        capex_items: hassanCapEx,
+                        opex_items: [],
+                        notes: 'Upcoming branch in pre-launch stage. Advance rent & civil works active.',
+                        updatedAt: new Date().toISOString(),
+                    },
+                }
+
+                for (const [bName, bData] of Object.entries(seededPL)) {
+                    manualProfitLossStore.setBranchData(currentMonthKey, bName, bData)
+                }
+            }
+        } catch {
+            /* ignore */
+        }
     },
 
     /**

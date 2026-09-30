@@ -796,14 +796,45 @@ export const settingsStore = {
         } catch {}
 
         const raw = localStorage.getItem(KEYS.SETTINGS)
-        return raw ? JSON.parse(raw) : defaultSettings
+        let loaded: SalonSettings = raw ? JSON.parse(raw) : { ...defaultSettings }
+
+        // Always ensure all 6 corporate branches are present and enriched
+        const existingNames = new Set((loaded.branches || []).map(b => b.name))
+        let needsSave = false
+        const branches = [...(loaded.branches || [])]
+
+        for (const def of defaultSettings.branches) {
+            if (!existingNames.has(def.name)) {
+                branches.push({ ...def })
+                needsSave = true
+            }
+        }
+
+        if (needsSave || !loaded.branches) {
+            loaded.branches = branches
+            localStorage.setItem(KEYS.SETTINGS, JSON.stringify(loaded))
+        }
+
+        return loaded
     },
 
     update: async (updates: Partial<SalonSettings>): Promise<SalonSettings> => {
+        const current = await settingsStore.get()
+        const merged: SalonSettings = {
+            ...current,
+            ...updates,
+            branches: updates.branches || current.branches,
+            socialLinks: {
+                ...current.socialLinks,
+                ...(updates.socialLinks || {})
+            }
+        }
+        localStorage.setItem(KEYS.SETTINGS, JSON.stringify(merged))
+
         try {
             await supabase.from('SalonSettings').update(updates).eq('id', 'singleton')
         } catch {}
-        return settingsStore.get()
+        return merged
     },
 }
 

@@ -5,7 +5,7 @@ import {
     UserCog, Settings, Menu, X, LogOut,
     FileText, CalendarDays, Receipt, UserCheck, TrendingUp,
     Sun, Moon, Mic, Package, Printer, ClipboardList, PieChart,
-    FileSpreadsheet
+    FileSpreadsheet, Wallet
 } from 'lucide-react'
 import { ToastProvider } from './components/Toast'
 import { authStore, isOwnerLevel } from './data/authStore'
@@ -45,6 +45,7 @@ const ownerOnlyNavItems = [
     { label: 'Manual Daily Sales', icon: FileSpreadsheet, path: '/admin/daily-sales-report-manual' },
     { label: 'Profit & Loss', icon: PieChart, path: '/admin/profit-loss' },
     { label: 'Manual Profit & Loss', icon: FileSpreadsheet, path: '/admin/profit-loss-manual' },
+    { label: 'Capital Infusion (Equity)', icon: Wallet, path: '/admin/capital-investments' },
     { label: 'Services', icon: Scissors, path: '/admin/services' },
     { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ]

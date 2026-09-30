@@ -60,12 +60,54 @@ export default function Footer() {
                             <li><strong>Bengaluru</strong></li>
                             <li>Century Ethos Club House</li>
                             <li>Bellary Rd, Bengaluru 560092</li>
+                            <li>
+                                <a
+                                    href="tel:+917204236981"
+                                    style={{ color: 'var(--accent, #d4af37)', textDecoration: 'none', fontSize: '0.85rem' }}
+                                    onClick={() => trackEvent('contact_attempt', { method: 'call', branch: 'Bengaluru' })}
+                                >
+                                    +91 72042 36981
+                                </a>
+                            </li>
+
                             <li style={{ marginTop: 12 }}><strong>Kalaburagi</strong></li>
                             <li>Orchid Mall, Mahaveer Nagar</li>
                             <li>Khuba Plot, Kalaburagi 585105</li>
+                            <li>
+                                <a
+                                    href="tel:+91918715909"
+                                    style={{ color: 'var(--accent, #d4af37)', textDecoration: 'none', fontSize: '0.85rem' }}
+                                    onClick={() => trackEvent('contact_attempt', { method: 'call', branch: 'Kalaburagi' })}
+                                >
+                                    +91 91871 5909
+                                </a>
+                            </li>
+
                             <li style={{ marginTop: 12 }}><strong>Belgaum</strong></li>
                             <li>College Road</li>
                             <li>Belgaum 590001</li>
+                            <li>
+                                <a
+                                    href="tel:+918050153999"
+                                    style={{ color: 'var(--accent, #d4af37)', textDecoration: 'none', fontSize: '0.85rem' }}
+                                    onClick={() => trackEvent('contact_attempt', { method: 'call', branch: 'Belgaum' })}
+                                >
+                                    +91 80501 53999
+                                </a>
+                            </li>
+
+                            <li style={{ marginTop: 12 }}><strong>Manea (Sadashivanagar)</strong></li>
+                            <li>Sadashivanagar, Bengaluru 560080</li>
+                            <li>
+                                <a
+                                    href="tel:+919900118384"
+                                    style={{ color: 'var(--accent, #d4af37)', textDecoration: 'none', fontSize: '0.85rem' }}
+                                    onClick={() => trackEvent('contact_attempt', { method: 'call', branch: 'Manea' })}
+                                >
+                                    +91 99001 18384
+                                </a>
+                            </li>
+
                             <li style={{ marginTop: 12 }}>Everyday: 10 AM — 9 PM</li>
                         </ul>
                     </div>
@@ -81,7 +123,13 @@ export default function Footer() {
                         <a href="https://www.instagram.com/christalin.mirrors/" target="_blank" rel="noopener noreferrer" className="footer-social-link" aria-label="Instagram" onClick={() => trackEvent('social_click', { platform: 'instagram' })}>
                             <Instagram size={18} />
                         </a>
-                        <a href="tel:+919900118383" className="footer-social-link" aria-label="Phone" onClick={() => trackEvent('contact_attempt', { method: 'call', branch: 'footer' })}>
+                        <a
+                            href="tel:+917204236981"
+                            className="footer-social-link"
+                            aria-label="Call Bengaluru Salon (+91 72042 36981)"
+                            title="Call Bengaluru Salon: +91 72042 36981"
+                            onClick={() => trackEvent('contact_attempt', { method: 'call', branch: 'bengaluru_footer' })}
+                        >
                             <Phone size={18} />
                         </a>
                         <a href="mailto:Support@christalinmirrors.com" className="footer-social-link" aria-label="Email" onClick={() => trackEvent('contact_attempt', { method: 'email', branch: 'footer' })}>
