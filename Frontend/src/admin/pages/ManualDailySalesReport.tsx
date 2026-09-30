@@ -3,16 +3,17 @@ import {
     Printer, ChevronLeft, ChevronRight, Edit3, Eye,
     RotateCcw, Download, FileText, Sparkles, ArrowLeftRight
 } from 'lucide-react'
-import {
-    branches as branchList,
-    OPERATIONAL_BRANCH_NAMES,
-    UPCOMING_BRANCH_NAMES,
-    ALL_SALON_BRANCH_NAMES,
-} from '../../data/branches'
 import { invoiceStore } from '../data/store'
 import cmLogo from '../../assets/cm-logo-white.png'
 import { toIso, todayIso, monthKeyOf, shiftMonth, monthLabel } from './reportUtils'
-import { manualSalesStore, type ManualSalesData, type ManualDayRecord } from '../data/manualSalesStore'
+import {
+    OPERATIONAL_BRANCHES,
+    UPCOMING_BRANCHES,
+    DEFAULT_BRANCHES,
+    manualSalesStore,
+    type ManualSalesData,
+    type ManualDayRecord,
+} from '../data/manualSalesStore'
 import { googleSheetsSyncService } from '../data/googleSheetsSyncService'
 import GoogleSheetsSyncModal from '../components/GoogleSheetsSyncModal'
 import { useToast } from '../components/Toast'
@@ -21,7 +22,7 @@ import '../ReportShared.css'
 import './DailySalesReport.css'
 import './ManualDailySalesReport.css'
 
-const branchNames = ALL_SALON_BRANCH_NAMES
+const branchNames = DEFAULT_BRANCHES
 
 type DayCell = { iso: string; inMonth: boolean; dayNum: number }
 type Week = { days: DayCell[] }
@@ -97,6 +98,12 @@ export default function ManualDailySalesReport() {
         loadOnlineData(monthKey)
     }, [monthKey, loadOnlineData])
 
+    useEffect(() => {
+        if (branch === 'Manea') {
+            setBranch('all')
+        }
+    }, [branch])
+
     const weeks = useMemo(() => buildWeeks(monthKey), [monthKey])
 
     // Helper to get day data
@@ -107,7 +114,7 @@ export default function ManualDailySalesReport() {
             let service = 0
             let hasBranchEntry = false
 
-            for (const b of branchNames) {
+            for (const b of OPERATIONAL_BRANCHES) {
                 const rec = data[b]?.[iso]
                 if (rec) {
                     hasBranchEntry = true
@@ -273,11 +280,10 @@ export default function ManualDailySalesReport() {
         }
     }
 
-    const isUnderCeo = branch === 'Manea'
     const isUpcoming = branch.startsWith('Upcoming')
     const branchLabel = branch === 'all'
         ? 'All Operational Salons (Combined)'
-        : (isUnderCeo ? 'Manea Salon (Under CEO Direct Portfolio)' : branch)
+        : branch
     const reportNo = `CM/DSR-MANUAL/${branch === 'all' ? 'ALL' : branch.slice(0, 3).toUpperCase()}/${monthKey.replace('-', '')}`
     const generatedAt = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -352,26 +358,20 @@ export default function ManualDailySalesReport() {
                     <select className="admin-filter-select" value={branch} onChange={e => setBranch(e.target.value)}>
                         <option value="all">All Operational Salons (Combined)</option>
                         <optgroup label="Operational Salons">
-                            {OPERATIONAL_BRANCH_NAMES.map(name => (
+                            {OPERATIONAL_BRANCHES.map(name => (
                                 <option key={name} value={name}>
-                                    {name === 'Manea' ? '★ Manea (Under CEO)' : name}
+                                    {name}
                                 </option>
                             ))}
                         </optgroup>
                         <optgroup label="Upcoming / Pre-Launch Branches">
-                            {UPCOMING_BRANCH_NAMES.map(name => (
+                            {UPCOMING_BRANCHES.map(name => (
                                 <option key={name} value={name}>
                                     🏗️ {name}
                                 </option>
                             ))}
                         </optgroup>
                     </select>
-
-                    {isUnderCeo && (
-                        <span style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, background: 'rgba(217, 119, 6, 0.12)', color: '#d97706', fontWeight: 600, border: '1px solid rgba(217, 119, 6, 0.28)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            <span>★</span> Under CEO Direct Portfolio
-                        </span>
-                    )}
 
                     {isUpcoming && (
                         <span style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.12)', color: '#6366f1', fontWeight: 600, border: '1px solid rgba(99, 102, 241, 0.28)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -713,12 +713,6 @@ export default function ManualDailySalesReport() {
                                 <>
                                     <div className="signoff-block"><span>Pre-Opening Project Director / CEO Signature</span></div>
                                     <div className="signoff-block"><span>Auditor / Accounts Review</span></div>
-                                    <div className="signoff-block"><span>Date</span></div>
-                                </>
-                            ) : isUnderCeo ? (
-                                <>
-                                    <div className="signoff-block"><span>Direct Operations Lead</span></div>
-                                    <div className="signoff-block"><span>CEO / Managing Director</span></div>
                                     <div className="signoff-block"><span>Date</span></div>
                                 </>
                             ) : (

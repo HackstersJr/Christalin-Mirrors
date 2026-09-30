@@ -1217,20 +1217,39 @@ function fromDbStatus(status: string): AttendanceRecord['status'] {
 
 export const attendanceStore = {
     getAll: async (): Promise<AttendanceRecord[]> => {
+        const localList: AttendanceRecord[] = JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]')
+        const localMap = new Map<string, AttendanceRecord>(localList.map(a => [`${a.staffId}_${a.date}`, a]))
+
         try {
             const { data, error } = await supabase.from('Attendance').select('*').order('date', { ascending: false })
             if (!error && data) {
-                return data.map((a: any) => ({
-                    id: a.id,
-                    staffId: a.staffId,
-                    staffName: a.staffName,
-                    branch: mapBranch(a.branchId),
-                    date: a.date,
-                    status: fromDbStatus(a.status),
-                }))
+                const merged = data.map((a: any) => {
+                    const key = `${a.staffId}_${a.date}`
+                    const local = localMap.get(key)
+                    return {
+                        id: a.id || local?.id || `att-${a.staffId}-${a.date}`,
+                        staffId: a.staffId,
+                        staffName: a.staffName,
+                        branch: mapBranch(a.branchId),
+                        date: a.date,
+                        status: fromDbStatus(a.status),
+                        punchIn: a.punchIn || local?.punchIn || undefined,
+                        punchOut: a.punchOut || local?.punchOut || undefined,
+                        notes: a.notes || local?.notes || undefined,
+                        updatedBy: a.updatedBy || local?.updatedBy || undefined,
+                    }
+                })
+                // Merge any purely local records that might not be in Supabase yet
+                for (const loc of localList) {
+                    if (!data.some((d: any) => d.staffId === loc.staffId && d.date === loc.date)) {
+                        merged.push(loc)
+                    }
+                }
+                localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(merged))
+                return merged
             }
         } catch {}
-        return JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]')
+        return localList
     },
 
     getByDate: async (date: string): Promise<AttendanceRecord[]> => {
@@ -1243,18 +1262,90 @@ export const attendanceStore = {
         return all.filter(a => a.staffId === staffId)
     },
 
-    mark: async (staffId: string, staffName: string, branch: string, date: string, status: AttendanceRecord['status']): Promise<AttendanceRecord> => {
+    mark: async (
+        staffId: string,
+        staffName: string,
+        branch: string,
+        date: string,
+        status: AttendanceRecord['status'],
+        options?: { punchIn?: string; punchOut?: string; notes?: string; updatedBy?: string }
+    ): Promise<AttendanceRecord> => {
+        const payloadWithPunch: any = {
+            staffId,
+            staffName,
+            branchId: getBranchId(branch),
+            date,
+            status: dbStatus(status),
+            updatedAt: new Date().toISOString()
+        }
+        if (options?.punchIn !== undefined) payloadWithPunch.punchIn = options.punchIn
+        if (options?.punchOut !== undefined) payloadWithPunch.punchOut = options.punchOut
+        if (options?.notes !== undefined) payloadWithPunch.notes = options.notes
+        if (options?.updatedBy !== undefined) payloadWithPunch.updatedBy = options.updatedBy
+
         try {
+            // Attempt with new columns first
             const { data, error } = await supabase
                 .from('Attendance')
-                .upsert(
-                    { staffId, staffName, branchId: getBranchId(branch), date, status: dbStatus(status), updatedAt: new Date().toISOString() },
-                    { onConflict: 'staffId,date' }
-                )
+                .upsert(payloadWithPunch, { onConflict: 'staffId,date' })
                 .select()
                 .single()
+
             if (!error && data) {
-                return { id: data.id, staffId: data.staffId, staffName: data.staffName, branch: mapBranch(data.branchId), date: data.date, status: fromDbStatus(data.status) }
+                const record: AttendanceRecord = {
+                    id: data.id,
+                    staffId: data.staffId,
+                    staffName: data.staffName,
+                    branch: mapBranch(data.branchId),
+                    date: data.date,
+                    status: fromDbStatus(data.status),
+                    punchIn: data.punchIn || options?.punchIn,
+                    punchOut: data.punchOut || options?.punchOut,
+                    notes: data.notes || options?.notes,
+                    updatedBy: data.updatedBy || options?.updatedBy,
+                }
+                // Sync to local
+                const all: AttendanceRecord[] = JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]')
+                const idx = all.findIndex(a => a.staffId === staffId && a.date === date)
+                if (idx >= 0) all[idx] = record
+                else all.push(record)
+                localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(all))
+                return record
+            } else if (error && (error.message.includes('column') || error.code === '42703')) {
+                // Column does not exist in Supabase yet, retry without new columns
+                const fallbackPayload = {
+                    staffId,
+                    staffName,
+                    branchId: getBranchId(branch),
+                    date,
+                    status: dbStatus(status),
+                    updatedAt: new Date().toISOString()
+                }
+                const { data: fbData } = await supabase
+                    .from('Attendance')
+                    .upsert(fallbackPayload, { onConflict: 'staffId,date' })
+                    .select()
+                    .single()
+                
+                const recId = fbData?.id || `att-${Date.now()}`
+                const record: AttendanceRecord = {
+                    id: recId,
+                    staffId,
+                    staffName,
+                    branch,
+                    date,
+                    status,
+                    punchIn: options?.punchIn,
+                    punchOut: options?.punchOut,
+                    notes: options?.notes,
+                    updatedBy: options?.updatedBy,
+                }
+                const all: AttendanceRecord[] = JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]')
+                const idx = all.findIndex(a => a.staffId === staffId && a.date === date)
+                if (idx >= 0) all[idx] = record
+                else all.push(record)
+                localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(all))
+                return record
             }
         } catch {}
 
@@ -1262,14 +1353,42 @@ export const attendanceStore = {
         const all: AttendanceRecord[] = JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]')
         const idx = all.findIndex(a => a.staffId === staffId && a.date === date)
         if (idx >= 0) {
-            all[idx] = { ...all[idx], status }
+            all[idx] = {
+                ...all[idx],
+                status,
+                punchIn: options?.punchIn !== undefined ? options.punchIn : all[idx].punchIn,
+                punchOut: options?.punchOut !== undefined ? options.punchOut : all[idx].punchOut,
+                notes: options?.notes !== undefined ? options.notes : all[idx].notes,
+                updatedBy: options?.updatedBy || all[idx].updatedBy,
+            }
             localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(all))
             return all[idx]
         }
-        const record: AttendanceRecord = { id: `att-${Date.now()}`, staffId, staffName, branch, date, status }
+        const record: AttendanceRecord = {
+            id: `att-${Date.now()}`,
+            staffId,
+            staffName,
+            branch,
+            date,
+            status,
+            punchIn: options?.punchIn,
+            punchOut: options?.punchOut,
+            notes: options?.notes,
+            updatedBy: options?.updatedBy,
+        }
         all.push(record)
         localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(all))
         return record
+    },
+
+    deleteRecord: async (staffId: string, date: string): Promise<boolean> => {
+        try {
+            await supabase.from('Attendance').delete().eq('staffId', staffId).eq('date', date)
+        } catch {}
+        const all: AttendanceRecord[] = JSON.parse(localStorage.getItem(KEYS.ATTENDANCE) || '[]')
+        const filtered = all.filter(a => !(a.staffId === staffId && a.date === date))
+        localStorage.setItem(KEYS.ATTENDANCE, JSON.stringify(filtered))
+        return true
     },
 }
 

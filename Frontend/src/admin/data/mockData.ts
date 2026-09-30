@@ -70,7 +70,7 @@ export const defaultSettings: SalonSettings = {
             id: 'branch_manea',
             name: 'CM — Manea',
             city: 'Kalaburagi, Karnataka',
-            address: 'Kalaburagi, Karnataka 585105',
+            address: '',
             phone: '',
             isActive: true,
             status: 'operational',

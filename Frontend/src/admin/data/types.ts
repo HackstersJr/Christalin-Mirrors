@@ -212,6 +212,10 @@ export interface AttendanceRecord {
     branch: string
     date: string           // ISO date string YYYY-MM-DD
     status: 'present' | 'absent' | 'half-day' | 'leave'
+    punchIn?: string       // e.g. "09:30" or "09:30 AM"
+    punchOut?: string      // e.g. "18:45" or "06:45 PM"
+    notes?: string
+    updatedBy?: string
 }
 
 // ─── Voice Client Reviews ────────────────────────────────────

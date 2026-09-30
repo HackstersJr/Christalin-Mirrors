@@ -14,7 +14,7 @@ export type ManualSalesData = Record<string, Record<string, ManualDayRecord>>
 export type SyncState = 'synced' | 'saving' | 'offline' | 'error'
 
 const STORAGE_KEY = 'cm_manual_daily_sales_v1'
-export const OPERATIONAL_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum', 'Manea']
+export const OPERATIONAL_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum']
 export const UPCOMING_BRANCHES = ['Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)']
 export const DEFAULT_BRANCHES = [...OPERATIONAL_BRANCHES, ...UPCOMING_BRANCHES]
 
@@ -25,7 +25,16 @@ export const manualSalesStore = {
     getAll(): ManualSalesData {
         try {
             const raw = localStorage.getItem(STORAGE_KEY)
-            return raw ? JSON.parse(raw) : {}
+            const parsed = raw ? JSON.parse(raw) : {}
+            if (parsed['Manea']) {
+                delete parsed['Manea']
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
+                } catch {
+                    // ignore
+                }
+            }
+            return parsed
         } catch (e) {
             console.error('Failed to load manual sales data from storage', e)
             return {}
@@ -34,6 +43,9 @@ export const manualSalesStore = {
 
     saveAll(data: ManualSalesData) {
         try {
+            if (data['Manea']) {
+                delete data['Manea']
+            }
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
         } catch (e) {
             console.error('Failed to save manual sales data to storage', e)

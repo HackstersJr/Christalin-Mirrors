@@ -26,7 +26,7 @@ export interface SyncResult {
 }
 
 const STORAGE_CONFIG_KEY = 'cm_google_sheets_config_v2'
-const DEFAULT_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum', 'Manea', 'Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)']
+const DEFAULT_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum', 'Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)']
 
 export const DEFAULT_DRIVE_CONFIG: GoogleSheetConfig = {
     spreadsheetId: '1cm_drive_master_christalin_mirrors_live_2026',
@@ -98,10 +98,9 @@ export const googleSheetsSyncService = {
      */
     seedDriveDataIfEmpty() {
         const existing = manualSalesStore.getAll()
-        const hasManea = existing['Manea'] && Object.keys(existing['Manea']).length > 0
         const hasBengaluru = existing['Bengaluru'] && Object.keys(existing['Bengaluru']).length > 0
 
-        if (hasManea && hasBengaluru) return
+        if (hasBengaluru) return
 
         const updated: Record<string, Record<string, any>> = { ...existing }
         const daysInMonth = 21 // Up to current day of September 2026
@@ -112,7 +111,6 @@ export const googleSheetsSyncService = {
             Bengaluru: { clients: 14, service: 22000, retail: 4500, notes: 'Full styling chairs & bridal' },
             Kalaburagi: { clients: 10, service: 16000, retail: 3200, notes: 'Steady hair rituals & treatments' },
             Belgaum: { clients: 8, service: 13000, retail: 2400, notes: 'Keratin & color appointments' },
-            Manea: { clients: 12, service: 19500, retail: 3800, notes: 'Direct CEO branch — strong volume' },
         }
 
         for (const [branch, profile] of Object.entries(branchProfiles)) {
@@ -792,7 +790,7 @@ export const googleSheetsSyncService = {
 
         return {
             success: true,
-            message: `Synchronized with Google Drive Master Ledger ("${config.spreadsheetTitle || 'Christalin Mirrors Master'}"). All salon branches (including Manea) are up-to-date.`,
+            message: `Synchronized with Google Drive Master Ledger ("${config.spreadsheetTitle || 'Christalin Mirrors Master'}"). All salon branches are up-to-date.`,
             pulledSales: 0,
             pushedSales: totalSalesDays,
             pulledExpenses: 0,
