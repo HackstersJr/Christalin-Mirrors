@@ -14,6 +14,7 @@ export interface Branch {
     isUnderCeo?: boolean
     status?: 'operational' | 'upcoming'
     targetLaunch?: string
+    excludeFromBooking?: boolean
 }
 
 export const branches: Branch[] = [
@@ -53,14 +54,15 @@ export const branches: Branch[] = [
     {
         id: 'branch_manea',
         name: 'CM — Manea',
-        city: 'Bengaluru, Karnataka',
-        address: 'Sadashivanagar, Bengaluru 560080',
+        city: 'Kalaburagi, Karnataka',
+        address: 'Kalaburagi, Karnataka 585105',
         hours: 'Everyday: 10:00 AM – 9:00 PM',
-        phone: '+91 99001 18384',
-        mapUrl: 'https://maps.google.com/?q=Sadashivanagar+Bengaluru',
-        image: branchBengaluru,
+        phone: '',
+        mapUrl: 'https://maps.google.com/?q=Manea+Salon+Kalaburagi',
+        image: branchKalaburagi,
         isUnderCeo: true,
         status: 'operational',
+        excludeFromBooking: true,
     },
     {
         id: 'branch_upc_1',
@@ -95,6 +97,9 @@ export function getCleanBranchName(name: string): string {
 export const OPERATIONAL_BRANCH_NAMES = ['Bengaluru', 'Kalaburagi', 'Belgaum', 'Manea']
 export const UPCOMING_BRANCH_NAMES = ['Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)']
 export const ALL_SALON_BRANCH_NAMES = [...OPERATIONAL_BRANCH_NAMES, ...UPCOMING_BRANCH_NAMES]
+
+// Active branches available for online client booking (excluding Manea which is booked separately)
+export const bookableBranches = branches.filter(b => b.status === 'operational' && !b.excludeFromBooking)
 
 // Looks up a branch's address by its clean short name (e.g. "Belgaum", "Manea"), as
 // stored on invoices/appointments/clients via mapBranch() in admin/data/store.ts

@@ -96,18 +96,6 @@ export default function Footer() {
                                 </a>
                             </li>
 
-                            <li style={{ marginTop: 12 }}><strong>Manea (Sadashivanagar)</strong></li>
-                            <li>Sadashivanagar, Bengaluru 560080</li>
-                            <li>
-                                <a
-                                    href="tel:+919900118384"
-                                    style={{ color: 'var(--accent, #d4af37)', textDecoration: 'none', fontSize: '0.85rem' }}
-                                    onClick={() => trackEvent('contact_attempt', { method: 'call', branch: 'Manea' })}
-                                >
-                                    +91 99001 18384
-                                </a>
-                            </li>
-
                             <li style={{ marginTop: 12 }}>Everyday: 10 AM — 9 PM</li>
                         </ul>
                     </div>

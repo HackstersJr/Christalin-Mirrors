@@ -69,9 +69,9 @@ export const defaultSettings: SalonSettings = {
         {
             id: 'branch_manea',
             name: 'CM — Manea',
-            city: 'Bengaluru, Karnataka',
-            address: 'Sadashivanagar, Bengaluru 560080',
-            phone: '+91 99001 18384',
+            city: 'Kalaburagi, Karnataka',
+            address: 'Kalaburagi, Karnataka 585105',
+            phone: '',
             isActive: true,
             status: 'operational',
             isUnderCeo: true,

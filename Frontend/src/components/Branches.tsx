@@ -23,7 +23,7 @@ export default function Branches() {
                 </StaggerContainer>
 
                 <StaggerContainer className="branches-grid">
-                    {branches.map((branch) => (
+                    {branches.filter(b => b.status === 'operational' && !b.excludeFromBooking).map((branch) => (
                         <div key={branch.name} className="branch-card-wrapper">
                             <div className="branch-card branch-card-with-image">
                                 <div className="branch-image-wrapper">

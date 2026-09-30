@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, MapPin, Clock as ClockIcon, Sparkles, User, Mail, Phone as PhoneIcon, Gift } from 'lucide-react'
-import { branches } from '../../data/branches'
+import { branches, bookableBranches } from '../../data/branches'
 import { services, serviceTabs, type Category } from '../../data/services'
 import { packageStore } from '../../admin/data/store'
 import { trackEvent } from '../../hooks/useGoogleTag'
@@ -25,7 +25,7 @@ export function isStepValid(step: number, data: StepProps['data']): boolean {
         case 0: return data.name.trim().length > 1
             && /\S+@\S+\.\S+/.test(data.email)
             && /^\d{10}$/.test(data.phone.replace(/\D/g, ''))
-        case 1: return data.branchId !== ''
+        case 1: return data.branchId !== '' && bookableBranches.some(b => b.id === data.branchId)
         case 2: return data.serviceNames.length > 0
         case 3: return data.date !== '' && data.time !== ''
         default: return true
@@ -96,7 +96,7 @@ export function StepBranch({ data, update }: StepProps) {
             <p className="booking-step-sub">Select the Christalin Mirrors location you'd like to visit.</p>
 
             <div className="booking-branch-grid">
-                {branches.map((branch) => (
+                {bookableBranches.map((branch) => (
                     <button
                         key={branch.id}
                         type="button"

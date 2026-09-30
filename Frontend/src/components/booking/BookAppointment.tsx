@@ -25,12 +25,13 @@ export default function BookAppointment() {
     useGoogleTag()
     const location = useLocation()
     const preselectBranch = (location.state as { branchId?: string } | null)?.branchId
+    const safePreselect = (preselectBranch && preselectBranch !== 'branch_manea') ? preselectBranch : ''
 
     const [step, setStep] = useState(0)
     const [direction, setDirection] = useState(1)
     const [data, setData] = useState<BookingData>({
         ...emptyBookingData,
-        branchId: preselectBranch || '',
+        branchId: safePreselect,
     })
     const [submitted, setSubmitted] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
