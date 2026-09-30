@@ -1223,7 +1223,7 @@ export const attendanceStore = {
         try {
             const { data, error } = await supabase.from('Attendance').select('*').order('date', { ascending: false })
             if (!error && data) {
-                const merged = data.map((a: any) => {
+                const merged: AttendanceRecord[] = data.map((a: any) => {
                     const key = `${a.staffId}_${a.date}`
                     const local = localMap.get(key)
                     return {
