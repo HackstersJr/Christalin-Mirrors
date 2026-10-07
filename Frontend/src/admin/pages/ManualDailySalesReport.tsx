@@ -1,7 +1,8 @@
 import { Fragment, useState, useEffect, useMemo, useCallback } from 'react'
 import {
     Printer, ChevronLeft, ChevronRight, Edit3, Eye,
-    RotateCcw, Download, FileText, Sparkles, ArrowLeftRight
+    RotateCcw, Download, FileText, Sparkles, ArrowLeftRight,
+    PlusCircle, Calculator
 } from 'lucide-react'
 import { invoiceStore } from '../data/store'
 import cmLogo from '../../assets/cm-logo-white.png'
@@ -16,6 +17,7 @@ import {
 } from '../data/manualSalesStore'
 import { googleSheetsSyncService } from '../data/googleSheetsSyncService'
 import GoogleSheetsSyncModal from '../components/GoogleSheetsSyncModal'
+import PutDailySalesModal from '../components/PutDailySalesModal'
 import { useToast } from '../components/Toast'
 import '../AdminShared.css'
 import '../ReportShared.css'
@@ -75,6 +77,7 @@ export default function ManualDailySalesReport() {
     const [isSyncing, setIsSyncing] = useState(false)
 
     // Modal state
+    const [isPutSalesModalOpen, setIsPutSalesModalOpen] = useState(false)
     const [isPasteModalOpen, setIsPasteModalOpen] = useState(false)
     const [pasteText, setPasteText] = useState('')
     const [isGoogleSheetsModalOpen, setIsGoogleSheetsModalOpen] = useState(false)
@@ -106,53 +109,86 @@ export default function ManualDailySalesReport() {
 
     const weeks = useMemo(() => buildWeeks(monthKey), [monthKey])
 
-    // Helper to get day data
-    function getDayStats(iso: string): ManualDayRecord & { total: number } {
+    // Helper to get day data (UPI + Cash + Retail = Total)
+    function getDayStats(iso: string): ManualDayRecord & { upi: number; cash: number; retail: number; service: number; total: number } {
         if (branch === 'all') {
             let clientCount = 0
+            let upi = 0
+            let cash = 0
             let retail = 0
             let service = 0
+            let total = 0
             let hasBranchEntry = false
 
             for (const b of OPERATIONAL_BRANCHES) {
                 const rec = data[b]?.[iso]
                 if (rec) {
                     hasBranchEntry = true
+                    const rUpi = rec.upi || 0
+                    const rCash = rec.cash || 0
+                    const rRetail = rec.retail || 0
+                    const rService = (rUpi + rCash > 0) ? (rUpi + rCash) : (rec.service || 0)
+                    const rTotal = (rec.total !== undefined && rec.total > 0)
+                        ? rec.total
+                        : (rUpi + rCash + rRetail > 0 ? (rUpi + rCash + rRetail) : (rService + rRetail))
+
                     clientCount += rec.clientCount || 0
-                    retail += rec.retail || 0
-                    service += rec.service || 0
+                    upi += rUpi
+                    cash += rCash
+                    retail += rRetail
+                    service += rService
+                    total += rTotal
                 }
             }
 
             if (!hasBranchEntry && data['all']?.[iso]) {
                 const direct = data['all'][iso]
+                const dUpi = direct.upi || 0
+                const dCash = direct.cash || 0
+                const dRetail = direct.retail || 0
+                const dService = (dUpi + dCash > 0) ? (dUpi + dCash) : (direct.service || 0)
+                const dTotal = (direct.total !== undefined && direct.total > 0)
+                    ? direct.total
+                    : (dUpi + dCash + dRetail > 0 ? (dUpi + dCash + dRetail) : (dService + dRetail))
                 return {
                     clientCount: direct.clientCount || 0,
-                    retail: direct.retail || 0,
-                    service: direct.service || 0,
-                    total: (direct.retail || 0) + (direct.service || 0),
+                    upi: dUpi,
+                    cash: dCash,
+                    retail: dRetail,
+                    service: dService,
+                    total: dTotal,
                     notes: direct.notes,
                 }
             }
 
-            return { clientCount, retail, service, total: retail + service }
+            const calcTotal = total > 0 ? total : (upi + cash + retail > 0 ? (upi + cash + retail) : (service + retail))
+            return { clientCount, upi, cash, retail, service, total: calcTotal, notes: '' }
         }
 
         const rec = data[branch]?.[iso]
         const clientCount = rec?.clientCount || 0
+        const upi = rec?.upi || 0
+        const cash = rec?.cash || 0
         const retail = rec?.retail || 0
-        const service = rec?.service || 0
+        const service = (upi + cash > 0) ? (upi + cash) : (rec?.service || 0)
+        // Total is always UPI + Cash + Retail
+        const total = (rec?.total !== undefined && rec.total > 0)
+            ? rec.total
+            : (upi + cash + retail > 0 ? (upi + cash + retail) : (service + retail))
+
         return {
             clientCount,
+            upi,
+            cash,
             retail,
             service,
-            total: retail + service,
+            total,
             notes: rec?.notes,
         }
     }
 
-    // Update single field
-    const handleCellChange = (iso: string, field: 'clientCount' | 'retail' | 'service', rawValue: string) => {
+    // Update single field: upi, cash, retail, clientCount
+    const handleCellChange = (iso: string, field: 'clientCount' | 'upi' | 'cash' | 'retail' | 'service', rawValue: string) => {
         const num = rawValue === '' ? 0 : Math.max(0, parseInt(rawValue, 10) || 0)
         const targetBranch = branch === 'all' ? 'Bengaluru' : branch // default to first branch if editing directly in all
         
@@ -169,11 +205,13 @@ export default function ManualDailySalesReport() {
                 const s = getDayStats(d.iso)
                 return {
                     clientCount: t.clientCount + s.clientCount,
+                    upi: t.upi + s.upi,
+                    cash: t.cash + s.cash,
                     retail: t.retail + s.retail,
                     service: t.service + s.service,
                     total: t.total + s.total,
                 }
-            }, { clientCount: 0, retail: 0, service: 0, total: 0 })
+            }, { clientCount: 0, upi: 0, cash: 0, retail: 0, service: 0, total: 0 })
     }, [weeks, data, branch])
 
     // Clear month data
@@ -235,34 +273,35 @@ export default function ManualDailySalesReport() {
                 clients = parseInt(clientsMatch[1], 10) || 0
             }
 
-            // Extract retail / service or cash/upi/card
+            // Extract UPI, Cash, Retail, and Service
+            let upi = 0
+            let cash = 0
             let retail = 0
-            let service = 0
+
+            const upiMatch = pasteText.match(/UPI:\s*(\d+)/i)
+            if (upiMatch) upi = parseInt(upiMatch[1], 10) || 0
+
+            const cashMatch = pasteText.match(/Cash:\s*(\d+)/i)
+            if (cashMatch) cash = parseInt(cashMatch[1], 10) || 0
 
             const retailMatch = pasteText.match(/Retail(?:\s*Sales)?:\s*(\d+)/i)
             if (retailMatch) retail = parseInt(retailMatch[1], 10) || 0
 
             const serviceMatch = pasteText.match(/Service(?:\s*Sales)?:\s*(\d+)/i)
-            if (serviceMatch) service = parseInt(serviceMatch[1], 10) || 0
+            let service = serviceMatch ? parseInt(serviceMatch[1], 10) || 0 : (upi + cash)
 
-            // If retail & service aren't explicitly split, check Cash / UPI / Card
-            if (retail === 0 && service === 0) {
-                const cashMatch = pasteText.match(/Cash:\s*(\d+)/i)
-                const upiMatch = pasteText.match(/UPI:\s*(\d+)/i)
-                const cardMatch = pasteText.match(/Card:\s*(\d+)/i)
-
-                const cash = cashMatch ? parseInt(cashMatch[1], 10) || 0 : 0
-                const upi = upiMatch ? parseInt(upiMatch[1], 10) || 0 : 0
-                const card = cardMatch ? parseInt(cardMatch[1], 10) || 0 : 0
-                
-                // Assign to service by default as salon revenue
-                service = cash + upi + card
+            if (upi === 0 && cash === 0 && service > 0) {
+                upi = service
             }
 
+            const total = upi + cash + retail
             manualSalesStore.setRecord(detectedBranch, isoDate, {
                 clientCount: clients,
+                upi,
+                cash,
                 retail,
-                service,
+                service: upi + cash,
+                total,
                 notes: 'Pasted from WhatsApp report',
             })
 
@@ -273,7 +312,7 @@ export default function ManualDailySalesReport() {
             if (branch !== 'all' && branch !== detectedBranch) {
                 setBranch(detectedBranch)
             }
-            showToast('success', `Recorded ${detectedBranch} report for ${isoDate} (₹${(retail + service).toLocaleString()})`)
+            showToast('success', `Recorded ${detectedBranch} report for ${isoDate} (UPI: ₹${upi.toLocaleString('en-IN')}, Cash: ₹${cash.toLocaleString('en-IN')}, Retail: ₹${retail.toLocaleString('en-IN')} → Total: ₹${total.toLocaleString('en-IN')})`)
         } catch (err) {
             console.error('Failed to parse text', err)
             showToast('error', 'Could not parse daily report format. Check the text format and try again.')
@@ -300,6 +339,15 @@ export default function ManualDailySalesReport() {
                     </p>
                 </div>
                 <div className="manual-dsr-controls">
+                    <button
+                        className="admin-btn admin-btn-primary"
+                        onClick={() => setIsPutSalesModalOpen(true)}
+                        title="Put daily sales with live auto-total calculation (UPI + Cash + Retail)"
+                        style={{ gap: 6, fontWeight: 600 }}
+                    >
+                        <PlusCircle size={15} />
+                        <span>Put Daily Sales</span>
+                    </button>
                     <button
                         className="admin-btn admin-btn-secondary"
                         onClick={() => setIsGoogleSheetsModalOpen(true)}
@@ -494,13 +542,15 @@ export default function ManualDailySalesReport() {
                                 const dayStatsList = week.days.map(d => d.inMonth ? getDayStats(d.iso) : null)
                                 
                                 const weekTotals = dayStatsList
-                                    .filter((s): s is (ManualDayRecord & { total: number }) => s !== null)
+                                    .filter((s): s is (ManualDayRecord & { upi: number; cash: number; retail: number; service: number; total: number }) => s !== null)
                                     .reduce((acc, s) => ({
                                         clientCount: acc.clientCount + s.clientCount,
+                                        upi: acc.upi + s.upi,
+                                        cash: acc.cash + s.cash,
                                         retail: acc.retail + s.retail,
                                         service: acc.service + s.service,
                                         total: acc.total + s.total,
-                                    }), { clientCount: 0, retail: 0, service: 0, total: 0 })
+                                    }), { clientCount: 0, upi: 0, cash: 0, retail: 0, service: 0, total: 0 })
 
                                 return (
                                     <Fragment key={wi}>
@@ -552,7 +602,6 @@ export default function ManualDailySalesReport() {
                                                                     onChange={e => handleCellChange(d.iso, 'clientCount', e.target.value)}
                                                                     title={`${d.iso} Client Count`}
                                                                 />
-                                                                {/* Fallback printable text */}
                                                                 <span className="manual-dsr-val-text" style={{ display: 'none' }}>
                                                                     {formatCount(stats.clientCount)}
                                                                 </span>
@@ -570,9 +619,94 @@ export default function ManualDailySalesReport() {
                                             </td>
                                         </tr>
 
+                                        {/* Cash Collection Row */}
+                                        <tr>
+                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>CASH</span>
+                                                <span>Cash Sales</span>
+                                            </td>
+                                            {week.days.map((d, i) => {
+                                                if (!d.inMonth) {
+                                                    return <td key={i}><span className="manual-dsr-val-dim">—</span></td>
+                                                }
+                                                const stats = dayStatsList[i]!
+                                                return (
+                                                    <td key={i}>
+                                                        {isEditMode ? (
+                                                            <div className="manual-dsr-input-wrap">
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    className="manual-dsr-input"
+                                                                    placeholder="₹0"
+                                                                    value={stats.cash === 0 ? '' : stats.cash}
+                                                                    onChange={e => handleCellChange(d.iso, 'cash', e.target.value)}
+                                                                    title={`${d.iso} Cash`}
+                                                                />
+                                                                <span className="manual-dsr-val-text" style={{ display: 'none' }}>
+                                                                    {money(stats.cash)}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="manual-dsr-val-text">
+                                                                {money(stats.cash)}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                )
+                                            })}
+                                            <td className="manual-dsr-total-col" style={{ color: '#10b981' }}>
+                                                {money(weekTotals.cash)}
+                                            </td>
+                                        </tr>
+
+                                        {/* UPI Collection Row */}
+                                        <tr>
+                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', fontWeight: 700 }}>UPI</span>
+                                                <span>UPI Sales</span>
+                                            </td>
+                                            {week.days.map((d, i) => {
+                                                if (!d.inMonth) {
+                                                    return <td key={i}><span className="manual-dsr-val-dim">—</span></td>
+                                                }
+                                                const stats = dayStatsList[i]!
+                                                return (
+                                                    <td key={i}>
+                                                        {isEditMode ? (
+                                                            <div className="manual-dsr-input-wrap">
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    className="manual-dsr-input"
+                                                                    placeholder="₹0"
+                                                                    value={stats.upi === 0 ? '' : stats.upi}
+                                                                    onChange={e => handleCellChange(d.iso, 'upi', e.target.value)}
+                                                                    title={`${d.iso} UPI`}
+                                                                />
+                                                                <span className="manual-dsr-val-text" style={{ display: 'none' }}>
+                                                                    {money(stats.upi)}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="manual-dsr-val-text">
+                                                                {money(stats.upi)}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                )
+                                            })}
+                                            <td className="manual-dsr-total-col" style={{ color: '#6366f1' }}>
+                                                {money(weekTotals.upi)}
+                                            </td>
+                                        </tr>
+
                                         {/* Retail Sales Row */}
                                         <tr>
-                                            <td className="cell-primary">Retail Sales</td>
+                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>RETAIL</span>
+                                                <span>Retail Sales</span>
+                                            </td>
                                             {week.days.map((d, i) => {
                                                 if (!d.inMonth) {
                                                     return <td key={i}><span className="manual-dsr-val-dim">—</span></td>
@@ -603,52 +737,16 @@ export default function ManualDailySalesReport() {
                                                     </td>
                                                 )
                                             })}
-                                            <td className="manual-dsr-total-col">
+                                            <td className="manual-dsr-total-col" style={{ color: '#f59e0b' }}>
                                                 {money(weekTotals.retail)}
                                             </td>
                                         </tr>
 
-                                        {/* Service Sales Row */}
-                                        <tr>
-                                            <td className="cell-primary">Service Sales</td>
-                                            {week.days.map((d, i) => {
-                                                if (!d.inMonth) {
-                                                    return <td key={i}><span className="manual-dsr-val-dim">—</span></td>
-                                                }
-                                                const stats = dayStatsList[i]!
-                                                return (
-                                                    <td key={i}>
-                                                        {isEditMode ? (
-                                                            <div className="manual-dsr-input-wrap">
-                                                                <input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    className="manual-dsr-input"
-                                                                    placeholder="₹0"
-                                                                    value={stats.service === 0 ? '' : stats.service}
-                                                                    onChange={e => handleCellChange(d.iso, 'service', e.target.value)}
-                                                                    title={`${d.iso} Service Sales`}
-                                                                />
-                                                                <span className="manual-dsr-val-text" style={{ display: 'none' }}>
-                                                                    {money(stats.service)}
-                                                                </span>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="manual-dsr-val-text">
-                                                                {money(stats.service)}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                )
-                                            })}
-                                            <td className="manual-dsr-total-col">
-                                                {money(weekTotals.service)}
+                                        {/* Total Sales Row (Calculated: Cash + UPI + Retail) */}
+                                        <tr className="report-totals-row" style={{ background: 'rgba(181, 148, 88, 0.08)' }}>
+                                            <td className="cell-primary" style={{ fontWeight: 700, color: 'var(--color-primary, #b59458)' }}>
+                                                Total Sales (Cash + UPI + Retail)
                                             </td>
-                                        </tr>
-
-                                        {/* Total Sales Row (Calculated: Retail + Service) */}
-                                        <tr className="report-totals-row">
-                                            <td className="cell-primary">Total Sales</td>
                                             {week.days.map((d, i) => {
                                                 if (!d.inMonth) {
                                                     return <td key={i}><span className="manual-dsr-val-dim">—</span></td>
@@ -656,13 +754,13 @@ export default function ManualDailySalesReport() {
                                                 const stats = dayStatsList[i]!
                                                 return (
                                                     <td key={i}>
-                                                        <span className="manual-dsr-calculated-val">
+                                                        <span className="manual-dsr-calculated-val" style={{ fontWeight: 700, color: 'var(--color-primary, #b59458)' }}>
                                                             {money(stats.total)}
                                                         </span>
                                                     </td>
                                                 )
                                             })}
-                                            <td className="manual-dsr-total-col">
+                                            <td className="manual-dsr-total-col" style={{ fontWeight: 800, color: 'var(--color-primary, #b59458)', fontSize: 13 }}>
                                                 {money(weekTotals.total)}
                                             </td>
                                         </tr>
@@ -685,16 +783,29 @@ export default function ManualDailySalesReport() {
                                         <td style={{ fontWeight: 600 }}>{monthTotals.clientCount.toLocaleString('en-IN')}</td>
                                     </tr>
                                     <tr>
-                                        <td className="cell-primary">Total Retail Sales</td>
-                                        <td style={{ fontWeight: 600 }}>{money(monthTotals.retail)}</td>
+                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>CASH</span>
+                                            <span>Total Cash Sales</span>
+                                        </td>
+                                        <td style={{ fontWeight: 600, color: '#10b981' }}>{money(monthTotals.cash)}</td>
                                     </tr>
                                     <tr>
-                                        <td className="cell-primary">Total Service Sales</td>
-                                        <td style={{ fontWeight: 600 }}>{money(monthTotals.service)}</td>
+                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', fontWeight: 700 }}>UPI</span>
+                                            <span>Total UPI Sales</span>
+                                        </td>
+                                        <td style={{ fontWeight: 600, color: '#6366f1' }}>{money(monthTotals.upi)}</td>
                                     </tr>
-                                    <tr className="report-totals-row">
-                                        <td className="cell-primary">Grand Total Sales</td>
-                                        <td style={{ color: 'var(--color-primary, #b59458)' }}>{money(monthTotals.total)}</td>
+                                    <tr>
+                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>RETAIL</span>
+                                            <span>Total Retail Sales</span>
+                                        </td>
+                                        <td style={{ fontWeight: 600, color: '#f59e0b' }}>{money(monthTotals.retail)}</td>
+                                    </tr>
+                                    <tr className="report-totals-row" style={{ background: 'rgba(181, 148, 88, 0.1)' }}>
+                                        <td className="cell-primary" style={{ fontWeight: 700 }}>Grand Total Sales (Cash + UPI + Retail)</td>
+                                        <td style={{ color: 'var(--color-primary, #b59458)', fontWeight: 800, fontSize: 15 }}>{money(monthTotals.total)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -704,7 +815,7 @@ export default function ManualDailySalesReport() {
                     <div className="report-bottom-meta">
                         {/* Report Note */}
                         <div className="report-note">
-                            Note: Figures shown above are manually entered and stored locally for {branchLabel === 'All Branches' ? 'all branches combined' : `the ${branchLabel} branch`}. Total Sales is the sum of Retail and Service sales for each day. Days shaded outside the calendar month belong to the adjacent month and are excluded from all totals.
+                            Note: Figures shown above are manually entered and stored for {branchLabel === 'All Branches' ? 'all branches combined' : `the ${branchLabel} branch`}. Total Sales is the sum of UPI, Cash, and Retail sales for each day. Days shaded outside the calendar month belong to the adjacent month and are excluded from all totals.
                         </div>
 
                         {/* Sign-off Blocks */}
@@ -772,6 +883,18 @@ export default function ManualDailySalesReport() {
                         setData(manualSalesStore.getAll())
                         showToast('success', `Google Sheets synced! (${result.pulledSales} pulled, ${result.pushedSales} pushed)`)
                     }
+                }}
+            />
+
+            {/* Put Daily Sales Modal (UPI + Cash + Retail = Live Total) */}
+            <PutDailySalesModal
+                isOpen={isPutSalesModalOpen}
+                onClose={() => setIsPutSalesModalOpen(false)}
+                initialBranch={branch === 'all' ? 'Bengaluru' : branch}
+                initialDate={todayIso()}
+                onSaveSuccess={info => {
+                    setData(manualSalesStore.getAll())
+                    showToast('success', `Saved daily sales for ${info.branch} on ${info.date}: UPI ₹${info.upi.toLocaleString('en-IN')} + Cash ₹${info.cash.toLocaleString('en-IN')} + Retail ₹${info.retail.toLocaleString('en-IN')} = Total ₹${info.total.toLocaleString('en-IN')}`)
                 }}
             />
         </div>

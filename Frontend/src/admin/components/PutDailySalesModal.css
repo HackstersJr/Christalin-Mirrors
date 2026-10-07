@@ -1,0 +1,231 @@
+/* Put Daily Sales Modal Styles */
+
+.put-sales-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.put-sales-modal {
+    background: var(--bg-card, #1c1c1e);
+    border: 1px solid var(--border-color, rgba(181, 148, 88, 0.3));
+    border-radius: 14px;
+    width: 100%;
+    max-width: 540px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(181, 148, 88, 0.15);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.put-sales-modal-header {
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    background: linear-gradient(180deg, rgba(181, 148, 88, 0.08) 0%, transparent 100%);
+}
+
+.put-sales-modal-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-bright, #fff);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.put-sales-modal-body {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: calc(85vh - 120px);
+    overflow-y: auto;
+}
+
+.put-sales-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.put-sales-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.put-sales-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary, #a1a1aa);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.put-sales-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.put-sales-input-prefix {
+    position: absolute;
+    left: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted, #71717a);
+    pointer-events: none;
+}
+
+.put-sales-input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-input, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    color: var(--text-bright, #fff);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.15s ease;
+}
+
+.put-sales-input.with-prefix {
+    padding-left: 28px;
+}
+
+.put-sales-input:focus {
+    border-color: var(--color-primary, #b59458);
+    box-shadow: 0 0 0 3px rgba(181, 148, 88, 0.15);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* Number inputs spin remove */
+.put-sales-input::-webkit-outer-spin-button,
+.put-sales-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.put-sales-input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* Live Auto Calculation Box */
+.put-sales-calc-card {
+    background: linear-gradient(135deg, rgba(181, 148, 88, 0.12) 0%, rgba(99, 102, 241, 0.08) 100%);
+    border: 1.5px solid rgba(181, 148, 88, 0.35);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.put-sales-calc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-primary, #b59458);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.put-sales-breakdown-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed rgba(181, 148, 88, 0.25);
+}
+
+.put-sales-chip {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.put-sales-chip-tag {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.put-sales-chip-val {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-bright, #fff);
+    font-variant-numeric: tabular-nums;
+}
+
+.put-sales-op-sign {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-muted, #71717a);
+}
+
+.put-sales-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.put-sales-total-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-bright, #fff);
+}
+
+.put-sales-total-sub {
+    font-size: 11px;
+    color: var(--text-secondary, #a1a1aa);
+}
+
+.put-sales-total-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--color-primary, #b59458);
+    font-variant-numeric: tabular-nums;
+}
+
+.put-sales-modal-footer {
+    padding: 16px 22px;
+    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+    .put-sales-form-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -39,7 +39,7 @@ function buildWeeks(monthKey: string): Week[] {
     return weeks
 }
 
-type DayStats = { clientCount: number; retail: number; service: number; total: number }
+type DayStats = { clientCount: number; cash: number; upi: number; retail: number; service: number; total: number }
 
 function money(n: number) { return `₹${Math.round(n).toLocaleString()}` }
 
@@ -53,12 +53,21 @@ export default function DailySalesReport() {
     function dayStats(iso: string): DayStats {
         const inv = invoices.filter(i => i.date === iso && i.status === 'paid' && (branch === 'all' || i.branch === branch))
         const clientIds = new Set<string>()
-        let retail = 0, service = 0
+        let retail = 0, service = 0, cash = 0, upi = 0
         inv.forEach(i => {
             clientIds.add(i.clientId || i.clientEmail || i.clientName)
             i.items.forEach(it => { if (it.productId) retail += it.total; else service += it.total })
+            if (i.paymentMethod === 'cash') cash += i.total
+            else if (i.paymentMethod === 'upi') upi += i.total
+            else if (i.paymentMethod === 'split' && i.splitPayment) {
+                cash += i.splitPayment.cash || 0
+                upi += i.splitPayment.upi || 0
+            } else {
+                upi += i.total
+            }
         })
-        return { clientCount: clientIds.size, retail, service, total: retail + service }
+        const total = (cash + upi > 0) ? (cash + upi + retail) : (service + retail)
+        return { clientCount: clientIds.size, cash, upi, retail, service, total }
     }
 
     const weeks = buildWeeks(monthKey)
@@ -67,11 +76,13 @@ export default function DailySalesReport() {
         const s = dayStats(d.iso)
         return {
             clientCount: t.clientCount + s.clientCount,
+            cash: t.cash + s.cash,
+            upi: t.upi + s.upi,
             retail: t.retail + s.retail,
             service: t.service + s.service,
             total: t.total + s.total,
         }
-    }, { clientCount: 0, retail: 0, service: 0, total: 0 })
+    }, { clientCount: 0, cash: 0, upi: 0, retail: 0, service: 0, total: 0 })
 
     const branchLabel = branch === 'all' ? 'All Branches' : branch
     const reportNo = `CM/DSR/${branch === 'all' ? 'ALL' : branch.slice(0, 3).toUpperCase()}/${monthKey.replace('-', '')}`
@@ -128,8 +139,13 @@ export default function DailySalesReport() {
                                 const weekLabel = `${new Date(week.days[0].iso + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – ${new Date(week.days[6].iso + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
                                 const stats = week.days.map(d => d.inMonth ? dayStats(d.iso) : null)
                                 const weekTotals = stats.filter((s): s is DayStats => s !== null).reduce((t, s) => ({
-                                    clientCount: t.clientCount + s.clientCount, retail: t.retail + s.retail, service: t.service + s.service, total: t.total + s.total,
-                                }), { clientCount: 0, retail: 0, service: 0, total: 0 })
+                                    clientCount: t.clientCount + s.clientCount,
+                                    cash: t.cash + s.cash,
+                                    upi: t.upi + s.upi,
+                                    retail: t.retail + s.retail,
+                                    service: t.service + s.service,
+                                    total: t.total + s.total,
+                                }), { clientCount: 0, cash: 0, upi: 0, retail: 0, service: 0, total: 0 })
 
                                 return (
                                     <Fragment key={wi}>
@@ -161,19 +177,35 @@ export default function DailySalesReport() {
                                             <td className="dsr-week-total">{weekTotals.clientCount}</td>
                                         </tr>
                                         <tr>
-                                            <td className="cell-primary">Retail Sales</td>
-                                            {stats.map((s, i) => <td key={i}>{s ? money(s.retail) : '—'}</td>)}
-                                            <td className="dsr-week-total">{money(weekTotals.retail)}</td>
+                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>CASH</span>
+                                                <span>Cash Sales</span>
+                                            </td>
+                                            {stats.map((s, i) => <td key={i}>{s ? money(s.cash) : '—'}</td>)}
+                                            <td className="dsr-week-total" style={{ color: '#10b981' }}>{money(weekTotals.cash)}</td>
                                         </tr>
                                         <tr>
-                                            <td className="cell-primary">Service Sales</td>
-                                            {stats.map((s, i) => <td key={i}>{s ? money(s.service) : '—'}</td>)}
-                                            <td className="dsr-week-total">{money(weekTotals.service)}</td>
+                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', fontWeight: 700 }}>UPI</span>
+                                                <span>UPI Sales</span>
+                                            </td>
+                                            {stats.map((s, i) => <td key={i}>{s ? money(s.upi) : '—'}</td>)}
+                                            <td className="dsr-week-total" style={{ color: '#6366f1' }}>{money(weekTotals.upi)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>RETAIL</span>
+                                                <span>Retail Sales</span>
+                                            </td>
+                                            {stats.map((s, i) => <td key={i}>{s ? money(s.retail) : '—'}</td>)}
+                                            <td className="dsr-week-total" style={{ color: '#f59e0b' }}>{money(weekTotals.retail)}</td>
                                         </tr>
                                         <tr className="report-totals-row">
-                                            <td className="cell-primary">Total Sales</td>
+                                            <td className="cell-primary" style={{ fontWeight: 700, color: 'var(--color-primary, #b59458)' }}>
+                                                Total Sales (Cash + UPI + Retail)
+                                            </td>
                                             {stats.map((s, i) => <td key={i}>{s ? money(s.total) : '—'}</td>)}
-                                            <td>{money(weekTotals.total)}</td>
+                                            <td style={{ fontWeight: 800, color: 'var(--color-primary, #b59458)' }}>{money(weekTotals.total)}</td>
                                         </tr>
                                     </Fragment>
                                 )
@@ -189,9 +221,31 @@ export default function DailySalesReport() {
                             <table className="admin-table report-table report-totals-table monthly-totals-table">
                                 <tbody>
                                     <tr><td className="cell-primary">Client Count</td><td>{monthTotals.clientCount.toLocaleString()}</td></tr>
-                                    <tr><td className="cell-primary">Retail Sales</td><td>{money(monthTotals.retail)}</td></tr>
-                                    <tr><td className="cell-primary">Service Sales</td><td>{money(monthTotals.service)}</td></tr>
-                                    <tr className="report-totals-row"><td className="cell-primary">Grand Total Sales</td><td>{money(monthTotals.total)}</td></tr>
+                                    <tr>
+                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>CASH</span>
+                                            <span>Cash Sales</span>
+                                        </td>
+                                        <td style={{ color: '#10b981', fontWeight: 600 }}>{money(monthTotals.cash)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', fontWeight: 700 }}>UPI</span>
+                                            <span>UPI Sales</span>
+                                        </td>
+                                        <td style={{ color: '#6366f1', fontWeight: 600 }}>{money(monthTotals.upi)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>RETAIL</span>
+                                            <span>Retail Sales</span>
+                                        </td>
+                                        <td style={{ color: '#f59e0b', fontWeight: 600 }}>{money(monthTotals.retail)}</td>
+                                    </tr>
+                                    <tr className="report-totals-row">
+                                        <td className="cell-primary" style={{ fontWeight: 700 }}>Grand Total Sales (Cash + UPI + Retail)</td>
+                                        <td style={{ color: 'var(--color-primary, #b59458)', fontWeight: 800 }}>{money(monthTotals.total)}</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>

@@ -390,12 +390,23 @@ export const googleSheetsSyncService = {
 
             if (!allSales[branch]) allSales[branch] = {}
 
-            // Merge: preserve notes if present
+            // Merge: preserve existing upi, cash, notes if present
             const existing = allSales[branch][parsedDate.iso]
+            const finalUpi = existing?.upi || 0
+            const finalCash = existing?.cash || 0
+            const finalRetail = retail || existing?.retail || 0
+            const finalService = service || existing?.service || (finalUpi + finalCash)
+            const finalTotal = (finalUpi + finalCash + finalRetail > 0)
+                ? (finalUpi + finalCash + finalRetail)
+                : (finalService + finalRetail)
+
             allSales[branch][parsedDate.iso] = {
                 clientCount: clientCount || existing?.clientCount || 0,
-                service: service || existing?.service || 0,
-                retail: retail || existing?.retail || 0,
+                upi: existing?.upi,
+                cash: existing?.cash,
+                retail: finalRetail,
+                service: finalService,
+                total: finalTotal,
                 notes: rawNotes || existing?.notes || '',
             }
             updatedCount++
@@ -450,12 +461,13 @@ export const googleSheetsSyncService = {
         for (const [branch, dateMap] of Object.entries(allSales)) {
             if (branch === 'all') continue
             for (const [date, rec] of Object.entries(dateMap)) {
-                if (rec.clientCount > 0 || rec.service > 0 || rec.retail > 0 || (rec.notes && rec.notes.trim())) {
+                const serviceVal = (rec.upi || 0) + (rec.cash || 0) > 0 ? ((rec.upi || 0) + (rec.cash || 0)) : (rec.service || 0)
+                if (rec.clientCount > 0 || serviceVal > 0 || rec.retail > 0 || (rec.notes && rec.notes.trim())) {
                     flatList.push({
                         date,
                         branch,
                         clientCount: rec.clientCount,
-                        service: rec.service,
+                        service: serviceVal,
                         retail: rec.retail,
                         notes: rec.notes || '',
                     })

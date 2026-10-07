@@ -3,8 +3,11 @@ import type { Invoice } from './types'
 
 export interface ManualDayRecord {
     clientCount: number
+    upi?: number
+    cash?: number
     retail: number
     service: number
+    total?: number
     notes?: string
 }
 
@@ -17,6 +20,27 @@ const STORAGE_KEY = 'cm_manual_daily_sales_v1'
 export const OPERATIONAL_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum']
 export const UPCOMING_BRANCHES = ['Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)']
 export const DEFAULT_BRANCHES = [...OPERATIONAL_BRANCHES, ...UPCOMING_BRANCHES]
+
+// Metadata encoding helpers to preserve UPI, Cash, Retail, and Total even if DB columns aren't migrated yet
+export function encodeSalesNotes(cleanNotes: string, upi: number, cash: number, retail: number, total: number): string {
+    const base = (cleanNotes || '').replace(/\s*\[CM_SALES:[^\]]*\]/g, '').trim()
+    const meta = `[CM_SALES:upi=${Math.round(upi)}:cash=${Math.round(cash)}:retail=${Math.round(retail)}:total=${Math.round(total)}]`
+    return base ? `${base} ${meta}` : meta
+}
+
+export function decodeSalesNotes(rawNotes: string): { cleanNotes: string; upi?: number; cash?: number; retail?: number; total?: number } {
+    if (!rawNotes) return { cleanNotes: '' }
+    const match = rawNotes.match(/\[CM_SALES:upi=([0-9.]+):cash=([0-9.]+):retail=([0-9.]+):total=([0-9.]+)\]/)
+    const cleanNotes = rawNotes.replace(/\s*\[CM_SALES:[^\]]*\]/g, '').trim()
+    if (!match) return { cleanNotes }
+    return {
+        cleanNotes,
+        upi: parseFloat(match[1]),
+        cash: parseFloat(match[2]),
+        retail: parseFloat(match[3]),
+        total: parseFloat(match[4]),
+    }
+}
 
 // Debounce timer map for cell inputs
 const pendingDebounce: Record<string, ReturnType<typeof setTimeout>> = {}
@@ -56,8 +80,11 @@ export const manualSalesStore = {
         const data = this.getAll()
         if (branch === 'all' || branch === 'all_operational' || branch === 'consolidated_all') {
             let clientCount = 0
+            let upi = 0
+            let cash = 0
             let retail = 0
             let service = 0
+            let total = 0
             let notes = ''
 
             const targetList = branch === 'all_operational' ? OPERATIONAL_BRANCHES : DEFAULT_BRANCHES
@@ -66,31 +93,72 @@ export const manualSalesStore = {
                 const rec = data[b]?.[isoDate]
                 if (rec) {
                     hasBranchEntry = true
+                    const rUpi = rec.upi || 0
+                    const rCash = rec.cash || 0
+                    const rRetail = rec.retail || 0
+                    const rService = (rUpi + rCash > 0) ? (rUpi + rCash) : (rec.service || 0)
+                    const rTotal = (rec.total !== undefined && rec.total > 0)
+                        ? rec.total
+                        : (rUpi + rCash + rRetail > 0 ? (rUpi + rCash + rRetail) : (rService + rRetail))
+
                     clientCount += rec.clientCount || 0
-                    retail += rec.retail || 0
-                    service += rec.service || 0
+                    upi += rUpi
+                    cash += rCash
+                    retail += rRetail
+                    service += rService
+                    total += rTotal
                     if (rec.notes) notes = notes ? `${notes}; ${b}: ${rec.notes}` : `${b}: ${rec.notes}`
                 }
             }
 
             if (!hasBranchEntry && data[branch]?.[isoDate]) {
                 const direct = data[branch][isoDate]
+                const dUpi = direct.upi || 0
+                const dCash = direct.cash || 0
+                const dRetail = direct.retail || 0
+                const dService = (dUpi + dCash > 0) ? (dUpi + dCash) : (direct.service || 0)
+                const dTotal = (direct.total !== undefined && direct.total > 0)
+                    ? direct.total
+                    : (dUpi + dCash + dRetail > 0 ? (dUpi + dCash + dRetail) : (dService + dRetail))
+
                 return {
                     clientCount: direct.clientCount || 0,
-                    retail: direct.retail || 0,
-                    service: direct.service || 0,
+                    upi: dUpi,
+                    cash: dCash,
+                    retail: dRetail,
+                    service: dService,
+                    total: dTotal,
                     notes: direct.notes || '',
                 }
             }
 
-            return { clientCount, retail, service, notes }
+            return {
+                clientCount,
+                upi,
+                cash,
+                retail,
+                service,
+                total: total > 0 ? total : (upi + cash + retail),
+                notes
+            }
         }
 
         const rec = data[branch]?.[isoDate]
+        const upi = rec?.upi || 0
+        const cash = rec?.cash || 0
+        const retail = rec?.retail || 0
+        const service = (upi + cash > 0) ? (upi + cash) : (rec?.service || 0)
+        const total = (rec?.total !== undefined && rec.total > 0)
+            ? rec.total
+            : (upi + cash + retail > 0 ? (upi + cash + retail) : (service + retail))
+
         return {
             clientCount: rec?.clientCount || 0,
-            retail: rec?.retail || 0,
-            service: rec?.service || 0,
+            upi,
+            cash,
+            retail,
+            service,
+            total,
             notes: rec?.notes || '',
         }
     },
@@ -116,11 +184,24 @@ export const manualSalesStore = {
                     const b = row.branch || 'Bengaluru'
                     const d = row.date
                     if (!localData[b]) localData[b] = {}
+
+                    const decoded = decodeSalesNotes(row.notes || '')
+                    const rUpi = (row.upi !== undefined && row.upi !== null) ? Number(row.upi) : (decoded.upi ?? (localData[b][d]?.upi ?? 0))
+                    const rCash = (row.cash !== undefined && row.cash !== null) ? Number(row.cash) : (decoded.cash ?? (localData[b][d]?.cash ?? 0))
+                    const rRetail = (row.retail !== undefined && row.retail !== null) ? Number(row.retail) : (decoded.retail ?? (localData[b][d]?.retail ?? 0))
+                    const rService = (row.service !== undefined && row.service !== null) ? Number(row.service) : (rUpi + rCash)
+                    const rTotal = (row.total !== undefined && row.total !== null)
+                        ? Number(row.total)
+                        : (decoded.total ?? (rUpi + rCash + rRetail))
+
                     localData[b][d] = {
                         clientCount: Number(row.clientCount) || 0,
-                        retail: Number(row.retail) || 0,
-                        service: Number(row.service) || 0,
-                        notes: row.notes || '',
+                        upi: rUpi,
+                        cash: rCash,
+                        retail: rRetail,
+                        service: rService,
+                        total: rTotal,
+                        notes: decoded.cleanNotes,
                     }
                 }
                 this.saveAll(localData)
@@ -144,12 +225,29 @@ export const manualSalesStore = {
     ) {
         const data = this.getAll()
         if (!data[branch]) data[branch] = {}
-        const prev = data[branch][isoDate] || { clientCount: 0, retail: 0, service: 0, notes: '' }
+        const prev = data[branch][isoDate] || { clientCount: 0, upi: 0, cash: 0, retail: 0, service: 0, total: 0, notes: '' }
         
+        const nextUpi = update.upi !== undefined ? Math.max(0, update.upi) : (prev.upi || 0)
+        const nextCash = update.cash !== undefined ? Math.max(0, update.cash) : (prev.cash || 0)
+        const nextRetail = update.retail !== undefined ? Math.max(0, update.retail) : (prev.retail || 0)
+        
+        // Service is sum of UPI + Cash for services, or passed explicitly
+        const nextService = update.service !== undefined
+            ? Math.max(0, update.service)
+            : (nextUpi + nextCash > 0 ? (nextUpi + nextCash) : prev.service)
+
+        // Total = UPI + Cash + Retail
+        const nextTotal = update.total !== undefined
+            ? Math.max(0, update.total)
+            : (nextUpi + nextCash + nextRetail)
+
         const merged: ManualDayRecord = {
             clientCount: update.clientCount !== undefined ? Math.max(0, update.clientCount) : prev.clientCount,
-            retail: update.retail !== undefined ? Math.max(0, update.retail) : prev.retail,
-            service: update.service !== undefined ? Math.max(0, update.service) : prev.service,
+            upi: nextUpi,
+            cash: nextCash,
+            retail: nextRetail,
+            service: nextService,
+            total: nextTotal,
             notes: update.notes !== undefined ? update.notes : prev.notes,
         }
 
@@ -172,19 +270,37 @@ export const manualSalesStore = {
         pendingDebounce[debounceKey] = setTimeout(async () => {
             delete pendingDebounce[debounceKey]
             try {
+                // Try saving with upi, cash, retail, service, total, and metadata in notes
+                const total = (merged.upi || 0) + (merged.cash || 0) + (merged.retail || 0)
+                const payload: any = {
+                    branch,
+                    date: isoDate,
+                    clientCount: merged.clientCount,
+                    retail: merged.retail,
+                    service: (merged.upi || 0) + (merged.cash || 0) > 0 ? ((merged.upi || 0) + (merged.cash || 0)) : merged.service,
+                    upi: merged.upi || 0,
+                    cash: merged.cash || 0,
+                    total: total,
+                    notes: encodeSalesNotes(merged.notes || '', merged.upi || 0, merged.cash || 0, merged.retail || 0, total),
+                    updatedAt: new Date().toISOString()
+                }
+
                 const { error } = await supabase
                     .from('ManualDailySales')
-                    .upsert({
-                        branch,
-                        date: isoDate,
-                        clientCount: merged.clientCount,
-                        retail: merged.retail,
-                        service: merged.service,
-                        notes: merged.notes || '',
-                        updatedAt: new Date().toISOString()
-                    }, { onConflict: 'branch,date' })
+                    .upsert(payload, { onConflict: 'branch,date' })
 
-                if (error) {
+                if (error && (error.code === '42703' || error.message.includes('column'))) {
+                    // Fallback without upi/cash/total columns if DB table hasn't added columns yet
+                    // Notes safely contains the encoded backup metadata
+                    delete payload.upi
+                    delete payload.cash
+                    delete payload.total
+                    await supabase
+                        .from('ManualDailySales')
+                        .upsert(payload, { onConflict: 'branch,date' })
+                }
+
+                if (error && !error.message.includes('column')) {
                     console.warn('Supabase upsert note:', error.message)
                     onSyncStatus?.('offline')
                 } else {
@@ -193,7 +309,7 @@ export const manualSalesStore = {
             } catch {
                 onSyncStatus?.('offline')
             }
-        }, 600)
+        }, 500)
     },
 
     /**
@@ -232,25 +348,17 @@ export const manualSalesStore = {
         const data = this.getAll()
         const targetBranches = branch === 'all' ? DEFAULT_BRANCHES : [branch]
         let populatedDays = 0
-        const upsertBatch: Array<{
-            branch: string
-            date: string
-            clientCount: number
-            retail: number
-            service: number
-            notes: string
-            updatedAt: string
-        }> = []
+        const upsertBatch: Array<any> = []
 
         for (const b of targetBranches) {
             if (!data[b]) data[b] = {}
             const branchInvoices = invoices.filter(i => i.date.startsWith(monthKey) && i.status === 'paid' && i.branch === b)
             
             // Group by date
-            const dateMap: Record<string, { clientIds: Set<string>; retail: number; service: number }> = {}
+            const dateMap: Record<string, { clientIds: Set<string>; retail: number; service: number; upi: number; cash: number }> = {}
             for (const inv of branchInvoices) {
                 if (!dateMap[inv.date]) {
-                    dateMap[inv.date] = { clientIds: new Set(), retail: 0, service: 0 }
+                    dateMap[inv.date] = { clientIds: new Set(), retail: 0, service: 0, upi: 0, cash: 0 }
                 }
                 dateMap[inv.date].clientIds.add(inv.clientId || inv.clientEmail || inv.clientName)
                 for (const item of inv.items || []) {
@@ -260,14 +368,34 @@ export const manualSalesStore = {
                         dateMap[inv.date].service += item.total || 0
                     }
                 }
+                if (inv.paymentMethod === 'upi') {
+                    dateMap[inv.date].upi += inv.total || 0
+                } else if (inv.paymentMethod === 'cash') {
+                    dateMap[inv.date].cash += inv.total || 0
+                } else if (inv.paymentMethod === 'split' && inv.splitPayment) {
+                    dateMap[inv.date].upi += inv.splitPayment.upi || 0
+                    dateMap[inv.date].cash += inv.splitPayment.cash || 0
+                } else {
+                    dateMap[inv.date].upi += inv.total || 0
+                }
             }
 
             for (const [isoDate, stats] of Object.entries(dateMap)) {
+                const u = Math.round(stats.upi)
+                const c = Math.round(stats.cash)
+                const r = Math.round(stats.retail)
+                const s = Math.round(stats.service) || (u + c)
+                const tot = u + c + r
+
+                const cleanNote = `Prefilled from ${branchInvoices.filter(i => i.date === isoDate).length} system invoices`
                 const rec: ManualDayRecord = {
                     clientCount: stats.clientIds.size,
-                    retail: Math.round(stats.retail),
-                    service: Math.round(stats.service),
-                    notes: `Prefilled from ${branchInvoices.filter(i => i.date === isoDate).length} system invoices`,
+                    upi: u,
+                    cash: c,
+                    retail: r,
+                    service: s,
+                    total: tot,
+                    notes: cleanNote,
                 }
                 data[b][isoDate] = rec
                 populatedDays++
@@ -278,7 +406,10 @@ export const manualSalesStore = {
                     clientCount: rec.clientCount,
                     retail: rec.retail,
                     service: rec.service,
-                    notes: rec.notes || '',
+                    upi: u,
+                    cash: c,
+                    total: tot,
+                    notes: encodeSalesNotes(cleanNote, u, c, r, tot),
                     updatedAt: new Date().toISOString()
                 })
             }
