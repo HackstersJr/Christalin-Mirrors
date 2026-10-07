@@ -71,8 +71,8 @@ export default function Footer() {
                             </li>
 
                             <li style={{ marginTop: 12 }}><strong>Kalaburagi</strong></li>
-                            <li>Orchid Mall, Mahaveer Nagar</li>
-                            <li>Khuba Plot, Kalaburagi 585105</li>
+                            <li>2nd floor, Orchid Mall, Mahaveer Nagar</li>
+                            <li>Khuba Plot, Brhampur, Kalaburagi 585102</li>
                             <li>
                                 <a
                                     href="tel:+91918715909"
@@ -84,8 +84,8 @@ export default function Footer() {
                             </li>
 
                             <li style={{ marginTop: 12 }}><strong>Belgaum</strong></li>
-                            <li>College Road</li>
-                            <li>Belgaum 590001</li>
+                            <li>Ground Floor, Shop No. 2 Jadhav Nagar</li>
+                            <li>Double Rd, Doordarshan Nagar, Belagavi 590019</li>
                             <li>
                                 <a
                                     href="tel:+918050153999"

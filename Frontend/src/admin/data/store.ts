@@ -20,11 +20,11 @@ const KEYS = {
 }
 
 function paisaToRupees(paisa: number): number {
-    return Math.round(paisa / 100)
+    return Number(((Number(paisa) || 0) / 100).toFixed(2))
 }
 
 function rupeesToPaisa(rupees: number): number {
-    return Math.round(rupees * 100)
+    return Math.round((Number(rupees) || 0) * 100)
 }
 
 // Branch name helper

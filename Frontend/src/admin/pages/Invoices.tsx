@@ -103,13 +103,16 @@ function InvoiceDetail() {
         text += `Date: ${new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN')}\n`;
         text += `Client: ${invoice.clientName}\n\n`;
         invoice.items.forEach(i => {
-            if(i.service) text += `${i.service} (x${i.quantity}) - ₹${i.total}\n`;
+            if(i.service) text += `${i.service} (x${i.quantity}) - ₹${Number(i.total || 0).toFixed(2)}\n`;
         });
-        text += `\nSubtotal: ₹${invoice.subtotal}\n`;
-        if (invoice.discountAmount > 0) text += `Discount: -₹${invoice.discountAmount}\n`;
-        text += `CGST (${invoice.taxPercent / 2}%): ₹${Math.floor(invoice.taxAmount / 2)}\n`;
-        text += `SGST (${invoice.taxPercent / 2}%): ₹${invoice.taxAmount - Math.floor(invoice.taxAmount / 2)}\n`;
-        text += `*Total: ₹${invoice.total}*\n\n`;
+        const taxable = Math.max(0, (invoice.subtotal || 0) - (invoice.discountAmount || 0));
+        const halfRate = (invoice.taxPercent || 5) / 2;
+        const halfTax = Number(((taxable * halfRate) / 100).toFixed(2)) || Number(((invoice.taxAmount || 0) / 2).toFixed(2));
+        text += `\nSubtotal: ₹${Number(invoice.subtotal || 0).toFixed(2)}\n`;
+        if (invoice.discountAmount > 0) text += `Discount: -₹${Number(invoice.discountAmount || 0).toFixed(2)}\n`;
+        text += `CGST (${halfRate}%): ₹${halfTax.toFixed(2)}\n`;
+        text += `SGST (${halfRate}%): ₹${halfTax.toFixed(2)}\n`;
+        text += `*Total: ₹${Number(invoice.total || 0).toFixed(2)}*\n\n`;
         text += `Thank you for your visit!`;
         return text;
     }
@@ -216,40 +219,47 @@ function InvoiceDetail() {
                             <div key={i} className="preview-row">
                                 <div className="preview-row-name">
                                     {item.service}
-                                    <div className="preview-row-qty">{item.quantity} × ₹{item.unitPrice.toLocaleString()}</div>
+                                    <div className="preview-row-qty">{item.quantity} × ₹{Number(item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                 </div>
-                                <div className="preview-row-total">₹{item.total.toLocaleString()}</div>
+                                <div className="preview-row-total">₹{Number(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             </div>
                         ) : null)}
                     </div>
 
-                    <div className="preview-totals">
-                        <div className="preview-sub">
-                            <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString()}</span>
-                        </div>
-                        {invoice.discountAmount > 0 && (
-                            <div className="preview-discount">
-                                <span>Discount ({invoice.discountPercent}%)</span><span>-₹{invoice.discountAmount.toLocaleString()}</span>
+                    {(() => {
+                        const taxable = Math.max(0, (invoice.subtotal || 0) - (invoice.discountAmount || 0));
+                        const halfRate = (invoice.taxPercent || 5) / 2;
+                        const halfTax = Number(((taxable * halfRate) / 100).toFixed(2)) || Number(((invoice.taxAmount || 0) / 2).toFixed(2));
+                        return (
+                            <div className="preview-totals">
+                                <div className="preview-sub">
+                                    <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                {invoice.discountAmount > 0 && (
+                                    <div className="preview-discount">
+                                        <span>Discount ({invoice.discountPercent}%)</span><span>-₹{invoice.discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                )}
+                                <div className="preview-tax">
+                                    <span>CGST ({halfRate}%)</span><span>₹{halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="preview-tax">
+                                    <span>SGST ({halfRate}%)</span><span>₹{halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="preview-grand-total">
+                                    <span>Total</span><span>₹{invoice.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                                    <span>Amount Paid</span><span>₹{invoice.amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                {invoice.total - invoice.amountPaid > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--danger)' }}>
+                                        <span>Balance Due</span><span>₹{(invoice.total - invoice.amountPaid).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                        <div className="preview-tax">
-                            <span>CGST ({invoice.taxPercent / 2}%)</span><span>₹{Math.floor(invoice.taxAmount / 2).toLocaleString()}</span>
-                        </div>
-                        <div className="preview-tax">
-                            <span>SGST ({invoice.taxPercent / 2}%)</span><span>₹{(invoice.taxAmount - Math.floor(invoice.taxAmount / 2)).toLocaleString()}</span>
-                        </div>
-                        <div className="preview-grand-total">
-                            <span>Total</span><span>₹{invoice.total.toLocaleString()}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
-                            <span>Amount Paid</span><span>₹{invoice.amountPaid.toLocaleString()}</span>
-                        </div>
-                        {invoice.total - invoice.amountPaid > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--danger)' }}>
-                                <span>Balance Due</span><span>₹{(invoice.total - invoice.amountPaid).toLocaleString()}</span>
-                            </div>
-                        )}
-                    </div>
+                        );
+                    })()}
 
                     {invoice.notes && (
                         <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -368,8 +378,8 @@ function InvoiceList() {
             {/* Stats */}
             <div className="admin-stats-grid">
                 <div className="admin-stat-card" style={{ borderTop: '2px solid rgba(255, 255, 255, 0.15)' }}><div className="stat-label">Total Invoices</div><div className="stat-value">{invoices.length}</div></div>
-                <div className="admin-stat-card" style={{ borderTop: '2px solid rgba(16, 185, 129, 0.4)' }}><div className="stat-label">Revenue (Paid)</div><div className="stat-value green">₹{totalRevenue.toLocaleString()}</div></div>
-                <div className="admin-stat-card" style={{ borderTop: outstanding > 0 ? '2px solid rgba(245, 158, 11, 0.4)' : '2px solid rgba(16, 185, 129, 0.4)' }}><div className="stat-label">Outstanding</div><div className="stat-value" style={{ color: outstanding > 0 ? 'var(--warning-light)' : 'var(--success-light)' }}>₹{outstanding.toLocaleString()}</div></div>
+                <div className="admin-stat-card" style={{ borderTop: '2px solid rgba(16, 185, 129, 0.4)' }}><div className="stat-label">Revenue (Paid)</div><div className="stat-value green">₹{totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+                <div className="admin-stat-card" style={{ borderTop: outstanding > 0 ? '2px solid rgba(245, 158, 11, 0.4)' : '2px solid rgba(16, 185, 129, 0.4)' }}><div className="stat-label">Outstanding</div><div className="stat-value" style={{ color: outstanding > 0 ? 'var(--warning-light)' : 'var(--success-light)' }}>₹{outstanding.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
             </div>
 
             {/* Create Invoice Form */}
@@ -474,7 +484,7 @@ function InvoiceList() {
                                 </td>
                                 <td>{new Date(inv.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
                                 <td className="cell-secondary">{inv.items.length} item{inv.items.length > 1 ? 's' : ''}</td>
-                                <td style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>₹{inv.total.toLocaleString()}</td>
+                                <td style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>₹{inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                 <td>
                                     <span className={`status-badge ${inv.status === 'paid' ? 'confirmed' : inv.status === 'sent' ? 'pending' : inv.status}`}>
                                         <span className="status-dot"></span>
@@ -525,7 +535,7 @@ function InvoiceList() {
                             </div>
                             <div className="mobile-card-meta-item full">
                                 <span className="mobile-card-meta-label">Total</span>
-                                <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>₹{inv.total.toLocaleString()}</span>
+                                <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>₹{inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                         </div>
                         <div className="mobile-card-actions" style={{ justifyContent: 'flex-end', gap: 6 }}>

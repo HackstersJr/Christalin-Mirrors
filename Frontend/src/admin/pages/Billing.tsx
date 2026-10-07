@@ -112,12 +112,17 @@ export default function Billing() {
     const [previewMode, setPreviewMode] = useState<'seznik' | 'standard'>('seznik');
 
     // Derived Financials
-    const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-    const discountAmount = discountType === 'percent' ? Math.round(subtotal * (discountValue / 100)) : discountValue;
-    const taxableAmount = subtotal - discountAmount;
-    const taxAmount = Math.round(taxableAmount * (taxPercent / 100));
-    const total = taxableAmount + taxAmount;
-    const changeToReturn = amountReceived - total;
+    const subtotal = Number(items.reduce((sum, item) => sum + (Number(item.total) || 0), 0).toFixed(2));
+    const discountAmount = discountType === 'percent'
+        ? Number(((subtotal * discountValue) / 100).toFixed(2))
+        : Number((discountValue || 0).toFixed(2));
+    const taxableAmount = Math.max(0, Number((subtotal - discountAmount).toFixed(2)));
+    const halfTaxPercent = taxPercent / 2;
+    const cgstAmount = Number(((taxableAmount * halfTaxPercent) / 100).toFixed(2));
+    const sgstAmount = Number(((taxableAmount * halfTaxPercent) / 100).toFixed(2));
+    const taxAmount = Number((cgstAmount + sgstAmount).toFixed(2));
+    const total = Number((taxableAmount + taxAmount).toFixed(2));
+    const changeToReturn = Number((amountReceived - total).toFixed(2));
 
     // Pseudo-invoice for live SEZNIK Veer (32-column Font A) preview
     const livePreviewInvoice: Invoice = useMemo(() => {
@@ -443,11 +448,14 @@ export default function Billing() {
         lastInvoice.items.forEach(i => {
             text += `${i.service} (x${i.quantity}) - ₹${i.total}\n`;
         });
-        text += `\nSubtotal: ₹${lastInvoice.subtotal}\n`;
-        if (lastInvoice.discountAmount > 0) text += `Discount: -₹${lastInvoice.discountAmount}\n`;
-        text += `CGST (${lastInvoice.taxPercent / 2}%): ₹${Math.floor(lastInvoice.taxAmount / 2)}\n`;
-        text += `SGST (${lastInvoice.taxPercent / 2}%): ₹${lastInvoice.taxAmount - Math.floor(lastInvoice.taxAmount / 2)}\n`;
-        text += `*Total: ₹${lastInvoice.total}*\n\n`;
+        const lastTaxable = Math.max(0, (lastInvoice.subtotal || 0) - (lastInvoice.discountAmount || 0));
+        const lastHalfRate = (lastInvoice.taxPercent || 5) / 2;
+        const lastHalfTax = Number(((lastTaxable * lastHalfRate) / 100).toFixed(2)) || Number(((lastInvoice.taxAmount || 0) / 2).toFixed(2));
+        text += `\nSubtotal: ₹${Number(lastInvoice.subtotal || 0).toFixed(2)}\n`;
+        if (lastInvoice.discountAmount > 0) text += `Discount: -₹${Number(lastInvoice.discountAmount || 0).toFixed(2)}\n`;
+        text += `CGST (${lastHalfRate}%): ₹${lastHalfTax.toFixed(2)}\n`;
+        text += `SGST (${lastHalfRate}%): ₹${lastHalfTax.toFixed(2)}\n`;
+        text += `*Total: ₹${Number(lastInvoice.total || 0).toFixed(2)}*\n\n`;
         text += `Thank you for your visit!`;
         
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
@@ -459,7 +467,7 @@ export default function Billing() {
                 <div className="billing-success-content" style={{ maxWidth: 620, width: '100%' }}>
                     <div className="success-icon-wrapper"><Check size={56} className="success-icon" /></div>
                     <h1 className="success-title">Payment Confirmed</h1>
-                    <div className="success-amount">₹{lastInvoice.total.toLocaleString()}</div>
+                    <div className="success-amount">₹{lastInvoice.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     <p className="success-meta">{lastInvoice.clientName} • {lastInvoice.invoiceNumber}</p>
                     
                     <div className="success-actions" style={{ flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
@@ -787,7 +795,7 @@ export default function Billing() {
                 {/* Action Buttons */}
                 <div className="billing-main-actions">
                     <button className="admin-btn admin-btn-secondary" onClick={handleSaveDraft} disabled={isConfirmingPayment}>Save as Draft</button>
-                    <button className="admin-btn admin-btn-primary premium-btn" onClick={() => setShowPayModal(true)}>⚡ Collect Payment - ₹{total.toLocaleString()}</button>
+                    <button className="admin-btn admin-btn-primary premium-btn" onClick={() => setShowPayModal(true)}>⚡ Collect Payment - ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</button>
                 </div>
             </div>
 
@@ -839,37 +847,37 @@ export default function Billing() {
                                 <div key={idx} className="preview-row">
                                     <div className="preview-row-name">
                                         {item.service}
-                                        <div className="preview-row-qty">{item.quantity} × ₹{item.unitPrice}</div>
+                                        <div className="preview-row-qty">{item.quantity} × ₹{Number(item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     </div>
-                                    <div className="preview-row-total">₹{item.total.toLocaleString()}</div>
+                                    <div className="preview-row-total">₹{Number(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                 </div>
                             ) : null)}
                         </div>
 
                         <div className="preview-totals">
                             <div className="preview-sub">
-                                <span>Subtotal</span><span>₹{subtotal.toLocaleString()}</span>
+                                <span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             {discountAmount > 0 && (
                                 <div className="preview-discount">
-                                    <span>Discount</span><span>-₹{discountAmount.toLocaleString()}</span>
+                                    <span>Discount</span><span>-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             )}
                             <div className="preview-tax">
-                                <span>CGST ({(taxPercent / 2)}%)</span><span>₹{Math.floor(taxAmount / 2).toLocaleString()}</span>
+                                <span>CGST ({halfTaxPercent}%)</span><span>₹{cgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             <div className="preview-tax">
-                                <span>SGST ({(taxPercent / 2)}%)</span><span>₹{(taxAmount - Math.floor(taxAmount / 2)).toLocaleString()}</span>
+                                <span>SGST ({halfTaxPercent}%)</span><span>₹{sgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             <div className="preview-grand-total">
-                                <span>Total</span><span>₹{total.toLocaleString()}</span>
+                                <span>Total</span><span>₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                         </div>
 
                         <div className="preview-footer">
                             <span className="preview-payment-badge">{paymentMethod}</span>
                             {paymentMethod === 'cash' && changeToReturn > 0 && (
-                                <div className="preview-change">Change: ₹{changeToReturn}</div>
+                                <div className="preview-change">Change: ₹{changeToReturn.toFixed(2)}</div>
                             )}
                             <div className="preview-thanks">Thank you! Visit again — Team Christalin Mirrors</div>
                             <div className="preview-watermark">Christalin Mirrors — {selectedBranch}</div>
@@ -886,7 +894,7 @@ export default function Billing() {
                 <div className="billing-modal-overlay">
                     <div className="billing-modal">
                         <h2>Confirm Payment</h2>
-                        <div className="modal-total">₹{total.toLocaleString()}</div>
+                        <div className="modal-total">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div className="modal-summary">
                             <div>Client: <strong>{selectedClient === 'walk-in' ? 'Walk-in Guest' : selectedClient ? selectedClient.name : 'None'}</strong></div>
                             <div>Items: <strong>{items.length}</strong></div>
@@ -896,8 +904,8 @@ export default function Billing() {
                         {paymentMethod === 'cash' && (
                             <div className="modal-cash-input">
                                 <label>Amount Received</label>
-                                <input className="admin-form-input large-input text-center" type="number" value={amountReceived} onChange={e => setAmountReceived(parseInt(e.target.value) || 0)} autoFocus />
-                                {changeToReturn > 0 && <div className="modal-change">Return Change: ₹{changeToReturn}</div>}
+                                <input className="admin-form-input large-input text-center" type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(parseFloat(e.target.value) || 0)} autoFocus />
+                                {changeToReturn > 0 && <div className="modal-change">Return Change: ₹{changeToReturn.toFixed(2)}</div>}
                             </div>
                         )}
 

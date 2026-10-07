@@ -42,12 +42,22 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
 
     const ean13Code = calculateEan13(invoice.invoiceNumber)
 
-    // Generate strict 32-column plain text (no QR code scan per request)
+    // Generate strict 32-column plain text for 58mm roll (omitBrandHeader: true so logo/name/tagline appears only ONCE at the top)
     const receipt32ColText = generate32ColReceiptText(invoice, {
         branchAddress: customAddress,
         branchPhone: customPhone,
         showUpiQr: false,
         showEan13: showBarcode,
+        omitBrandHeader: true,
+    })
+
+    // Full 32-col text including ASCII branding for raw .txt download and copy
+    const fullReceipt32ColText = generate32ColReceiptText(invoice, {
+        branchAddress: customAddress,
+        branchPhone: customPhone,
+        showUpiQr: false,
+        showEan13: showBarcode,
+        omitBrandHeader: false,
     })
 
     // Generate optional EAN-13 / Code128 Barcode
@@ -141,7 +151,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
     // Copy exact 32-col plain text
     const handleCopyText = async () => {
         try {
-            await navigator.clipboard.writeText(receipt32ColText)
+            await navigator.clipboard.writeText(fullReceipt32ColText)
             setIsCopied(true)
             setTimeout(() => setIsCopied(false), 2000)
         } catch (_) {}
@@ -149,7 +159,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
 
     // Download formatted .txt file
     const handleDownloadTxt = () => {
-        const blob = new Blob([receipt32ColText], { type: 'text/plain;charset=utf-8' })
+        const blob = new Blob([fullReceipt32ColText], { type: 'text/plain;charset=utf-8' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -290,7 +300,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                             className="admin-form-input"
                             value={customAddress}
                             onChange={e => setCustomAddress(e.target.value)}
-                            placeholder="e.g. College Road, Belgaum 590001"
+                            placeholder="e.g. Ground Floor, Shop No. 2 Jadhav Nagar, Belagavi 590019"
                             style={{ flex: 1, padding: '6px 10px', fontSize: 12 }}
                         />
                         <button

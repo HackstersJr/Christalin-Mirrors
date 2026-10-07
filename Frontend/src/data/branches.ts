@@ -33,7 +33,7 @@ export const branches: Branch[] = [
         id: 'branch_klb',
         name: 'CM — Kalaburagi (Gulbarga)',
         city: 'Kalaburagi, Karnataka',
-        address: 'Orchid Mall, Mahaveer Nagar, Khuba Plot, Brahmpur, Kalaburagi 585105',
+        address: '2nd floor, Orchid Mall, Mahaveer Nagar, Khuba Plot, Brhampur, Kalaburagi, Karnataka 585102',
         hours: 'Everyday: 10:00 AM – 9:00 PM',
         phone: '+91 918715909',
         mapUrl: 'https://maps.google.com/?q=Orchid+Mall+Kalaburagi',
@@ -44,7 +44,7 @@ export const branches: Branch[] = [
         id: 'branch_bgm',
         name: 'CM — Belgaum (Belagavi)',
         city: 'Belgaum, Karnataka',
-        address: 'College Road, Belgaum 590001',
+        address: 'Ground Floor, Shop No. 2 Jadhav Nagar, Double Rd, Doordarshan Nagar, Belagavi, Karnataka 590019',
         hours: 'Everyday: 10:00 AM – 9:00 PM',
         phone: '+91 8050153999',
         mapUrl: 'https://maps.app.goo.gl/yyaWwhcgf2MnbfbP8',
@@ -104,7 +104,7 @@ export const bookableBranches = branches.filter(b => b.status === 'operational' 
 // Looks up a branch's address by its name (e.g. "Belgaum", "Bengaluru", "Kalaburagi"),
 // checking localStorage overrides first, then registered branch data.
 export function getBranchAddress(branchName?: string): string {
-    if (!branchName) return 'College Road, Belgaum 590001'
+    if (!branchName) return 'Ground Floor, Shop No. 2 Jadhav Nagar, Double Rd, Doordarshan Nagar, Belagavi, Karnataka 590019'
     const cleanBranch = branchName.replace('CM — ', '').replace(/\s*\([^)]*\)$/, '').trim()
 
     // 1. Check custom user-defined override from localStorage
@@ -146,13 +146,13 @@ export function getBranchAddress(branchName?: string): string {
 
     // 3. Robust branch defaults
     if (lower.includes('belg') || lower.includes('bgm')) {
-        return 'College Road, Belgaum 590001'
+        return 'Ground Floor, Shop No. 2 Jadhav Nagar, Double Rd, Doordarshan Nagar, Belagavi, Karnataka 590019'
     }
     if (lower.includes('beng') || lower.includes('blr')) {
         return 'Century Ethos Club House, Bellary Rd, Bengaluru 560092'
     }
-    if (lower.includes('kala') || lower.includes('gulb') || lower.includes('klb')) {
-        return 'Orchid Mall, Mahaveer Nagar, Khuba Plot, Brahmpur, Kalaburagi 585105'
+    if (lower.includes('kala') || lower.includes('gulb') || lower.includes('klb') || lower.includes('brham')) {
+        return '2nd floor, Orchid Mall, Mahaveer Nagar, Khuba Plot, Brhampur, Kalaburagi, Karnataka 585102'
     }
     if (lower.includes('yelah')) {
         return 'Major Arterial Rd, Yelahanka New Town, Bengaluru 560064'
@@ -161,7 +161,7 @@ export function getBranchAddress(branchName?: string): string {
         return 'BM Road, Hassan 573201'
     }
 
-    return 'College Road, Belgaum 590001'
+    return 'Ground Floor, Shop No. 2 Jadhav Nagar, Double Rd, Doordarshan Nagar, Belagavi, Karnataka 590019'
 }
 
 // Get phone number for a branch

@@ -31,17 +31,24 @@ export function toCp437Ascii(text: string): string {
 }
 
 /**
- * Format currency amount for CP437 (using "Rs." prefix without Unicode rupee symbol)
+ * Format currency amount for CP437 (using "Rs." prefix without Unicode rupee symbol).
+ * Displays exact decimals (2 decimal places) so tax percentages like 2.5% don't get truncated.
  */
 export function formatRs(amount: number): string {
-    const fixed = Math.round(amount * 100) / 100
-    const str = fixed % 1 === 0 ? fixed.toLocaleString('en-IN') : fixed.toFixed(2)
-    return `Rs.${str}`
+    const num = Number(amount) || 0
+    const str = num.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })
+    return `Rs. ${str}`
 }
 
 export function formatRsAmountOnly(amount: number): string {
-    const fixed = Math.round(amount * 100) / 100
-    return fixed % 1 === 0 ? fixed.toLocaleString('en-IN') : fixed.toFixed(2)
+    const num = Number(amount) || 0
+    return num.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })
 }
 
 /**
@@ -137,6 +144,7 @@ export interface SeznikPrintOptions {
     showUpiQr?: boolean
     showEan13?: boolean
     customFooterNote?: string
+    omitBrandHeader?: boolean
 }
 
 /**
@@ -242,9 +250,11 @@ export function encodeInvoiceReceipt(invoice: Invoice, opts: SeznikPrintOptions 
         encoder.line(justifyTwo(discLabel, `-${formatRs(invoice.discountAmount)}`, 32))
     }
     if (invoice.taxAmount > 0) {
-        const halfTax = invoice.taxPercent > 0 ? (invoice.taxPercent / 2).toFixed(1) : '2.5'
-        encoder.line(justifyTwo(`CGST (${halfTax}%):`, formatRs(Math.floor(invoice.taxAmount / 2)), 32))
-        encoder.line(justifyTwo(`SGST (${halfTax}%):`, formatRs(invoice.taxAmount - Math.floor(invoice.taxAmount / 2)), 32))
+        const halfTaxPercent = invoice.taxPercent > 0 ? (invoice.taxPercent / 2) : 2.5
+        const taxableSubtotal = Math.max(0, (invoice.subtotal || 0) - (invoice.discountAmount || 0))
+        const halfTaxAmount = Number(((taxableSubtotal * halfTaxPercent) / 100).toFixed(2)) || Number(((invoice.taxAmount / 2)).toFixed(2))
+        encoder.line(justifyTwo(`CGST (${halfTaxPercent}%):`, formatRs(halfTaxAmount), 32))
+        encoder.line(justifyTwo(`SGST (${halfTaxPercent}%):`, formatRs(halfTaxAmount), 32))
     }
 
     encoder
@@ -372,10 +382,14 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
     const eq = '='.repeat(SEZNIK_LINE_WIDTH)
     const dash = '-'.repeat(SEZNIK_LINE_WIDTH)
 
-    lines.push(eq)
-    lines.push(centerText('CHRISTALIN MIRRORS'))
-    lines.push(centerText('Refine . Reflect . Radiate'))
-    lines.push(eq)
+    if (!opts.omitBrandHeader) {
+        lines.push(eq)
+        lines.push(centerText('CHRISTALIN MIRRORS'))
+        lines.push(centerText('Refine . Reflect . Radiate'))
+        lines.push(eq)
+    } else {
+        lines.push(eq)
+    }
 
     const branchName = invoice.branch || 'Belgaum'
     lines.push(centerText(`Branch: ${branchName}`))
@@ -425,9 +439,11 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
         lines.push(justifyTwo(discLabel, `-${formatRs(invoice.discountAmount)}`))
     }
     if (invoice.taxAmount > 0) {
-        const halfTax = invoice.taxPercent > 0 ? (invoice.taxPercent / 2).toFixed(1) : '2.5'
-        lines.push(justifyTwo(`CGST (${halfTax}%):`, formatRs(Math.floor(invoice.taxAmount / 2))))
-        lines.push(justifyTwo(`SGST (${halfTax}%):`, formatRs(invoice.taxAmount - Math.floor(invoice.taxAmount / 2))))
+        const halfTaxPercent = invoice.taxPercent > 0 ? (invoice.taxPercent / 2) : 2.5
+        const taxableSubtotal = Math.max(0, (invoice.subtotal || 0) - (invoice.discountAmount || 0))
+        const halfTaxAmount = Number(((taxableSubtotal * halfTaxPercent) / 100).toFixed(2)) || Number(((invoice.taxAmount / 2)).toFixed(2))
+        lines.push(justifyTwo(`CGST (${halfTaxPercent}%):`, formatRs(halfTaxAmount)))
+        lines.push(justifyTwo(`SGST (${halfTaxPercent}%):`, formatRs(halfTaxAmount)))
     }
     lines.push(dash)
 
