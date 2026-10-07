@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
     UserCheck, Clock, Calendar, Upload, Plus, Edit2,
-    Check, Filter, ChevronLeft, ChevronRight, ShieldAlert, Sparkles
+    Check, Filter, ChevronLeft, ChevronRight, ShieldAlert, Sparkles, MapPin, ArrowRightLeft, UserPlus, X
 } from 'lucide-react'
 import { staffStore, attendanceStore } from '../data/store'
-import { authStore, getBranchScope, scopeByBranch, isOwnerLevel } from '../data/authStore'
+import { authStore, getBranchScope, isOwnerLevel } from '../data/authStore'
 import type { AttendanceRecord, StaffMember } from '../data/types'
 import EditAttendanceModal, { calculateWorkingHours, formatTimeForInput } from '../components/EditAttendanceModal'
 import BulkImportAttendanceModal from '../components/BulkImportAttendanceModal'
@@ -26,6 +26,8 @@ const ATTENDANCE_TITLES: Record<AttendanceRecord['status'], string> = {
     leave: 'Approved Leave',
 }
 
+const SALON_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum']
+
 export default function Attendance() {
     const { showToast } = useToast()
     const session = authStore.getSession()
@@ -38,13 +40,17 @@ export default function Attendance() {
     // Data State
     const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
     const [allStaff, setAllStaff] = useState<StaffMember[]>([])
-    const [branchStaff, setBranchStaff] = useState<StaffMember[]>([])
 
     // Navigation & Filters
     const [activeTab, setActiveTab] = useState<'today' | 'history' | 'summary'>('today')
+    const [todayBranchFilter, setTodayBranchFilter] = useState<string>(branchScope || 'all')
     const [selectedDate, setSelectedDate] = useState<string>(today)
     const [selectedBranch, setSelectedBranch] = useState<string>(branchScope || 'all')
     const [selectedStaffId, setSelectedStaffId] = useState<string>('all')
+
+    // Visiting Staff Quick Add Modal State
+    const [isVisitingModalOpen, setIsVisitingModalOpen] = useState(false)
+    const [visitingStaffId, setVisitingStaffId] = useState('')
 
     // Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -61,20 +67,53 @@ export default function Attendance() {
         setAttendance(att)
         const activeStfs = stfs.filter(s => s.isActive && s.role.toLowerCase() !== 'owner')
         setAllStaff(activeStfs)
-        setBranchStaff(scopeByBranch(activeStfs))
     }
 
     useEffect(() => {
         reloadData()
     }, [])
 
-    // Quick today marking
+    // Today map: staffId -> AttendanceRecord
+    const todayRecordsByStaff = useMemo(() => {
+        const map = new Map<string, AttendanceRecord>()
+        attendance.filter(a => a.date === today).forEach(a => map.set(a.staffId, a))
+        return map
+    }, [attendance, today])
+
+    // Helper to get effective shift branch for a staff on a given date (defaults to record branch, or staff base branch)
+    const getShiftBranch = (staff: StaffMember, record?: AttendanceRecord): string => {
+        if (record?.branch && record.branch !== 'All Branches') return record.branch
+        if (staff.branch && staff.branch !== 'All Branches') return staff.branch
+        if (branchScope) return branchScope
+        return 'Bengaluru'
+    }
+
+    // Filter staff for Today's view:
+    // If todayBranchFilter is specific, include staff assigned to that branch today OR staff whose base branch is that branch
+    const visibleTodayStaff = useMemo(() => {
+        if (todayBranchFilter === 'all') return allStaff
+        return allStaff.filter(staff => {
+            const rec = todayRecordsByStaff.get(staff.id)
+            const currentShiftBranch = getShiftBranch(staff, rec)
+            return currentShiftBranch.toLowerCase().includes(todayBranchFilter.toLowerCase())
+        })
+    }, [allStaff, todayRecordsByStaff, todayBranchFilter])
+
+    // Visiting staff candidates: staff not currently showing in the filtered list
+    const visitingCandidates = useMemo(() => {
+        if (todayBranchFilter === 'all') return []
+        const currentIds = new Set(visibleTodayStaff.map(s => s.id))
+        return allStaff.filter(s => !currentIds.has(s.id))
+    }, [allStaff, visibleTodayStaff, todayBranchFilter])
+
+    // Quick today status mark (retaining shift branch)
     const handleQuickMark = async (staff: StaffMember, status: AttendanceRecord['status']) => {
-        const existing = attendance.find(a => a.staffId === staff.id && a.date === today)
+        const existing = todayRecordsByStaff.get(staff.id)
+        const targetBranch = getShiftBranch(staff, existing)
         await attendanceStore.mark(
             staff.id,
             staff.name,
-            staff.branch,
+            targetBranch,
             today,
             status,
             {
@@ -86,18 +125,41 @@ export default function Attendance() {
         )
         const updated = await attendanceStore.getAll()
         setAttendance(updated)
-        showToast('success', `${staff.name} marked ${status}`)
+        showToast('success', `${staff.name} marked ${status} at ${targetBranch}`)
+    }
+
+    // Change shift branch dynamically (interchange support!)
+    const handleUpdateShiftBranch = async (staff: StaffMember, newBranch: string) => {
+        const existing = todayRecordsByStaff.get(staff.id)
+        const isInterchanged = staff.branch !== newBranch && staff.branch !== 'All Branches'
+        await attendanceStore.mark(
+            staff.id,
+            staff.name,
+            newBranch,
+            today,
+            existing?.status || 'present',
+            {
+                punchIn: existing?.punchIn,
+                punchOut: existing?.punchOut,
+                notes: existing?.notes || (isInterchanged ? `Stationed interchanged at ${newBranch}` : undefined),
+                updatedBy: isOwner ? 'owner' : (session?.role || 'manager')
+            }
+        )
+        const updated = await attendanceStore.getAll()
+        setAttendance(updated)
+        showToast('success', `${staff.name} stationed at ${newBranch} branch for today's shift`)
     }
 
     // Quick Punch In for Today
     const handleQuickPunchIn = async (staff: StaffMember) => {
         const now = new Date()
         const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-        const existing = attendance.find(a => a.staffId === staff.id && a.date === today)
+        const existing = todayRecordsByStaff.get(staff.id)
+        const targetBranch = getShiftBranch(staff, existing)
         await attendanceStore.mark(
             staff.id,
             staff.name,
-            staff.branch,
+            targetBranch,
             today,
             existing?.status || 'present',
             {
@@ -109,18 +171,19 @@ export default function Attendance() {
         )
         const updated = await attendanceStore.getAll()
         setAttendance(updated)
-        showToast('success', `Punched in ${staff.name} at ${timeStr}`)
+        showToast('success', `Punched in ${staff.name} at ${timeStr} (${targetBranch})`)
     }
 
     // Quick Punch Out for Today
     const handleQuickPunchOut = async (staff: StaffMember) => {
         const now = new Date()
         const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-        const existing = attendance.find(a => a.staffId === staff.id && a.date === today)
+        const existing = todayRecordsByStaff.get(staff.id)
+        const targetBranch = getShiftBranch(staff, existing)
         await attendanceStore.mark(
             staff.id,
             staff.name,
-            staff.branch,
+            targetBranch,
             today,
             existing?.status || 'present',
             {
@@ -132,7 +195,31 @@ export default function Attendance() {
         )
         const updated = await attendanceStore.getAll()
         setAttendance(updated)
-        showToast('success', `Punched out ${staff.name} at ${timeStr}`)
+        showToast('success', `Punched out ${staff.name} at ${timeStr} (${targetBranch})`)
+    }
+
+    // Add visiting staff into today's branch
+    const handleAddVisitingStaff = async () => {
+        if (!visitingStaffId) return
+        const staff = allStaff.find(s => s.id === visitingStaffId)
+        if (!staff) return
+        const targetBranch = todayBranchFilter !== 'all' ? todayBranchFilter : 'Bengaluru'
+        await attendanceStore.mark(
+            staff.id,
+            staff.name,
+            targetBranch,
+            today,
+            'present',
+            {
+                notes: `Visiting interchange shift from ${staff.branch}`,
+                updatedBy: isOwner ? 'owner' : (session?.role || 'manager')
+            }
+        )
+        const updated = await attendanceStore.getAll()
+        setAttendance(updated)
+        setIsVisitingModalOpen(false)
+        setVisitingStaffId('')
+        showToast('success', `${staff.name} added to ${targetBranch} branch attendance for today`)
     }
 
     // Open Edit Modal for a specific staff on any date (Owner Only)
@@ -155,17 +242,10 @@ export default function Attendance() {
             return
         }
         setEditingRecord(null)
-        setPrefillStaffId(branchStaff[0]?.id || '')
+        setPrefillStaffId(allStaff[0]?.id || '')
         setPrefillDate(selectedDate)
         setIsEditModalOpen(true)
     }
-
-    // Today map
-    const todayRecordsByStaff = useMemo(() => {
-        const map = new Map<string, AttendanceRecord>()
-        attendance.filter(a => a.date === today).forEach(a => map.set(a.staffId, a))
-        return map
-    }, [attendance, today])
 
     // Filtered records for History view
     const historyRecords = useMemo(() => {
@@ -179,21 +259,29 @@ export default function Attendance() {
 
     // Monthly summary calculation
     const monthlyAttendance = useMemo(() => {
-        const targetStaff = selectedBranch === 'all'
-            ? branchStaff
-            : branchStaff.filter(s => s.branch.toLowerCase().includes(selectedBranch.toLowerCase()))
-
-        return targetStaff.map(staff => {
+        return allStaff.map(staff => {
             const records = attendance.filter(a => a.staffId === staff.id && a.date.startsWith(thisMonthPrefix))
-            const present = records.filter(r => r.status === 'present').length
-            const halfDay = records.filter(r => r.status === 'half-day').length
-            const leave = records.filter(r => r.status === 'leave').length
-            const absent = records.filter(r => r.status === 'absent').length
-            const totalDays = records.length
+            // Count shifts at specific branches if filtered
+            const matchingRecords = selectedBranch === 'all'
+                ? records
+                : records.filter(r => r.branch.toLowerCase().includes(selectedBranch.toLowerCase()))
+
+            const present = matchingRecords.filter(r => r.status === 'present').length
+            const halfDay = matchingRecords.filter(r => r.status === 'half-day').length
+            const leave = matchingRecords.filter(r => r.status === 'leave').length
+            const absent = matchingRecords.filter(r => r.status === 'absent').length
+            const totalDays = matchingRecords.length
             const attendancePercent = totalDays > 0 ? Math.round(((present + halfDay * 0.5) / totalDays) * 100) : 0
-            return { staff, present, halfDay, leave, absent, totalDays, attendancePercent }
-        })
-    }, [branchStaff, attendance, thisMonthPrefix, selectedBranch])
+
+            // Breakdown of branches worked
+            const branchBreakdown: Record<string, number> = {}
+            records.forEach(r => {
+                branchBreakdown[r.branch] = (branchBreakdown[r.branch] || 0) + 1
+            })
+
+            return { staff, present, halfDay, leave, absent, totalDays, attendancePercent, branchBreakdown }
+        }).filter(m => selectedBranch === 'all' || m.totalDays > 0 || m.staff.branch.toLowerCase().includes(selectedBranch.toLowerCase()))
+    }, [allStaff, attendance, thisMonthPrefix, selectedBranch])
 
     return (
         <div className="attendance-page-container">
@@ -209,9 +297,7 @@ export default function Attendance() {
                         )}
                     </h1>
                     <p className="admin-page-sub">
-                        {branchScope
-                            ? `Tracking punch-in, punch-out, and attendance for ${branchScope} branch`
-                            : 'Complete attendance register with punch-in/out tracking across all salon branches'}
+                        Dynamic branch interchange supported — track shift station, punch in, punch out, and attendance across Bengaluru, Kalaburagi, and Belgaum.
                     </p>
                 </div>
 
@@ -223,7 +309,7 @@ export default function Attendance() {
                                 className="admin-btn admin-btn-secondary"
                                 onClick={() => setIsImportModalOpen(true)}
                                 style={{ gap: 6 }}
-                                title="Bulk upload attendance records from a CSV file"
+                                title="Bulk upload attendance records with branch interchange support from CSV"
                             >
                                 <Upload size={14} style={{ color: '#10b981' }} />
                                 <span>Bulk Import CSV</span>
@@ -241,7 +327,7 @@ export default function Attendance() {
                     ) : (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px', borderRadius: 8, background: 'var(--bg-card-alt)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                             <ShieldAlert size={14} style={{ color: 'var(--warning)' }} />
-                            <span>Branch Manager mode: Daily check-in active. Owner access required for past day edits & CSV import.</span>
+                            <span>Branch Manager mode: Daily register active. Owner access required for past day edits & CSV import.</span>
                         </div>
                     )}
                 </div>
@@ -254,9 +340,9 @@ export default function Attendance() {
                     onClick={() => setActiveTab('today')}
                 >
                     <UserCheck size={14} />
-                    <span>Today's Register</span>
+                    <span>Today's Shift Register</span>
                     <span className="attendance-count-badge">
-                        {branchStaff.length}
+                        {visibleTodayStaff.length}
                     </span>
                 </button>
                 <button
@@ -278,26 +364,78 @@ export default function Attendance() {
             {/* TAB 1: TODAY'S REGISTER */}
             {activeTab === 'today' && (
                 <div className="admin-form-card" style={{ marginBottom: 24 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <UserCheck size={16} style={{ color: 'var(--accent)' }} /> Today's Staff Register — {new Date(today + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                             </h3>
                             <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0' }}>
-                                Record attendance status, punch in, and punch out times for active team members.
+                                Staff can interchange between branches. Adjust their shift station below as needed.
                             </p>
+                        </div>
+
+                        {/* Branch filter & Visiting staff check-in */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Filter Branch:</label>
+                                <select
+                                    className="admin-filter-select"
+                                    value={todayBranchFilter}
+                                    onChange={e => setTodayBranchFilter(e.target.value)}
+                                >
+                                    <option value="all">All Branches (Full Team)</option>
+                                    <option value="Bengaluru">Bengaluru Branch</option>
+                                    <option value="Kalaburagi">Kalaburagi Branch</option>
+                                    <option value="Belgaum">Belgaum Branch</option>
+                                </select>
+                            </div>
+
+                            {todayBranchFilter !== 'all' && visitingCandidates.length > 0 && (
+                                <button
+                                    type="button"
+                                    className="admin-btn admin-btn-secondary admin-btn-sm"
+                                    onClick={() => {
+                                        setVisitingStaffId(visitingCandidates[0]?.id || '')
+                                        setIsVisitingModalOpen(true)
+                                    }}
+                                    style={{ gap: 6 }}
+                                    title="Check in staff visiting from another branch"
+                                >
+                                    <UserPlus size={13} style={{ color: 'var(--accent)' }} />
+                                    <span>+ Check In Visiting Staff</span>
+                                </button>
+                            )}
                         </div>
                     </div>
 
-                    {branchStaff.length === 0 ? (
+                    {visibleTodayStaff.length === 0 ? (
                         <div className="admin-empty" style={{ padding: 32 }}>
-                            <h3 style={{ fontSize: 14 }}>No active staff found{isOwner ? '' : ' at this branch'}</h3>
+                            <h3 style={{ fontSize: 14 }}>No staff currently stationed at {todayBranchFilter} today</h3>
+                            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 12px' }}>
+                                You can check in visiting staff from another branch or view all branches.
+                            </p>
+                            {visitingCandidates.length > 0 && (
+                                <button
+                                    type="button"
+                                    className="admin-btn admin-btn-primary admin-btn-sm"
+                                    onClick={() => {
+                                        setVisitingStaffId(visitingCandidates[0]?.id || '')
+                                        setIsVisitingModalOpen(true)
+                                    }}
+                                    style={{ gap: 6 }}
+                                >
+                                    <UserPlus size={14} />
+                                    <span>Check In Staff at {todayBranchFilter}</span>
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {branchStaff.map(staff => {
+                            {visibleTodayStaff.map(staff => {
                                 const rec = todayRecordsByStaff.get(staff.id)
                                 const currentStatus = rec?.status
+                                const currentShiftBranch = getShiftBranch(staff, rec)
+                                const isInterchanged = staff.branch !== 'All Branches' && staff.branch !== currentShiftBranch
                                 const punchInVal = rec?.punchIn
                                 const punchOutVal = rec?.punchOut
                                 const duration = calculateWorkingHours(punchInVal, punchOutVal)
@@ -306,17 +444,44 @@ export default function Attendance() {
                                     <div key={staff.id} className="attendance-card-row">
                                         {/* Staff Meta */}
                                         <div className="attendance-staff-info">
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                                 <span className="cell-primary" style={{ fontSize: 14, fontWeight: 600 }}>
                                                     {staff.name}
                                                 </span>
-                                                <span className="attendance-branch-pill">
-                                                    {staff.branch}
+                                                <span className="attendance-branch-pill" title={`Base branch: ${staff.branch}`}>
+                                                    Base: {staff.branch}
                                                 </span>
                                             </div>
                                             <span className="cell-secondary" style={{ textTransform: 'capitalize', fontSize: 12 }}>
                                                 {staff.role}
                                             </span>
+                                        </div>
+
+                                        {/* Dynamic Shift Branch Selector (Interchange Support) */}
+                                        <div className="attendance-interchange-control" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+                                                Shift:
+                                            </span>
+                                            <select
+                                                className="admin-filter-select"
+                                                style={{ padding: '4px 8px', fontSize: 12, height: 'auto', minWidth: 115 }}
+                                                value={currentShiftBranch}
+                                                onChange={e => handleUpdateShiftBranch(staff, e.target.value)}
+                                                title="Select which branch this staff member is working at today"
+                                            >
+                                                {SALON_BRANCHES.map(b => (
+                                                    <option key={b} value={b}>{b}</option>
+                                                ))}
+                                            </select>
+                                            {isInterchanged && (
+                                                <span
+                                                    style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                                    title={`Interchanged from ${staff.branch} to ${currentShiftBranch}`}
+                                                >
+                                                    <ArrowRightLeft size={10} />
+                                                    <span>Visiting</span>
+                                                </span>
+                                            )}
                                         </div>
 
                                         {/* Punch Time Badges & Controls */}
@@ -399,7 +564,7 @@ export default function Attendance() {
                 </div>
             )}
 
-            {/* TAB 2: DAILY LOGS & ANY DAY HISTORY (Add / Edit Any Day for Any Staff) */}
+            {/* TAB 2: DAILY LOGS & ANY DAY HISTORY */}
             {activeTab === 'history' && (
                 <div className="admin-form-card">
                     {/* Filters bar */}
@@ -444,18 +609,21 @@ export default function Attendance() {
                             </button>
                         </div>
 
-                        {/* Branch & Staff Filter */}
+                        {/* Shift Branch & Staff Filter */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                            <select
-                                className="admin-filter-select"
-                                value={selectedBranch}
-                                onChange={e => setSelectedBranch(e.target.value)}
-                            >
-                                <option value="all">All Branches</option>
-                                <option value="Bengaluru">Bengaluru</option>
-                                <option value="Kalaburagi">Kalaburagi</option>
-                                <option value="Belgaum">Belgaum</option>
-                            </select>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Shift Branch:</label>
+                                <select
+                                    className="admin-filter-select"
+                                    value={selectedBranch}
+                                    onChange={e => setSelectedBranch(e.target.value)}
+                                >
+                                    <option value="all">All Branches</option>
+                                    <option value="Bengaluru">Bengaluru</option>
+                                    <option value="Kalaburagi">Kalaburagi</option>
+                                    <option value="Belgaum">Belgaum</option>
+                                </select>
+                            </div>
 
                             <select
                                 className="admin-filter-select"
@@ -465,7 +633,7 @@ export default function Attendance() {
                                 <option value="all">All Staff Members</option>
                                 {allStaff.map(s => (
                                     <option key={s.id} value={s.id}>
-                                        {s.name} ({s.branch})
+                                        {s.name} (Base: {s.branch})
                                     </option>
                                 ))}
                             </select>
@@ -478,7 +646,7 @@ export default function Attendance() {
                                     style={{ gap: 6 }}
                                 >
                                     <Plus size={14} />
-                                    <span>Add Attendance</span>
+                                    <span>Add Record</span>
                                 </button>
                             )}
                         </div>
@@ -490,7 +658,7 @@ export default function Attendance() {
                             <thead>
                                 <tr>
                                     <th>Staff Member</th>
-                                    <th>Branch</th>
+                                    <th>Shift Branch</th>
                                     <th>Status</th>
                                     <th>Punch In</th>
                                     <th>Punch Out</th>
@@ -508,7 +676,7 @@ export default function Attendance() {
                                                 <h3 style={{ fontSize: 14 }}>No attendance records found for {selectedDate}</h3>
                                                 <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 12px' }}>
                                                     {isOwner
-                                                        ? 'As Owner, you can record or backfill attendance and punch times for this day.'
+                                                        ? 'As Owner, you can record or backfill attendance, punch times, and shift branch for this day.'
                                                         : 'No marks recorded on this date.'}
                                                 </p>
                                                 {isOwner && (
@@ -529,13 +697,25 @@ export default function Attendance() {
                                     historyRecords.map(r => {
                                         const dur = calculateWorkingHours(r.punchIn, r.punchOut)
                                         const stf = allStaff.find(s => s.id === r.staffId)
+                                        const isInterchanged = stf && stf.branch !== 'All Branches' && stf.branch !== r.branch
+
                                         return (
                                             <tr key={r.id}>
                                                 <td className="cell-primary" style={{ fontWeight: 600 }}>
-                                                    {r.staffName}
+                                                    <div>{r.staffName}</div>
+                                                    {stf && (
+                                                        <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 400 }}>
+                                                            Base: {stf.branch}
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td>
-                                                    <span className="attendance-branch-pill">{r.branch}</span>
+                                                    <span className="attendance-branch-pill" style={{ color: isInterchanged ? '#f59e0b' : undefined, borderColor: isInterchanged ? 'rgba(245, 158, 11, 0.3)' : undefined }}>
+                                                        {r.branch}
+                                                        {isInterchanged && (
+                                                            <span title={`Visiting from ${stf?.branch}`} style={{ marginLeft: 4 }}>🔄</span>
+                                                        )}
+                                                    </span>
                                                 </td>
                                                 <td>
                                                     <span className={`status-badge ${r.status === 'present' ? 'confirmed' : r.status === 'half-day' ? 'pending' : 'cancelled'}`} style={{ textTransform: 'capitalize' }}>
@@ -596,20 +776,23 @@ export default function Attendance() {
                                 Monthly Attendance Summary — {new Date(today + 'T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
                             </h3>
                             <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0' }}>
-                                Cumulative attendance score based on Present (100%), Half Day (50%), Leave, and Absent.
+                                Shows cumulative attendance score and shift branch locations where staff served this month.
                             </p>
                         </div>
 
-                        <select
-                            className="admin-filter-select"
-                            value={selectedBranch}
-                            onChange={e => setSelectedBranch(e.target.value)}
-                        >
-                            <option value="all">All Branches</option>
-                            <option value="Bengaluru">Bengaluru</option>
-                            <option value="Kalaburagi">Kalaburagi</option>
-                            <option value="Belgaum">Belgaum</option>
-                        </select>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Shift Branch Filter:</label>
+                            <select
+                                className="admin-filter-select"
+                                value={selectedBranch}
+                                onChange={e => setSelectedBranch(e.target.value)}
+                            >
+                                <option value="all">All Salon Locations</option>
+                                <option value="Bengaluru">Bengaluru</option>
+                                <option value="Kalaburagi">Kalaburagi</option>
+                                <option value="Belgaum">Belgaum</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div className="admin-table-wrapper" style={{ marginBottom: 0 }}>
@@ -617,22 +800,23 @@ export default function Attendance() {
                             <thead>
                                 <tr>
                                     <th>Staff Member</th>
-                                    <th>Branch</th>
+                                    <th>Base Branch</th>
                                     <th>Role</th>
+                                    <th>Shift Branches Worked</th>
                                     <th>Present</th>
                                     <th>Half Day</th>
                                     <th>Leave</th>
                                     <th>Absent</th>
-                                    <th>Total Tracked</th>
-                                    <th>Attendance Score</th>
+                                    <th>Total Shifts</th>
+                                    <th>Score</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {monthlyAttendance.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9}>
+                                        <td colSpan={10}>
                                             <div className="admin-empty" style={{ padding: 32 }}>
-                                                <h3 style={{ fontSize: 14 }}>No staff records found for this branch</h3>
+                                                <h3 style={{ fontSize: 14 }}>No staff records found for this filter</h3>
                                             </div>
                                         </td>
                                     </tr>
@@ -648,11 +832,31 @@ export default function Attendance() {
                                             <td className="cell-secondary" style={{ textTransform: 'capitalize' }}>
                                                 {m.staff.role}
                                             </td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                                    {Object.entries(m.branchBreakdown).map(([bName, count]) => (
+                                                        <span
+                                                            key={bName}
+                                                            style={{
+                                                                fontSize: 10,
+                                                                padding: '2px 6px',
+                                                                borderRadius: 4,
+                                                                background: 'var(--bg-card-alt)',
+                                                                border: '1px solid var(--border-color)',
+                                                                color: bName !== m.staff.branch ? '#f59e0b' : 'var(--text-secondary)'
+                                                            }}
+                                                        >
+                                                            {bName}: <strong>{count}d</strong>
+                                                        </span>
+                                                    ))}
+                                                    {Object.keys(m.branchBreakdown).length === 0 && '—'}
+                                                </div>
+                                            </td>
                                             <td className="cell-secondary">{m.present}</td>
                                             <td className="cell-secondary">{m.halfDay}</td>
                                             <td className="cell-secondary">{m.leave}</td>
                                             <td className="cell-secondary">{m.absent}</td>
-                                            <td className="cell-secondary" style={{ fontWeight: 500 }}>{m.totalDays} days</td>
+                                            <td className="cell-secondary" style={{ fontWeight: 600 }}>{m.totalDays}</td>
                                             <td>
                                                 <span className={`status-badge ${m.attendancePercent >= 90 ? 'confirmed' : m.attendancePercent >= 75 ? 'pending' : 'cancelled'}`}>
                                                     {m.attendancePercent}%
@@ -663,6 +867,60 @@ export default function Attendance() {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Quick Visiting Staff Check-in Modal */}
+            {isVisitingModalOpen && (
+                <div className="admin-modal-overlay" onClick={() => setIsVisitingModalOpen(false)}>
+                    <div className="admin-modal-card" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+                        <div className="admin-modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <UserPlus size={18} style={{ color: 'var(--accent)' }} />
+                                <h3 style={{ margin: 0, fontSize: 16 }}>Check In Visiting Staff</h3>
+                            </div>
+                            <button className="admin-modal-close-btn" onClick={() => setIsVisitingModalOpen(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '8px 0 16px' }}>
+                            Staff members can interchange between branches. Select a staff member to check in at <strong>{todayBranchFilter}</strong> for today's shift.
+                        </p>
+
+                        <div style={{ marginBottom: 16 }}>
+                            <label className="admin-form-label">Select Staff Member</label>
+                            <select
+                                className="admin-form-select"
+                                value={visitingStaffId}
+                                onChange={e => setVisitingStaffId(e.target.value)}
+                            >
+                                {visitingCandidates.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name} (Base: {s.branch} · {s.role})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                            <button
+                                type="button"
+                                className="admin-btn admin-btn-secondary"
+                                onClick={() => setIsVisitingModalOpen(false)}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="admin-btn admin-btn-primary"
+                                onClick={handleAddVisitingStaff}
+                                disabled={!visitingStaffId}
+                            >
+                                Check In at {todayBranchFilter}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

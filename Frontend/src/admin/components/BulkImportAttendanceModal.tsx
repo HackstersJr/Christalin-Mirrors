@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { X, Upload, Download, FileText, CheckCircle2, AlertTriangle, AlertCircle, Sparkles } from 'lucide-react'
+import { X, Upload, Download, FileText, CheckCircle2, AlertTriangle, AlertCircle, Sparkles, MapPin } from 'lucide-react'
 import type { AttendanceRecord, StaffMember } from '../data/types'
 import { attendanceStore } from '../data/store'
 import { useToast } from './Toast'
@@ -15,18 +15,29 @@ interface BulkImportAttendanceModalProps {
 
 interface ParsedAttendanceRow {
     rawStaffName: string
+    rawBranch: string
     rawDate: string
     rawStatus: string
     rawPunchIn: string
     rawPunchOut: string
     rawNotes: string
     matchedStaff?: StaffMember
+    parsedBranch?: string
     parsedDate?: string
     parsedStatus?: AttendanceRecord['status']
     parsedPunchIn?: string
     parsedPunchOut?: string
     isValid: boolean
     errorReason?: string
+}
+
+function normalizeBranchName(val?: string, fallback: string = 'Bengaluru'): string {
+    if (!val) return fallback
+    const lower = val.toLowerCase().trim()
+    if (lower.includes('bengaluru') || lower.includes('bangalore') || lower.includes('blr')) return 'Bengaluru'
+    if (lower.includes('kalaburagi') || lower.includes('gulbarga') || lower.includes('klb')) return 'Kalaburagi'
+    if (lower.includes('belgaum') || lower.includes('belagavi') || lower.includes('bgm')) return 'Belgaum'
+    return fallback
 }
 
 export default function BulkImportAttendanceModal({
@@ -45,19 +56,21 @@ export default function BulkImportAttendanceModal({
 
     if (!isOpen) return null
 
-    // Generate and download a sample CSV template pre-filled with actual active staff
+    // Generate and download sample CSV prefilled with actual active staff & interchangeable branches
     const handleDownloadTemplate = () => {
         const today = new Date().toISOString().split('T')[0]
-        const headers = ['Staff Name', 'Date', 'Status', 'Punch In', 'Punch Out', 'Notes']
+        const headers = ['Staff Name', 'Branch', 'Date', 'Status', 'Punch In', 'Punch Out', 'Notes']
         const sampleStaff = staffList.slice(0, 4)
 
         const rows = sampleStaff.length > 0 ? sampleStaff.map((s, idx) => {
             const status = idx === 0 ? 'present' : idx === 1 ? 'present' : idx === 2 ? 'half-day' : 'leave'
+            const shiftBranch = idx === 1 ? 'Bengaluru' : (s.branch && s.branch !== 'All Branches' ? s.branch : 'Bengaluru')
             const punchIn = status === 'leave' ? '' : '09:30 AM'
             const punchOut = status === 'leave' ? '' : (status === 'half-day' ? '01:30 PM' : '06:30 PM')
-            const notes = status === 'half-day' ? 'Half day morning shift' : (status === 'leave' ? 'Sick leave' : 'Regular shift')
+            const notes = idx === 1 ? 'Interchange shift coverage' : (status === 'half-day' ? 'Half day morning shift' : (status === 'leave' ? 'Sick leave' : 'Regular shift'))
             return [
                 `"${s.name}"`,
+                shiftBranch,
                 today,
                 status,
                 punchIn,
@@ -65,8 +78,8 @@ export default function BulkImportAttendanceModal({
                 `"${notes}"`
             ].join(',')
         }) : [
-            '"Soniya"', today, 'present', '09:30 AM', '06:30 PM', '"Regular shift"',
-            '"Bangalore Manager"', today, 'present', '10:00 AM', '07:00 PM', '"Full day"'
+            '"Soniya"', 'Bengaluru', today, 'present', '09:30 AM', '06:30 PM', '"Interchange coverage at Bengaluru"',
+            '"Priya"', 'Kalaburagi', today, 'present', '10:00 AM', '07:00 PM', '"Regular shift"'
         ]
 
         const csvContent = [headers.join(','), ...rows].join('\n')
@@ -79,7 +92,7 @@ export default function BulkImportAttendanceModal({
         link.click()
         document.body.removeChild(link)
         URL.revokeObjectURL(url)
-        showToast('info', 'Sample CSV template downloaded.')
+        showToast('info', 'Sample CSV template with branch interchange column downloaded.')
     }
 
     // CSV text parser
@@ -93,6 +106,7 @@ export default function BulkImportAttendanceModal({
         // Parse header row
         const headerCols = lines[0].split(',').map(c => c.trim().toLowerCase().replace(/^["']|["']$/g, ''))
         const staffColIdx = headerCols.findIndex(c => c.includes('staff') || c.includes('name') || c.includes('employee'))
+        const branchColIdx = headerCols.findIndex(c => c.includes('branch') || c.includes('location') || c.includes('studio'))
         const dateColIdx = headerCols.findIndex(c => c.includes('date') || c.includes('day'))
         const statusColIdx = headerCols.findIndex(c => c.includes('status'))
         const inColIdx = headerCols.findIndex(c => c.includes('in') || c.includes('punch_in') || c.includes('punch in'))
@@ -101,7 +115,6 @@ export default function BulkImportAttendanceModal({
 
         const rows: ParsedAttendanceRow[] = []
 
-        // Parse each data line (supporting simple commas inside quotes)
         const parseLine = (line: string): string[] => {
             const result: string[] = []
             let cur = ''
@@ -126,6 +139,7 @@ export default function BulkImportAttendanceModal({
             if (cols.length === 0 || cols.every(c => c === '')) continue
 
             const rawStaffName = (staffColIdx >= 0 ? cols[staffColIdx] : cols[0]) || ''
+            const rawBranch = (branchColIdx >= 0 ? cols[branchColIdx] : '')
             const rawDate = (dateColIdx >= 0 ? cols[dateColIdx] : cols[1]) || ''
             const rawStatus = (statusColIdx >= 0 ? cols[statusColIdx] : cols[2]) || 'present'
             const rawPunchIn = inColIdx >= 0 ? cols[inColIdx] : (cols[3] || '')
@@ -139,20 +153,22 @@ export default function BulkImportAttendanceModal({
                 return sName === cleanStaffQuery || sName.includes(cleanStaffQuery) || cleanStaffQuery.includes(sName) || s.id === cleanStaffQuery
             })
 
-            // 2. Parse Date
+            // 2. Parse Shift Branch (supporting interchange!)
+            const fallbackBranch = (matchedStaff?.branch && matchedStaff.branch !== 'All Branches') ? matchedStaff.branch : 'Bengaluru'
+            const parsedBranch = normalizeBranchName(rawBranch, fallbackBranch)
+
+            // 3. Parse Date
             let parsedDate: string | undefined
             const cleanDate = rawDate.replace(/['"]/g, '').trim()
-            // YYYY-MM-DD
             if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(cleanDate)) {
                 const [y, m, d] = cleanDate.split('-')
                 parsedDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
             } else if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(cleanDate)) {
-                // DD/MM/YYYY or DD-MM-YYYY
                 const parts = cleanDate.split(/[/-]/)
                 parsedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
             }
 
-            // 3. Parse Status
+            // 4. Parse Status
             let parsedStatus: AttendanceRecord['status'] | undefined
             const sLower = rawStatus.toLowerCase().replace(/['"]/g, '').trim()
             if (sLower === 'p' || sLower.includes('present')) parsedStatus = 'present'
@@ -160,11 +176,11 @@ export default function BulkImportAttendanceModal({
             else if (sLower === 'l' || sLower.includes('leave')) parsedStatus = 'leave'
             else if (sLower === 'a' || sLower.includes('absent')) parsedStatus = 'absent'
 
-            // 4. Punch Times
+            // 5. Punch Times
             const parsedPunchIn = formatTimeForInput(rawPunchIn)
             const parsedPunchOut = formatTimeForInput(rawPunchOut)
 
-            // Validation check
+            // Validation
             let isValid = true
             let errorReason = ''
 
@@ -181,12 +197,14 @@ export default function BulkImportAttendanceModal({
 
             rows.push({
                 rawStaffName,
+                rawBranch,
                 rawDate,
                 rawStatus,
                 rawPunchIn,
                 rawPunchOut,
                 rawNotes,
                 matchedStaff,
+                parsedBranch,
                 parsedDate,
                 parsedStatus,
                 parsedPunchIn,
@@ -242,10 +260,11 @@ export default function BulkImportAttendanceModal({
         try {
             for (const r of validRows) {
                 const s = r.matchedStaff!
+                const targetBranch = r.parsedBranch || s.branch
                 await attendanceStore.mark(
                     s.id,
                     s.name,
-                    s.branch,
+                    targetBranch,
                     r.parsedDate!,
                     r.parsedStatus!,
                     {
@@ -273,7 +292,7 @@ export default function BulkImportAttendanceModal({
 
     return (
         <div className="admin-modal-overlay" onClick={onClose}>
-            <div className="admin-modal-card" style={{ maxWidth: 760 }} onClick={e => e.stopPropagation()}>
+            <div className="admin-modal-card" style={{ maxWidth: 840 }} onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="admin-modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -285,7 +304,7 @@ export default function BulkImportAttendanceModal({
                                 Bulk Import Staff Attendance (CSV)
                             </h3>
                             <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>
-                                ★ Owner Exclusive Management Action
+                                ★ Owner Exclusive Action · Supports Branch Interchange
                             </span>
                         </div>
                     </div>
@@ -319,14 +338,15 @@ export default function BulkImportAttendanceModal({
                     </div>
 
                     <div style={{ fontFamily: 'monospace', fontSize: 11, background: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 6, color: 'var(--text-primary)', overflowX: 'auto', whiteSpace: 'nowrap', border: '1px solid var(--border-light)' }}>
-                        Staff Name,Date,Status,Punch In,Punch Out,Notes
+                        Staff Name,Branch,Date,Status,Punch In,Punch Out,Notes
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, marginTop: 10, fontSize: 11, color: 'var(--text-dim)' }}>
-                        <div>• <strong>Staff Name:</strong> Full or partial name (e.g. Soniya, Priya)</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8, marginTop: 10, fontSize: 11, color: 'var(--text-dim)' }}>
+                        <div>• <strong>Staff Name:</strong> Full or partial name</div>
+                        <div>• <strong>Branch:</strong> Shift branch (interchange allowed!)</div>
                         <div>• <strong>Date:</strong> YYYY-MM-DD or DD/MM/YYYY</div>
-                        <div>• <strong>Status:</strong> present, half-day, leave, or absent</div>
-                        <div>• <strong>Punch In / Out:</strong> HH:MM (e.g. 09:30 or 09:30 AM)</div>
+                        <div>• <strong>Status:</strong> present, half-day, leave, absent</div>
+                        <div>• <strong>Punch In / Out:</strong> 09:30 AM or 09:30</div>
                     </div>
                 </div>
 
@@ -337,7 +357,7 @@ export default function BulkImportAttendanceModal({
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
                     style={{
-                        padding: 24,
+                        padding: 22,
                         borderRadius: 10,
                         border: isDragOver ? '2px dashed var(--accent)' : '2px dashed var(--border-strong)',
                         background: isDragOver ? 'rgba(212, 175, 55, 0.08)' : 'var(--bg-card)',
@@ -354,12 +374,12 @@ export default function BulkImportAttendanceModal({
                         style={{ display: 'none' }}
                         onChange={handleFileChange}
                     />
-                    <FileText size={28} style={{ color: fileName ? 'var(--accent)' : 'var(--text-muted)', margin: '0 auto 8px' }} />
+                    <FileText size={26} style={{ color: fileName ? 'var(--accent)' : 'var(--text-muted)', margin: '0 auto 6px' }} />
                     <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                         {fileName ? fileName : 'Click to select CSV file, or drag and drop here'}
                     </p>
                     <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                        Compatible with Excel, Google Sheets, or Biometric Punch export (.csv)
+                        Compatible with Excel, Google Sheets, or Biometric Punch CSV exports
                     </span>
                 </div>
 
@@ -382,12 +402,13 @@ export default function BulkImportAttendanceModal({
                             </div>
                         </div>
 
-                        <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 8 }}>
+                        <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 8 }}>
                             <table className="admin-table" style={{ margin: 0, fontSize: 12 }}>
                                 <thead>
                                     <tr>
                                         <th>Status</th>
                                         <th>Staff</th>
+                                        <th>Shift Branch</th>
                                         <th>Date</th>
                                         <th>Attendance</th>
                                         <th>Punch In</th>
@@ -411,10 +432,26 @@ export default function BulkImportAttendanceModal({
                                             </td>
                                             <td style={{ fontWeight: 600 }}>
                                                 {r.matchedStaff ? (
-                                                    <span>{r.matchedStaff.name} <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>({r.matchedStaff.branch})</span></span>
+                                                    <span>{r.matchedStaff.name}</span>
                                                 ) : (
                                                     <span style={{ color: '#ef4444' }}>{r.rawStaffName || '—'}</span>
                                                 )}
+                                            </td>
+                                            <td>
+                                                <span style={{
+                                                    fontSize: 11,
+                                                    fontWeight: 600,
+                                                    padding: '2px 6px',
+                                                    borderRadius: 4,
+                                                    background: 'var(--bg-card)',
+                                                    border: '1px solid var(--border-color)',
+                                                    color: r.matchedStaff && r.matchedStaff.branch !== r.parsedBranch ? '#f59e0b' : 'var(--text-primary)'
+                                                }}>
+                                                    {r.parsedBranch || '—'}
+                                                    {r.matchedStaff && r.matchedStaff.branch !== r.parsedBranch && (
+                                                        <span title={`Base: ${r.matchedStaff.branch}`} style={{ marginLeft: 4 }}>🔄</span>
+                                                    )}
+                                                </span>
                                             </td>
                                             <td>{r.parsedDate || <span style={{ color: '#ef4444' }}>{r.rawDate}</span>}</td>
                                             <td>

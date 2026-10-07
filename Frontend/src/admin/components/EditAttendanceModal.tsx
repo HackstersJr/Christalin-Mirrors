@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Clock, Calendar, User, Save, Trash2, AlertCircle } from 'lucide-react'
+import { X, Clock, Calendar, User, Save, Trash2, AlertCircle, MapPin } from 'lucide-react'
 import type { AttendanceRecord, StaffMember } from '../data/types'
 import { attendanceStore } from '../data/store'
 import { useToast } from './Toast'
@@ -71,6 +71,12 @@ export default function EditAttendanceModal({
     const today = new Date().toISOString().split('T')[0]
 
     const [staffId, setStaffId] = useState(initialStaffId || existingRecord?.staffId || (staffList[0]?.id || ''))
+    const selectedStaff = staffList.find(s => s.id === staffId) || staffList[0]
+
+    const [branch, setBranch] = useState(
+        existingRecord?.branch ||
+        (selectedStaff?.branch && selectedStaff.branch !== 'All Branches' ? selectedStaff.branch : 'Bengaluru')
+    )
     const [date, setDate] = useState(initialDate || existingRecord?.date || today)
     const [status, setStatus] = useState<AttendanceRecord['status']>(existingRecord?.status || 'present')
     const [punchIn, setPunchIn] = useState(formatTimeForInput(existingRecord?.punchIn))
@@ -81,24 +87,27 @@ export default function EditAttendanceModal({
     useEffect(() => {
         if (existingRecord) {
             setStaffId(existingRecord.staffId)
+            setBranch(existingRecord.branch)
             setDate(existingRecord.date)
             setStatus(existingRecord.status)
             setPunchIn(formatTimeForInput(existingRecord.punchIn))
             setPunchOut(formatTimeForInput(existingRecord.punchOut))
             setNotes(existingRecord.notes || '')
         } else {
-            if (initialStaffId) setStaffId(initialStaffId)
+            if (initialStaffId) {
+                setStaffId(initialStaffId)
+                const found = staffList.find(s => s.id === initialStaffId)
+                if (found && found.branch !== 'All Branches') setBranch(found.branch)
+            }
             if (initialDate) setDate(initialDate)
             setStatus('present')
             setPunchIn('')
             setPunchOut('')
             setNotes('')
         }
-    }, [existingRecord, initialStaffId, initialDate, isOpen])
+    }, [existingRecord, initialStaffId, initialDate, isOpen, staffList])
 
     if (!isOpen) return null
-
-    const selectedStaff = staffList.find(s => s.id === staffId) || staffList[0]
 
     const handleNowPunchIn = () => {
         const now = new Date()
@@ -135,7 +144,7 @@ export default function EditAttendanceModal({
             await attendanceStore.mark(
                 selectedStaff.id,
                 selectedStaff.name,
-                selectedStaff.branch,
+                branch,
                 date,
                 status,
                 {
@@ -145,7 +154,7 @@ export default function EditAttendanceModal({
                     updatedBy: 'owner'
                 }
             )
-            showToast('success', `Attendance updated for ${selectedStaff.name} on ${date}`)
+            showToast('success', `Attendance updated for ${selectedStaff.name} on ${date} (${branch})`)
             onSaved()
             onClose()
         } catch (err) {
@@ -221,7 +230,14 @@ export default function EditAttendanceModal({
                         <select
                             className="admin-form-select"
                             value={staffId}
-                            onChange={e => setStaffId(e.target.value)}
+                            onChange={e => {
+                                const newId = e.target.value
+                                setStaffId(newId)
+                                const found = staffList.find(s => s.id === newId)
+                                if (found && found.branch !== 'All Branches' && !existingRecord) {
+                                    setBranch(found.branch)
+                                }
+                            }}
                             disabled={!isOwner}
                             required
                         >
@@ -231,6 +247,37 @@ export default function EditAttendanceModal({
                                 </option>
                             ))}
                         </select>
+                    </div>
+
+                    {/* Assigned Shift Branch (interchangeable) */}
+                    <div>
+                        <label className="admin-form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <MapPin size={14} /> Assigned Shift Branch *
+                            </span>
+                            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 500 }}>
+                                🔄 Staff interchange supported
+                            </span>
+                        </label>
+                        <select
+                            className="admin-form-select"
+                            value={branch}
+                            onChange={e => setBranch(e.target.value)}
+                            disabled={!isOwner}
+                            required
+                        >
+                            <option value="Bengaluru">Bengaluru Branch</option>
+                            <option value="Kalaburagi">Kalaburagi Branch</option>
+                            <option value="Belgaum">Belgaum Branch</option>
+                        </select>
+                        <span style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, display: 'block' }}>
+                            Base branch: {selectedStaff?.branch || 'All Branches'}
+                            {selectedStaff && selectedStaff.branch !== branch && selectedStaff.branch !== 'All Branches' && (
+                                <strong style={{ color: '#f59e0b', marginLeft: 6 }}>
+                                    (Stationed interchanged at {branch})
+                                </strong>
+                            )}
+                        </span>
                     </div>
 
                     {/* Date selection */}

@@ -24,7 +24,31 @@ export const mockServices: ServiceRecord[] = [
 ]
 
 export const mockStaff: StaffMember[] = [
+    // Owner
     { id: 'staff_sushmitha', name: 'Sushmitha Cristalin A.', role: 'owner', branch: 'All Branches', phone: '+91 72042 36981', email: 'christalinmirrors.admin@gmail.com', specialties: ['Salon Management', 'Brand Strategy'], isActive: true, joinedDate: '2025-01-01' },
+
+    // Bengaluru Branch Team
+    { id: '9c0d19a9-39e2-4cbb-b81c-997d030c81de', name: 'Meghnath S', role: 'manager', branch: 'Bengaluru', phone: '9620992377', email: 'meghnath.s.official@gmail.com', specialties: ['Salon Management', 'Data Analyst'], isActive: true, joinedDate: '2026-09-11' },
+    { id: '5f734bdb-fece-4be4-9ed7-12b7437105cd', name: 'Aparna', role: 'hairstylist', branch: 'Bengaluru', phone: '6362530826', email: 'aparna.bengaluru@christalinmirrors.com', specialties: ['Hair Styling', 'Creative Cuts'], isActive: true, joinedDate: '2026-09-11' },
+    { id: '9334db0f-53c6-449a-ad24-07389dc0be24', name: 'Rihana', role: 'hairstylist', branch: 'Bengaluru', phone: '8604304131', email: 'rihana.bengaluru@christalinmirrors.com', specialties: ['Haircuts', 'Styling'], isActive: true, joinedDate: '2026-09-11' },
+    { id: '67682ff8-9251-41c6-aa94-a44fb9cec807', name: 'Akram', role: 'hairstylist', branch: 'Bengaluru', phone: '8604304131', email: 'akram.bengaluru@christalinmirrors.com', specialties: ['Men Cuts', 'Beard Styling'], isActive: true, joinedDate: '2026-09-11' },
+
+    // Kalaburagi Branch Team
+    { id: '44a4c730-42bc-4bbb-a9fe-eed3b7c3e936', name: 'Soniya', role: 'manager', branch: 'Kalaburagi', phone: '7411172933', email: 'manager.kalaburagi@christalinmirrors.com', specialties: ['Salon Management', 'Client Relations'], isActive: true, joinedDate: '2026-07-30' },
+    { id: '8282442b-c487-4382-b585-642c8f54cb23', name: 'Neha', role: 'unisex_beautician', branch: 'Kalaburagi', phone: '63661 35925', email: 'neha.kalaburagi@christalinmirrors.com', specialties: ['Skin Care', 'Facials'], isActive: true, joinedDate: '2026-09-11' },
+    { id: 'd89345a6-fc42-4e59-8441-626167473be7', name: 'Ronak', role: 'beautician', branch: 'Kalaburagi', phone: '8053455405', email: 'ronak.kalaburagi@christalinmirrors.com', specialties: ['Skin Care', 'Facials', 'Beauty'], isActive: true, joinedDate: '2026-07-30' },
+    { id: 'c0111109-c999-4ba8-bd53-57619f9bb724', name: 'Deep', role: 'unisex_hairstylist', branch: 'Kalaburagi', phone: '6283499036', email: 'deep.kalaburagi@christalinmirrors.com', specialties: ['Haircuts', 'Styling', 'Unisex Services'], isActive: true, joinedDate: '2026-07-30' },
+    { id: 'a4959067-e7ca-47d6-a1bf-a6064a919896', name: 'Faizan', role: 'hairstylist', branch: 'Kalaburagi', phone: '7037500352', email: 'faizan.kalaburagi@christalinmirrors.com', specialties: ['Hair Styling', 'Cuts'], isActive: true, joinedDate: '2026-07-30' },
+    { id: '68b51ae8-108b-4c44-9b93-16620ec4a7a0', name: 'Wasim', role: 'unisex_hairstylist', branch: 'Kalaburagi', phone: '7569889592', email: 'wasim.kalaburagi@christalinmirrors.com', specialties: ['Unisex Haircuts', 'Hair Coloring'], isActive: true, joinedDate: '2026-07-30' },
+    { id: 'dbfaa28d-ff92-4b0e-afa4-485115b4154d', name: 'Faheem', role: 'unisex_hairstylist', branch: 'Kalaburagi', phone: '9149840394', email: 'faheem.kalaburagi@christalinmirrors.com', specialties: ['Unisex Haircuts'], isActive: true, joinedDate: '2026-09-11' },
+    { id: '755bd009-2bca-4d7a-89b6-f23609d5fd9c', name: 'Reshma', role: 'housekeeping', branch: 'Kalaburagi', phone: '8296512207', email: 'reshma.kalaburagi@christalinmirrors.com', specialties: ['Housekeeping', 'Salon Maintenance'], isActive: true, joinedDate: '2026-07-30' },
+
+    // Belgaum Branch Team
+    { id: '6e776543-6526-4d43-8408-20714a430775', name: 'Belgaum Manager', role: 'manager', branch: 'Belgaum', phone: '+91 98450 12345', email: 'manager.belgaum@christalinmirrors.com', specialties: ['Management', 'Client Relations'], isActive: true, joinedDate: '2026-07-30' },
+    { id: '23589f93-9f22-4c6d-b678-c8278d28ae2f', name: 'Ankit', role: 'hairstylist', branch: 'Belgaum', phone: '9896089606', email: 'ankit.belgaum@christalinmirrors.com', specialties: ['Haircuts', 'Styling'], isActive: true, joinedDate: '2026-09-11' },
+    { id: 'ad43ff0f-31e6-4e23-9482-249a71a2922c', name: 'Saloni', role: 'hairstylist', branch: 'Belgaum', phone: '9896089606', email: 'saloni.belgaum@christalinmirrors.com', specialties: ['Styling', 'Coloring'], isActive: true, joinedDate: '2026-09-11' },
+    { id: '789ce2eb-93af-4122-b1b1-804534dcb06e', name: 'Anjana', role: 'beautician', branch: 'Belgaum', phone: '7619344268', email: 'anjana.belgaum@christalinmirrors.com', specialties: ['Skin Care', 'Beauty'], isActive: true, joinedDate: '2026-09-11' },
+    { id: 'd1d555bc-0d09-4054-8b52-b5eba0346238', name: 'Danish', role: 'hairstylist', branch: 'Belgaum', phone: '9837348218', email: 'danish.belgaum@christalinmirrors.com', specialties: ['Haircuts', 'Beard Grooming'], isActive: true, joinedDate: '2026-09-11' },
 ]
 
 export const defaultSettings: SalonSettings = {
