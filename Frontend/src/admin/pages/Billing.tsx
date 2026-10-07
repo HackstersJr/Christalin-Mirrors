@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Search, Plus, Trash2, Printer, Check, ArrowRight, X, Receipt,
-    User, Scissors, Package, Percent, CreditCard, Banknote, ShieldCheck, ChevronDown, Mic
+    User, Scissors, Package, Percent, CreditCard, Banknote, ShieldCheck, ChevronDown, Mic, Bluetooth
 } from 'lucide-react';
 import {
     clientStore, serviceStore, staffStore, appointmentStore,
@@ -808,9 +808,9 @@ export default function Billing() {
                         className={`admin-btn admin-btn-sm ${previewMode === 'seznik' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
                         onClick={() => setPreviewMode('seznik')}
                         style={{ fontSize: 11, gap: 5, padding: '4px 10px' }}
-                        title="SEZNIK Veer (MPT-II compatible, 58mm / 32 characters Font A)"
+                        title="SEZNIK Veer (MPT-II compatible 58mm Bluetooth thermal roll)"
                     >
-                        <Printer size={12} /> SEZNIK Veer (58mm)
+                        <Bluetooth size={12} /> SEZNIK Veer (Bluetooth)
                     </button>
                     <button
                         type="button"

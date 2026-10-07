@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Download } from 'lucide-react'
+import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Download, Bluetooth } from 'lucide-react'
 import { invoiceStore, clientStore, serviceStore } from '../data/store'
 import { getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Invoice, InvoiceItem } from '../data/types'
@@ -185,9 +185,6 @@ function InvoiceDetail() {
 
                 <button className="admin-btn admin-btn-whatsapp" onClick={shareWhatsApp}>Share on WhatsApp</button>
                 <button className="admin-btn admin-btn-secondary" onClick={() => downloadInvoicePdf(invoice)}><Download size={14} /> Download PDF</button>
-                {viewMode === 'standard' && (
-                    <button className="admin-btn admin-btn-secondary" onClick={handlePrint}><Printer size={14} /> Print</button>
-                )}
             </div>
 
             {/* SEZNIK Veer (MPT-II 58mm Thermal View) */}
@@ -494,7 +491,7 @@ function InvoiceList() {
                                 <td>
                                     <div className="admin-actions">
                                         <button className="admin-btn admin-btn-ghost admin-btn-sm" title="View Bill" onClick={() => navigate(`/admin/invoices/${inv.id}`)}><Eye size={14} /></button>
-                                        <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Print to SEZNIK Veer (58mm)" onClick={() => navigate(`/admin/invoices/${inv.id}`)} style={{ color: '#10b981' }}><Printer size={14} /></button>
+                                        <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Bluetooth Print (SEZNIK Veer)" onClick={() => navigate(`/admin/invoices/${inv.id}`)} style={{ color: '#0284c7' }}><Bluetooth size={14} /></button>
                                     </div>
                                 </td>
                             </tr>

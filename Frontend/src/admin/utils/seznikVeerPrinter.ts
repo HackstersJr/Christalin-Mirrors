@@ -137,6 +137,7 @@ export function calculateEan13(invoiceSeqOrNum: string | number): string {
 }
 
 export interface SeznikPrintOptions {
+    branchName?: string
     branchAddress?: string
     branchPhone?: string
     gstin?: string
@@ -187,7 +188,7 @@ export function encodeInvoiceReceipt(invoice: Invoice, opts: SeznikPrintOptions 
         .line(eq)
         .align('center')
 
-    const branchName = invoice.branch || 'Belgaum'
+    const branchName = opts.branchName || invoice.branch || 'Belgaum'
     encoder.line(`Branch: ${toCp437Ascii(branchName)}`)
 
     const branchAddr = opts.branchAddress || getBranchAddress(branchName)
@@ -403,7 +404,7 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
             lines.push(eq)
         }
 
-        const branchName = invoice.branch || 'Belgaum'
+        const branchName = opts.branchName || invoice.branch || 'Belgaum'
         lines.push(centerText(`Branch: ${branchName}`))
 
         const branchAddress = opts.branchAddress || getBranchAddress(branchName)
