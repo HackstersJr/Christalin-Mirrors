@@ -5,9 +5,11 @@
  * - Printer Model: SEZNIK Veer (MPT-II compatible, 58mm / 2-inch roll width)
  * - Printable character width: Exactly 32 characters per line (Font A: 12x24)
  * - Codepage: CP437 (Standard ASCII / Western European)
- * - Features: Monospace plain text, ASCII formatting, QR Codes, EAN13 Barcodes
+ * - Web Bluetooth: Uses @point-of-sale/webbluetooth-receipt-printer & @point-of-sale/receipt-printer-encoder
  */
 
+import WebBluetoothReceiptPrinter from '@point-of-sale/webbluetooth-receipt-printer'
+import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder'
 import type { Invoice } from '../data/types'
 
 export const SEZNIK_LINE_WIDTH = 32
@@ -24,7 +26,21 @@ export function toCp437Ascii(text: string): string {
         .replace(/[‘’]/g, "'")
         .replace(/•|·/g, '-')
         .replace(/…/g, '...')
-        .replace(/[^\x20-\x7E\r\n\t]/g, '') // Strip any non-ASCII characters outside standard CP437 printable range
+        .replace(/[^\x20-\x7E\r\n\t]/g, '')
+}
+
+/**
+ * Format currency amount for CP437 (using "Rs." prefix without Unicode rupee symbol)
+ */
+export function formatRs(amount: number): string {
+    const fixed = Math.round(amount * 100) / 100
+    const str = fixed % 1 === 0 ? fixed.toLocaleString('en-IN') : fixed.toFixed(2)
+    return `Rs.${str}`
+}
+
+export function formatRsAmountOnly(amount: number): string {
+    const fixed = Math.round(amount * 100) / 100
+    return fixed % 1 === 0 ? fixed.toLocaleString('en-IN') : fixed.toFixed(2)
 }
 
 /**
@@ -65,7 +81,6 @@ export function justifyTwo(left: string, right: string, width = SEZNIK_LINE_WIDT
     const cleanRight = toCp437Ascii(right)
     const gap = width - (cleanLeft.length + cleanRight.length)
     if (gap < 1) {
-        // Truncate left to guarantee right is always visible within 32 chars
         const allowedLeft = Math.max(4, width - cleanRight.length - 1)
         return cleanLeft.slice(0, allowedLeft) + ' ' + cleanRight
     }
@@ -97,25 +112,13 @@ export function wrapText(text: string, maxWidth = SEZNIK_LINE_WIDTH): string[] {
 }
 
 /**
- * Format currency amount for CP437 (using "Rs." prefix without Unicode rupee symbol)
- */
-export function formatRs(amount: number): string {
-    const fixed = Math.round(amount * 100) / 100
-    const str = fixed % 1 === 0 ? fixed.toLocaleString('en-IN') : fixed.toFixed(2)
-    return `Rs.${str}`
-}
-
-/**
  * Calculate standard 13-digit EAN-13 barcode with valid check digit
  * Uses in-store salon prefix '290' followed by numeric invoice sequence
  */
 export function calculateEan13(invoiceSeqOrNum: string | number): string {
-    // Extract only digits from invoice number (e.g. "CM-INV-1002" -> "1002")
     const digits = String(invoiceSeqOrNum).replace(/\D/g, '') || '1'
-    // Format 12 data digits: prefix '290' + zero-padded invoice digits
     const padded = ('290' + digits.padStart(9, '0')).slice(0, 12)
 
-    // Calculate EAN-13 check digit
     let sum = 0
     for (let i = 0; i < 12; i++) {
         const d = parseInt(padded[i], 10)
@@ -136,21 +139,238 @@ export interface SeznikPrintOptions {
 }
 
 /**
- * Generates the complete 32-character monospace plain text receipt
- * formatted specifically for SEZNIK Veer (MPT-II 58mm) printers.
+ * Generate standard UPI dynamic payment string for Indian QR codes
+ * e.g. upi://pay?pa=...&pn=Christalin+Mirrors&am=...&cu=INR&tn=...
+ */
+export function generateUpiPaymentString(invoice: Invoice, vpa = 'christalinmirrors@okaxis'): string {
+    const payeeName = 'Christalin Mirrors'
+    const note = `Invoice ${invoice.invoiceNumber}`
+    const amount = (invoice.total || 0).toFixed(2)
+    return `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`
+}
+
+/**
+ * Build binary ESC/POS stream using @point-of-sale/receipt-printer-encoder
+ * Configured specifically for SEZNIK Veer (MPT-II compatible 58mm / 32 cols Font A)
+ */
+export function encodeInvoiceReceipt(invoice: Invoice, opts: SeznikPrintOptions = {}): Uint8Array {
+    const encoder = new ReceiptPrinterEncoder({
+        language: 'esc-pos',
+        columns: 32,                 // 32 characters per line for 58mm / 2-inch roll
+        codepageMapping: 'epson',    // Standard CP437 mapping
+        printerModel: 'mpt-ii',
+    })
+
+    const eq = '================================'
+    const dash = '--------------------------------'
+    const dateStr = new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+    })
+
+    encoder
+        .initialize()
+        .align('center')
+        .bold(true)
+        .line('CHRISTALIN MIRRORS')
+        .bold(false)
+        .line('HAIR & BEAUTY SALON')
+        .line(eq)
+        .align('center')
+
+    if (invoice.branch) {
+        encoder.line(`Branch: ${toCp437Ascii(invoice.branch)}`)
+    }
+    if (opts.branchAddress) {
+        wrapText(opts.branchAddress, 32).forEach(l => encoder.line(l))
+    }
+    if (opts.branchPhone) {
+        encoder.line(`Ph: ${opts.branchPhone}`)
+    }
+    encoder
+        .line(`GSTIN: ${opts.gstin || '29AAVFC4475G1ZU'}`)
+        .line(dash)
+        .align('left')
+        .line(justifyTwo(`Inv: ${invoice.invoiceNumber}`, dateStr, 32))
+
+    if (invoice.clientName) {
+        encoder.line(justifyTwo(`Client: ${invoice.clientName}`, invoice.clientPhone || '', 32))
+    }
+    if (invoice.stylist) {
+        encoder.line(justifyTwo(`Stylist: ${invoice.stylist}`, (invoice.status || 'PAID').toUpperCase(), 32))
+    }
+
+    encoder
+        .line(dash)
+        .align('left')
+
+    // Item Table using 32-col layout: 18 chars (name), 4 chars (qty), 10 chars (amount)
+    const itemRows: [string, string, string][] = []
+    invoice.items.forEach(it => {
+        if (!it.service) return
+        itemRows.push([
+            toCp437Ascii(it.service),
+            String(it.quantity),
+            formatRsAmountOnly(it.total),
+        ])
+    })
+
+    if (itemRows.length > 0) {
+        encoder
+            .table(
+                [
+                    { width: 18, align: 'left' },
+                    { width: 4, align: 'right' },
+                    { width: 10, align: 'right' },
+                ],
+                [
+                    ['Item', 'Qty', 'Amount'],
+                    ...itemRows,
+                ]
+            )
+    }
+
+    encoder
+        .line(dash)
+        .align('left')
+        .line(justifyTwo('Subtotal:', formatRs(invoice.subtotal), 32))
+
+    if (invoice.discountAmount > 0) {
+        const discLabel = invoice.discountPercent > 0 ? `Discount (${invoice.discountPercent}%):` : 'Discount:'
+        encoder.line(justifyTwo(discLabel, `-${formatRs(invoice.discountAmount)}`, 32))
+    }
+    if (invoice.taxAmount > 0) {
+        const halfTax = invoice.taxPercent > 0 ? (invoice.taxPercent / 2).toFixed(1) : '2.5'
+        encoder.line(justifyTwo(`CGST (${halfTax}%):`, formatRs(Math.floor(invoice.taxAmount / 2)), 32))
+        encoder.line(justifyTwo(`SGST (${halfTax}%):`, formatRs(invoice.taxAmount - Math.floor(invoice.taxAmount / 2)), 32))
+    }
+
+    encoder
+        .line(dash)
+        .align('left')
+        .bold(true)
+        .line(justifyTwo('TOTAL:', formatRs(invoice.total), 32))
+        .bold(false)
+        .line(eq)
+
+    // Payment Info
+    const payMethod = (invoice.paymentMethod || 'CASH').toUpperCase()
+    encoder.line(justifyTwo('Payment Mode:', payMethod, 32))
+    if (invoice.amountPaid > 0) {
+        encoder.line(justifyTwo('Amount Paid:', formatRs(invoice.amountPaid), 32))
+    }
+    const balance = invoice.total - invoice.amountPaid
+    if (balance > 0) {
+        encoder.line(justifyTwo('Balance Due:', formatRs(balance), 32))
+    } else if (invoice.amountPaid > invoice.total) {
+        encoder.line(justifyTwo('Change Returned:', formatRs(invoice.amountPaid - invoice.total), 32))
+    }
+
+    if (invoice.notes) {
+        encoder
+            .line(dash)
+            .line(`Note: ${toCp437Ascii(invoice.notes)}`)
+    }
+
+    // Dynamic UPI QR Code
+    if (opts.showUpiQr !== false) {
+        const upiString = generateUpiPaymentString(invoice, opts.upiVpa)
+        encoder
+            .line(dash)
+            .align('center')
+            .qrcode(upiString, 1, 6, 'm')
+            .newline()
+            .line('Scan to Pay via UPI')
+    }
+
+    // EAN-13 Barcode
+    if (opts.showEan13 !== false) {
+        const ean13 = calculateEan13(invoice.invoiceNumber)
+        try {
+            encoder
+                .line(dash)
+                .align('center')
+                .barcode(ean13, 'ean13', 45)
+                .newline()
+        } catch (_) {
+            encoder.line(`EAN13: ${ean13}`)
+        }
+    }
+
+    encoder
+        .align('center')
+        .line(eq)
+        .line('Thank you! Visit again.')
+        .line('Team Christalin Mirrors')
+        .newline()
+        .newline()
+        .newline() // Feeds past tear bar (58mm portable printers lack auto-cutters)
+
+    return encoder.encode()
+}
+
+/**
+ * Print via Web Bluetooth using @point-of-sale/webbluetooth-receipt-printer
+ * Triggers native browser Bluetooth device picker and transmits ESC/POS data.
+ */
+export async function printInvoiceViaBluetooth(
+    invoice: Invoice,
+    opts: SeznikPrintOptions = {}
+): Promise<{ success: boolean; message: string }> {
+    if (typeof navigator === 'undefined' || !('bluetooth' in navigator)) {
+        return {
+            success: false,
+            message: 'Web Bluetooth is not supported in this browser. Please use Google Chrome or Microsoft Edge on Android, Windows, Mac, or Linux.',
+        }
+    }
+
+    try {
+        // 1. Initialize Bluetooth Printer Manager
+        const receiptPrinter = new WebBluetoothReceiptPrinter()
+
+        // 2. Request and Connect (Must be triggered by user click/gesture)
+        await receiptPrinter.connect()
+
+        // 3. Build receipt layout using ReceiptPrinterEncoder
+        const receiptData = encodeInvoiceReceipt(invoice, opts)
+
+        // 4. Send byte stream to SEZNIK Veer printer
+        await receiptPrinter.print(receiptData)
+
+        // 5. Disconnect when finished
+        await receiptPrinter.disconnect()
+
+        return {
+            success: true,
+            message: 'Printed successfully via Web Bluetooth to SEZNIK Veer!',
+        }
+    } catch (err: any) {
+        if (err.name === 'NotFoundError' || err.message?.includes('User cancelled')) {
+            return {
+                success: false,
+                message: 'Bluetooth device selection was cancelled.',
+            }
+        }
+        return {
+            success: false,
+            message: `Bluetooth printing error: ${err.message || err}`,
+        }
+    }
+}
+
+/**
+ * Generates the 32-character monospace plain text receipt string
+ * (Used for on-screen preview, copy-to-clipboard, and browser @page print)
  */
 export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOptions = {}): string {
     const lines: string[] = []
     const eq = '='.repeat(SEZNIK_LINE_WIDTH)
     const dash = '-'.repeat(SEZNIK_LINE_WIDTH)
 
-    // Header
     lines.push(eq)
     lines.push(centerText('CHRISTALIN MIRRORS'))
     lines.push(centerText('HAIR & BEAUTY SALON'))
     lines.push(eq)
 
-    // Branch Details
     if (invoice.branch) {
         lines.push(centerText(`Branch: ${invoice.branch}`))
     }
@@ -165,8 +385,10 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
     lines.push(centerText(`GSTIN: ${gstin}`))
     lines.push(dash)
 
-    // Invoice Meta
-    lines.push(justifyTwo(`Inv: ${invoice.invoiceNumber}`, new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })))
+    const dateStr = new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+    })
+    lines.push(justifyTwo(`Inv: ${invoice.invoiceNumber}`, dateStr))
     if (invoice.clientName) {
         lines.push(justifyTwo(`Client: ${invoice.clientName}`, invoice.clientPhone || ''))
     }
@@ -175,11 +397,9 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
     }
     lines.push(dash)
 
-    // Itemized Table Header (Font A: 32 columns)
-    lines.push(justifyTwo('Item / Service', 'Amount (Rs.)'))
+    lines.push(justifyTwo('Item / Service', 'Amount (Rs)'))
     lines.push(dash)
 
-    // Items
     invoice.items.forEach(item => {
         if (!item.service) return
         const nameLines = wrapText(item.service, SEZNIK_LINE_WIDTH)
@@ -191,7 +411,6 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
     })
     lines.push(dash)
 
-    // Financial Totals
     lines.push(justifyTwo('Subtotal:', formatRs(invoice.subtotal)))
     if (invoice.discountAmount > 0) {
         const discLabel = invoice.discountPercent > 0 ? `Discount (${invoice.discountPercent}%):` : 'Discount:'
@@ -204,11 +423,9 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
     }
     lines.push(dash)
 
-    // Grand Total (Emphasized)
     lines.push(justifyTwo('GRAND TOTAL:', formatRs(invoice.total)))
     lines.push(eq)
 
-    // Payment Info
     const payMethod = (invoice.paymentMethod || 'CASH').toUpperCase()
     lines.push(justifyTwo('Payment Mode:', payMethod))
     if (invoice.amountPaid > 0) {
@@ -226,7 +443,6 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
         lines.push(toCp437Ascii(`Note: ${invoice.notes}`))
     }
 
-    // Footer Messages
     lines.push(dash)
     lines.push(centerText('THANK YOU FOR YOUR VISIT!'))
     lines.push(centerText('CHRISTALIN MIRRORS'))
@@ -237,7 +453,6 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
         lines.push(centerText('are non-refundable'))
     }
 
-    // Barcode & QR Code References
     const ean13 = calculateEan13(invoice.invoiceNumber)
     lines.push(dash)
     lines.push(centerText(`EAN13: ${ean13}`))
@@ -245,117 +460,4 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
     lines.push(eq)
 
     return lines.join('\n')
-}
-
-/**
- * Generate standard UPI dynamic payment string for Indian QR codes
- * e.g. upi://pay?pa=...&pn=Christalin+Mirrors&am=...&cu=INR&tn=...
- */
-export function generateUpiPaymentString(invoice: Invoice, vpa = 'christalinmirrors@okaxis'): string {
-    const payeeName = 'Christalin Mirrors'
-    const note = `Invoice ${invoice.invoiceNumber}`
-    const amount = (invoice.total || 0).toFixed(2)
-    return `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`
-}
-
-/**
- * Convert 32-character text into raw ESC/POS byte command stream for SEZNIK Veer (MPT-II)
- * Includes ESC @ (Init), ESC t 0 (CP437 codepage), ESC ! (Font A), line feeds and cut command.
- */
-export function generateEscPosBytes(text: string, cut = true): Uint8Array {
-    const encoder = new TextEncoder()
-    const bytes: number[] = [
-        0x1B, 0x40,             // ESC @: Initialize printer
-        0x1B, 0x74, 0x00,       // ESC t 0: Select Character Code Table CP437
-        0x1B, 0x21, 0x00,       // ESC ! 0: Select Font A (12x24 dots, standard 32 cols on 58mm)
-        0x1B, 0x33, 0x1E,       // ESC 3 30: Line spacing 30 dots
-    ]
-
-    // Convert string lines into bytes
-    const textBytes = encoder.encode(text)
-    for (let i = 0; i < textBytes.length; i++) {
-        bytes.push(textBytes[i])
-    }
-
-    // Feed lines so paper clears the thermal printhead & tear bar
-    bytes.push(0x0A, 0x0A, 0x0A, 0x0A)
-
-    if (cut) {
-        // Partial / full cut command supported by MPT-II / SEZNIK Veer cutter models
-        bytes.push(0x1D, 0x56, 0x41, 0x10)
-    }
-
-    return new Uint8Array(bytes)
-}
-
-/**
- * Direct Web Bluetooth Print to SEZNIK Veer / MPT-II thermal printer
- * Works directly in Chrome / Edge / Opera on Android, PC, and Mac without print dialogs!
- */
-export async function printDirectWebBluetooth(rawBytes: Uint8Array): Promise<{ success: boolean; message: string }> {
-    if (typeof navigator === 'undefined' || !('bluetooth' in navigator)) {
-        return {
-            success: false,
-            message: 'Web Bluetooth is not supported in this browser. Please use the Thermal Print dialog or Chrome on Android.',
-        }
-    }
-
-    try {
-        // Request any Bluetooth device with standard printer services or matching SEZNIK Veer / MPT-II names
-        const device = await (navigator as any).bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: [
-                '000018f0-0000-1000-8000-00805f9b34fb', // Standard POS Bluetooth service
-                'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // MPT-II / SEZNIK Veer service UUID
-                '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC Transparent UART
-                '0000e0ff-0000-1000-8000-00805f9b34fb',
-            ],
-        })
-
-        if (!device || !device.gatt) {
-            return { success: false, message: 'No Bluetooth device selected.' }
-        }
-
-        const server = await device.gatt.connect()
-        // Find writable characteristic
-        const services = await server.getPrimaryServices()
-        let writeChar: any = null
-
-        for (const service of services) {
-            try {
-                const chars = await service.getCharacteristics()
-                for (const char of chars) {
-                    if (char.properties.write || char.properties.writeWithoutResponse) {
-                        writeChar = char
-                        break
-                    }
-                }
-            } catch (_) {}
-            if (writeChar) break
-        }
-
-        if (!writeChar) {
-            return { success: false, message: 'Could not find a writable thermal print channel on SEZNIK Veer.' }
-        }
-
-        // Send data in 20-512 byte chunks (standard BLE MTU)
-        const CHUNK_SIZE = 100
-        for (let i = 0; i < rawBytes.length; i += CHUNK_SIZE) {
-            const chunk = rawBytes.slice(i, i + CHUNK_SIZE)
-            if (writeChar.writeValueWithoutResponse) {
-                await writeChar.writeValueWithoutResponse(chunk)
-            } else {
-                await writeChar.writeValue(chunk)
-            }
-            // Small throttle to avoid thermal buffer overrun
-            await new Promise(r => setTimeout(r, 20))
-        }
-
-        return { success: true, message: `Successfully sent bill to SEZNIK Veer (${device.name || 'Printer'})!` }
-    } catch (err: any) {
-        if (err.name === 'NotFoundError' || err.message?.includes('User cancelled')) {
-            return { success: false, message: 'Bluetooth pairing was cancelled.' }
-        }
-        return { success: false, message: `Bluetooth print failed: ${err.message || err}` }
-    }
 }

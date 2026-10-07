@@ -11,8 +11,7 @@ import {
     generate32ColReceiptText,
     calculateEan13,
     generateUpiPaymentString,
-    generateEscPosBytes,
-    printDirectWebBluetooth,
+    printInvoiceViaBluetooth,
     SEZNIK_LINE_WIDTH
 } from '../utils/seznikVeerPrinter'
 import './SeznikVeerReceipt.css'
@@ -130,18 +129,18 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
         }, 80)
     }
 
-    // Direct Web Bluetooth Print (SEZNIK Veer / MPT-II)
+    // Direct Web Bluetooth Print (SEZNIK Veer / MPT-II via @point-of-sale packages)
     const handleBluetoothPrint = async () => {
         setIsBtPrinting(true)
         setBtMessage(null)
         try {
-            const rawBytes = generateEscPosBytes(receipt32ColText, true)
-            const res = await printDirectWebBluetooth(rawBytes)
-            if (res.success) {
-                setBtMessage({ text: res.message, error: false })
-            } else {
-                setBtMessage({ text: res.message, error: true })
-            }
+            const res = await printInvoiceViaBluetooth(invoice, {
+                branchAddress,
+                upiVpa,
+                showUpiQr,
+                showEan13: showBarcode,
+            })
+            setBtMessage({ text: res.message, error: !res.success })
         } catch (err: any) {
             setBtMessage({ text: err.message || 'Bluetooth connection error.', error: true })
         } finally {
