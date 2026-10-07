@@ -1,82 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Plus, Search, FileText, ArrowLeft, Printer, Eye, Download, Bluetooth } from 'lucide-react'
+import { Plus, Search, FileText, ArrowLeft, Eye, Download, Bluetooth, Share2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { invoiceStore, clientStore, serviceStore } from '../data/store'
 import { getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Invoice, InvoiceItem } from '../data/types'
-import { getBranchAddress } from '../../data/branches'
-import cmLogo from '../../assets/cm-logo-white.png'
+import { getBranchAddress, getBranchPhone } from '../../data/branches'
+import { printInvoiceViaBluetooth, generate32ColReceiptText } from '../utils/seznikVeerPrinter'
 import SeznikVeerReceipt from '../components/SeznikVeerReceipt'
 import '../AdminShared.css'
 import './Billing.css'
-
-// html2canvas doesn't honor CSS `filter` (used on-screen to flip the white
-// logo artwork to black), so the captured image shows the raw white/cream
-// logo artwork, which blends into the white receipt. Bake a real black
-// silhouette instead by re-drawing the logo's alpha shape filled with black
-// on an offscreen canvas. Drawing the already-loaded, already-rendered <img>
-// element directly (rather than re-fetching the src into a new Image) avoids
-// a same-origin resource being re-requested with different CORS handling,
-// which can silently taint the canvas and produce no output at all.
-function blackenLogo(imgEl: HTMLImageElement): string | null {
-    const canvas = document.createElement('canvas')
-    canvas.width = imgEl.naturalWidth
-    canvas.height = imgEl.naturalHeight
-    const ctx = canvas.getContext('2d')
-    if (!ctx || canvas.width === 0) return null
-    ctx.drawImage(imgEl, 0, 0)
-    ctx.globalCompositeOperation = 'source-in'
-    ctx.fillStyle = '#000000'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    return canvas.toDataURL('image/png')
-}
-
-async function captureInvoiceCanvas(html2canvas: typeof import('html2canvas').default) {
-    const node = document.getElementById('invoice-print')
-    if (!node) return null
-
-    const logoImg = node.querySelector<HTMLImageElement>('.preview-brand-logo')
-    const originalSrc = logoImg?.getAttribute('src') || null
-    const blackened = logoImg ? blackenLogo(logoImg) : null
-    if (logoImg && blackened) {
-        logoImg.src = blackened
-        await logoImg.decode().catch(() => {}) // ensure the swapped image is painted before capture
-    }
-
-    try {
-        return await html2canvas(node, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
-    } finally {
-        if (logoImg && originalSrc) logoImg.src = originalSrc
-    }
-}
-
-async function downloadInvoicePdf(invoice: Invoice) {
-    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf'),
-    ])
-    const canvas = await captureInvoiceCanvas(html2canvas)
-    if (!canvas) return
-    const imgData = canvas.toDataURL('image/png')
-
-    // Size the PDF page to the receipt itself (single page, 1:1) instead of
-    // forcing it into A4 — stretching a narrow receipt to A4 width made it
-    // taller than one page, which split the content across a page break.
-    const pdf = new jsPDF({
-        orientation: canvas.height >= canvas.width ? 'portrait' : 'landscape',
-        unit: 'px',
-        format: [canvas.width, canvas.height],
-    })
-    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
-    pdf.save(`${invoice.invoiceNumber}.pdf`)
-}
 
 // ─── Invoice Detail View ────────────────────────────────────
 function InvoiceDetail() {
     const { invoiceId } = useParams<{ invoiceId: string }>()
     const navigate = useNavigate()
     const [invoice, setInvoice] = useState<Invoice | null>(null)
-    const [viewMode, setViewMode] = useState<'seznik' | 'standard'>('seznik')
+    const [isBtPrinting, setIsBtPrinting] = useState<boolean>(false)
+    const [btMessage, setBtMessage] = useState<{ text: string; error?: boolean } | null>(null)
 
     useEffect(() => {
         if (invoiceId) {
@@ -85,204 +25,198 @@ function InvoiceDetail() {
     }, [invoiceId])
 
     if (!invoice) {
-        return <div className="admin-empty" style={{ padding: 60 }}>
-            <h3>Invoice not found</h3>
-            <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/invoices')}>Back</button>
-        </div>
+        return (
+            <div className="admin-empty" style={{ padding: 60 }}>
+                <h3>Invoice not found</h3>
+                <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/invoices')}>Back</button>
+            </div>
+        )
     }
 
-    const handlePrint = () => { window.print() }
+    const managerBranch = getBranchScope()
+    const branchName = managerBranch || invoice.branch || 'Belgaum'
+    const branchAddress = getBranchAddress(branchName)
+    const branchPhone = getBranchPhone(branchName)
 
     const updateStatus = async (status: Invoice['status']) => {
         await invoiceStore.update(invoice.id, { status })
         setInvoice({ ...invoice, status })
     }
 
-    const buildWhatsAppText = () => {
-        let text = `*Christalin Mirrors - Invoice ${invoice.invoiceNumber}*\n`;
-        text += `Date: ${new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN')}\n`;
-        text += `Client: ${invoice.clientName}\n\n`;
-        invoice.items.forEach(i => {
-            if(i.service) text += `${i.service} (x${i.quantity}) - ₹${Number(i.total || 0).toFixed(2)}\n`;
-        });
-        const taxable = Math.max(0, (invoice.subtotal || 0) - (invoice.discountAmount || 0));
-        const halfRate = (invoice.taxPercent || 5) / 2;
-        const halfTax = Number(((taxable * halfRate) / 100).toFixed(2)) || Number(((invoice.taxAmount || 0) / 2).toFixed(2));
-        text += `\nSubtotal: ₹${Number(invoice.subtotal || 0).toFixed(2)}\n`;
-        if (invoice.discountAmount > 0) text += `Discount: -₹${Number(invoice.discountAmount || 0).toFixed(2)}\n`;
-        if (invoice.taxAmount > 0) {
-            text += `CGST (${halfRate}%): ₹${halfTax.toFixed(2)}\n`;
-            text += `SGST (${halfRate}%): ₹${halfTax.toFixed(2)}\n`;
+    // Direct Web Bluetooth Print (SEZNIK Veer 58mm Roll)
+    const handleBluetoothPrint = async () => {
+        setIsBtPrinting(true)
+        setBtMessage(null)
+        try {
+            const res = await printInvoiceViaBluetooth(invoice, {
+                branchName,
+                branchAddress,
+                branchPhone,
+                showUpiQr: false,
+                showEan13: true,
+            })
+            setBtMessage({ text: res.message, error: !res.success })
+        } catch (err: any) {
+            setBtMessage({ text: err.message || 'Bluetooth connection error.', error: true })
+        } finally {
+            setIsBtPrinting(false)
         }
-        text += `*Total: ₹${Number(invoice.total || 0).toFixed(2)}*\n\n`;
-        text += `Thank you for your visit!`;
-        return text;
     }
 
-    // WhatsApp's wa.me link only supports pre-filled text — there's no URL
-    // parameter for attaching a file. To actually send the bill image, we
-    // use the Web Share API (supported on Android/Chrome and most mobile
-    // browsers), which hands the image to the native share sheet where
-    // WhatsApp appears as a real target with the file attached. Falls back
-    // to the old text-only wa.me link where file sharing isn't supported
-    // (e.g. desktop browsers).
-    const shareWhatsApp = async () => {
-        if (!invoice) return;
-        const text = buildWhatsAppText();
-
-        try {
-            const { default: html2canvas } = await import('html2canvas')
-            const canvas = await captureInvoiceCanvas(html2canvas)
-            if (canvas) {
-                const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
-                if (blob) {
-                    const file = new File([blob], `${invoice.invoiceNumber}.png`, { type: 'image/png' })
-                    if (navigator.canShare?.({ files: [file] })) {
-                        await navigator.share({ files: [file], title: invoice.invoiceNumber, text })
-                        return
-                    }
-                }
-            }
-        } catch (err) {
-            if ((err as Error)?.name === 'AbortError') return // user cancelled the share sheet
+    // Share Receipt on WhatsApp
+    const handleShareWhatsApp = () => {
+        let text = `*Christalin Mirrors — ${branchName}*\n`
+        text += `_Refine · Reflect · Radiate_\n\n`
+        text += `*Invoice:* ${invoice.invoiceNumber}\n`
+        text += `*Date:* ${new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}\n`
+        if (invoice.clientName) text += `*Client:* ${invoice.clientName}\n`
+        if (invoice.stylist) text += `*Stylist:* ${invoice.stylist}\n`
+        text += `\n*Services / Items:*\n`
+        invoice.items.forEach(i => {
+            if (!i.service) return
+            text += `• ${i.service} (x${i.quantity}) — ₹${Number(i.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`
+        })
+        const taxable = Math.max(0, (invoice.subtotal || 0) - (invoice.discountAmount || 0))
+        const halfRate = (invoice.taxPercent || 5) / 2
+        const halfTax = Number(((taxable * halfRate) / 100).toFixed(2)) || Number(((invoice.taxAmount || 0) / 2).toFixed(2))
+        text += `\nSubtotal: ₹${Number(invoice.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`
+        if (invoice.discountAmount > 0) {
+            const discLabel = invoice.discountPercent > 0 ? `Discount (${invoice.discountPercent}%):` : 'Discount:'
+            text += `${discLabel} -₹${Number(invoice.discountAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`
         }
+        if (invoice.taxAmount > 0) {
+            text += `CGST (${halfRate}%): ₹${halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`
+            text += `SGST (${halfRate}%): ₹${halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`
+        }
+        text += `*Grand Total: ₹${Number(invoice.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}*\n`
+        text += `Payment Mode: ${(invoice.paymentMethod || 'CASH').toUpperCase()}\n\n`
+        text += `*Branch:* ${branchName}\n`
+        text += `${branchAddress}\n`
+        text += `Ph: ${branchPhone}\n`
+        text += `GSTIN: 29AAVFC4475G1ZU\n\n`
+        text += `Thank you! Visit again.\n*Team Christalin Mirrors*`
 
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        const phoneNum = (invoice.clientPhone || '').replace(/\D/g, '')
+        const url = phoneNum
+            ? `https://wa.me/${phoneNum.length === 10 ? '91' + phoneNum : phoneNum}?text=${encodeURIComponent(text)}`
+            : `https://wa.me/?text=${encodeURIComponent(text)}`
+        window.open(url, '_blank')
+    }
+
+    // Download formatted .txt bill
+    const handleDownloadTxt = () => {
+        const fullReceiptText = generate32ColReceiptText(invoice, {
+            branchName,
+            branchAddress,
+            branchPhone,
+            showUpiQr: false,
+            showEan13: true,
+            omitBrandHeader: false,
+            omitBranchInfoBlock: false,
+        })
+        const blob = new Blob([fullReceiptText], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${invoice.invoiceNumber}_${branchName.replace(/\s+/g, '_')}_bill.txt`
+        a.click()
+        URL.revokeObjectURL(url)
     }
 
     return (
         <div>
-            <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-                <button className="admin-btn admin-btn-ghost" onClick={() => navigate('/admin/invoices')}>
-                    <ArrowLeft size={18} />
-                </button>
-                <div style={{ flex: 1, minWidth: 140 }}>
-                    <h1 className="admin-page-title" style={{ marginBottom: 0 }}>{invoice.invoiceNumber}</h1>
-                    <p className="admin-page-sub">Invoice for {invoice.clientName}</p>
-                </div>
-                <span className={`status-badge ${invoice.status === 'paid' ? 'confirmed' : invoice.status === 'sent' ? 'pending' : invoice.status}`}>{invoice.status}</span>
-                
-                {/* Print Layout Switcher */}
-                <div style={{ display: 'inline-flex', borderRadius: 8, padding: 3, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-color)', gap: 3 }}>
-                    <button
-                        type="button"
-                        className={`admin-btn admin-btn-sm ${viewMode === 'seznik' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
-                        onClick={() => setViewMode('seznik')}
-                        style={{ fontSize: 12, gap: 5, padding: '4px 10px' }}
-                        title="SEZNIK Veer (MPT-II compatible 58mm / 32 characters per line Font A)"
-                    >
-                        <Printer size={13} />
-                        <span>SEZNIK Veer (58mm)</span>
+            {/* Header: Title on Left, Bluetooth Print + WhatsApp + Download on Top Right */}
+            <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button className="admin-btn admin-btn-ghost" onClick={() => navigate('/admin/invoices')}>
+                        <ArrowLeft size={18} />
                     </button>
-                    <button
-                        type="button"
-                        className={`admin-btn admin-btn-sm ${viewMode === 'standard' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
-                        onClick={() => setViewMode('standard')}
-                        style={{ fontSize: 12, gap: 5, padding: '4px 10px' }}
-                    >
-                        <FileText size={13} />
-                        <span>Graphic Bill</span>
-                    </button>
+                    <div>
+                        <h1 className="admin-page-title" style={{ marginBottom: 0 }}>{invoice.invoiceNumber}</h1>
+                        <p className="admin-page-sub">Invoice for {invoice.clientName} &bull; {branchName}</p>
+                    </div>
+                    <span className={`status-badge ${invoice.status === 'paid' ? 'confirmed' : invoice.status === 'sent' ? 'pending' : invoice.status}`}>{invoice.status}</span>
                 </div>
 
-                <button className="admin-btn admin-btn-whatsapp" onClick={shareWhatsApp}>Share on WhatsApp</button>
-                <button className="admin-btn admin-btn-secondary" onClick={() => downloadInvoicePdf(invoice)}><Download size={14} /> Download PDF</button>
+                {/* Top Right Action Buttons (Bluetooth Print ONLY, WhatsApp Share, Download Bill) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                        type="button"
+                        className="admin-btn admin-btn-primary"
+                        onClick={handleBluetoothPrint}
+                        disabled={isBtPrinting}
+                        style={{
+                            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                            borderColor: '#0284c7',
+                            color: '#ffffff',
+                            fontWeight: 600,
+                            gap: 7,
+                            padding: '8px 16px',
+                            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.35)',
+                        }}
+                        title="Print directly to SEZNIK Veer via Web Bluetooth"
+                    >
+                        <Bluetooth size={16} />
+                        <span>{isBtPrinting ? 'Connecting…' : 'Pair & Print (Bluetooth)'}</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        className="admin-btn admin-btn-whatsapp"
+                        onClick={handleShareWhatsApp}
+                        style={{ gap: 6, fontWeight: 500 }}
+                        title="Share on WhatsApp"
+                    >
+                        <Share2 size={14} />
+                        <span>Share on WhatsApp</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        className="admin-btn admin-btn-secondary"
+                        onClick={handleDownloadTxt}
+                        style={{ gap: 6 }}
+                        title="Download Bill (.txt)"
+                    >
+                        <Download size={14} />
+                        <span>Download</span>
+                    </button>
+                </div>
             </div>
 
-            {/* SEZNIK Veer (MPT-II 58mm Thermal View) */}
-            {viewMode === 'seznik' ? (
-                <div style={{ maxWidth: 580, margin: '0 auto', padding: '10px 0' }}>
-                    <SeznikVeerReceipt invoice={invoice} />
-                </div>
-            ) : (
-                /* Standard Graphic Invoice Card — mirrors the Billing "Bill Preview" style */
-                <div className="preview-receipt" id="invoice-print" style={{ position: 'static', boxShadow: 'none', border: '1px solid var(--border-color)' }}>
-                    <div className="preview-header">Tax Invoice</div>
-
-                    <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
-                    <div className="preview-salon-name" style={{ marginBottom: 2 }}>Christalin Mirrors</div>
-                    <div style={{ fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-primary, #b59458)', textAlign: 'center', fontWeight: 600, marginBottom: 4 }}>Refine · Reflect · Radiate</div>
-                    <div className="preview-branch-line">
-                        {invoice.branch}<br />GSTIN: 29AAVFC4475G1ZU
-                    </div>
-
-                    <div className="preview-meta">
-                        <div>{invoice.invoiceNumber} • {new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                        {invoice.stylist && <div style={{ fontSize: 12, marginTop: 4 }}>Stylist: {invoice.stylist}</div>}
-                        <div className="preview-client">{invoice.clientName}</div>
-                        {invoice.clientPhone && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{invoice.clientPhone}</div>}
-                    </div>
-
-                    <div className="preview-items">
-                        {invoice.items.map((item, i) => item.service ? (
-                            <div key={i} className="preview-row">
-                                <div className="preview-row-name">
-                                    {item.service}
-                                    <div className="preview-row-qty">{item.quantity} × ₹{Number(item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                </div>
-                                <div className="preview-row-total">₹{Number(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                            </div>
-                        ) : null)}
-                    </div>
-
-                    {(() => {
-                        const taxable = Math.max(0, (invoice.subtotal || 0) - (invoice.discountAmount || 0));
-                        const halfRate = (invoice.taxPercent || 5) / 2;
-                        const halfTax = Number(((taxable * halfRate) / 100).toFixed(2)) || Number(((invoice.taxAmount || 0) / 2).toFixed(2));
-                        return (
-                            <div className="preview-totals">
-                                <div className="preview-sub">
-                                    <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                                {invoice.discountAmount > 0 && (
-                                    <div className="preview-discount">
-                                        <span>Discount ({invoice.discountPercent}%)</span><span>-₹{invoice.discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                )}
-                                {halfTax > 0 && (
-                                    <>
-                                        <div className="preview-tax">
-                                            <span>CGST ({halfRate}%)</span><span>₹{halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                        </div>
-                                        <div className="preview-tax">
-                                            <span>SGST ({halfRate}%)</span><span>₹{halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                        </div>
-                                    </>
-                                )}
-                                <div className="preview-grand-total">
-                                    <span>Total</span><span>₹{invoice.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
-                                    <span>Amount Paid</span><span>₹{invoice.amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                                {invoice.total - invoice.amountPaid > 0 && (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--danger)' }}>
-                                        <span>Balance Due</span><span>₹{(invoice.total - invoice.amountPaid).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })()}
-
-                    {invoice.notes && (
-                        <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
-                            <strong>Notes:</strong> {invoice.notes}
-                        </div>
+            {/* Bluetooth status feedback banner */}
+            {btMessage && (
+                <div
+                    className="no-print"
+                    style={{
+                        padding: '9px 14px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        marginBottom: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        background: btMessage.error ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                        color: btMessage.error ? '#ef4444' : '#10b981',
+                        border: `1px solid ${btMessage.error ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+                    }}
+                >
+                    {btMessage.error ? (
+                        <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                    ) : (
+                        <CheckCircle2 size={15} style={{ flexShrink: 0 }} />
                     )}
-
-                    <div className="preview-footer">
-                        {invoice.paymentMethod && <span className="preview-payment-badge">{invoice.paymentMethod}</span>}
-                        <div className="preview-thanks">Thank you! Visit again — Team Christalin Mirrors</div>
-                        <div className="preview-watermark">Christalin Mirrors — {invoice.branch}</div>
-                        {getBranchAddress(invoice.branch) && (
-                            <div className="preview-address">{getBranchAddress(invoice.branch)}</div>
-                        )}
-                    </div>
+                    <span>{btMessage.text}</span>
                 </div>
             )}
 
-            {/* Actions */}
-            <div className="no-print" style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap', maxWidth: 420, margin: '16px auto 0' }}>
+            {/* SEZNIK Veer 58mm Thermal Roll Bill (Rendered Directly) */}
+            <div style={{ maxWidth: 580, margin: '0 auto', padding: '6px 0' }}>
+                <SeznikVeerReceipt invoice={invoice} hideToolbar />
+            </div>
+
+            {/* Invoice Status Actions */}
+            <div className="no-print" style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap', maxWidth: 420, margin: '16px auto 0', justifyContent: 'center' }}>
                 {invoice.status === 'draft' && <button className="admin-btn admin-btn-primary" onClick={() => updateStatus('sent')}>Mark as Sent</button>}
                 {(invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'draft') && <button className="admin-btn admin-btn-primary" style={{ background: 'var(--success)', color: 'white', borderColor: 'var(--success)' }} onClick={() => updateStatus('paid')}>Mark as Paid</button>}
                 {invoice.status !== 'cancelled' && invoice.status !== 'paid' && <button className="admin-btn admin-btn-danger" onClick={() => updateStatus('cancelled')}>Cancel Invoice</button>}
@@ -429,8 +363,8 @@ function InvoiceList() {
                                         <option value="">Select service</option>
                                         {services.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                     </select>
-                                    <input className="admin-form-input" type="number" min={1} value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)} />
-                                    <input className="admin-form-input" type="number" step="0.01" min={0} value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                                    <input className="admin-form-input" type="number" min={1} value={item.quantity === 0 ? '' : item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value === '' ? 1 : parseInt(e.target.value) || 1)} onFocus={e => e.target.select()} placeholder="1" />
+                                    <input className="admin-form-input" type="number" step="0.01" min={0} value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} onFocus={e => e.target.select()} placeholder="0" />
                                     <div style={{ fontWeight: 500, color: 'var(--accent)', fontSize: 13 }}>₹{Number(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     {items.length > 1 && <button type="button" className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setItems(items.filter((_, i) => i !== idx))}>×</button>}
                                 </div>
@@ -441,7 +375,7 @@ function InvoiceList() {
                         <div className="admin-form-grid" style={{ marginTop: 16 }}>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Discount (%)</label>
-                                <input className="admin-form-input" type="number" step="0.1" min={0} max={100} value={formData.discountPercent} onChange={e => setFormData({ ...formData, discountPercent: parseFloat(e.target.value) || 0 })} />
+                                <input className="admin-form-input" type="number" step="0.1" min={0} max={100} value={formData.discountPercent === 0 ? '' : formData.discountPercent} onChange={e => setFormData({ ...formData, discountPercent: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 })} onFocus={e => e.target.select()} placeholder="0" />
                             </div>
                             <div className="admin-form-group">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -455,7 +389,7 @@ function InvoiceList() {
                                         {formData.taxPercent > 0 ? '✕ Remove GST' : '+ Add GST (5%)'}
                                     </button>
                                 </div>
-                                <input className="admin-form-input" type="number" step="0.1" min={0} value={formData.taxPercent} onChange={e => setFormData({ ...formData, taxPercent: parseFloat(e.target.value) || 0 })} placeholder="0" />
+                                <input className="admin-form-input" type="number" step="0.1" min={0} value={formData.taxPercent === 0 ? '' : formData.taxPercent} onChange={e => setFormData({ ...formData, taxPercent: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 })} onFocus={e => e.target.select()} placeholder="0" />
                             </div>
                             <div className="admin-form-group full">
                                 <label className="admin-form-label">Notes</label>
@@ -553,7 +487,7 @@ function InvoiceList() {
                         </div>
                         <div className="mobile-card-actions" style={{ justifyContent: 'flex-end', gap: 6 }}>
                             <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate(`/admin/invoices/${inv.id}`)} title="View Bill"><Eye size={16} /></button>
-                            <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate(`/admin/invoices/${inv.id}`)} title="Print to SEZNIK Veer (58mm)" style={{ color: '#10b981' }}><Printer size={16} /></button>
+                            <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate(`/admin/invoices/${inv.id}`)} title="Bluetooth Print (SEZNIK Veer)" style={{ color: '#0284c7' }}><Bluetooth size={16} /></button>
                         </div>
                     </div>
                 ))}

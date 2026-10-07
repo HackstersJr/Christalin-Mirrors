@@ -6,6 +6,7 @@ import { getBranchScope } from '../data/authStore'
 import {
     generate32ColReceiptText,
     printInvoiceViaBluetooth,
+    calculateEan13,
     SEZNIK_LINE_WIDTH
 } from '../utils/seznikVeerPrinter'
 import cmLogo from '../../assets/cm-logo-white.png'
@@ -15,9 +16,43 @@ interface Props {
     invoice: Invoice
     onClose?: () => void
     initialCompact?: boolean
+    hideToolbar?: boolean
 }
 
-export default function SeznikVeerReceipt({ invoice, onClose }: Props) {
+// Generate 95-module EAN-13 barcode binary string for crisp SVG rendering
+function getEan13Bits(ean13: string): string {
+    const digits = (ean13.replace(/\D/g, '') + '0000000000000').slice(0, 13)
+    const L: Record<string, string> = {
+        '0': '0001101', '1': '0011001', '2': '0010011', '3': '0111101', '4': '0100011',
+        '5': '0110001', '6': '0101111', '7': '0111011', '8': '0110111', '9': '0001011',
+    }
+    const G: Record<string, string> = {
+        '0': '0100111', '1': '0110011', '2': '0011011', '3': '0100001', '4': '0011101',
+        '5': '0111001', '6': '0000101', '7': '0010001', '8': '0001001', '9': '0010111',
+    }
+    const R: Record<string, string> = {
+        '0': '1110010', '1': '1100110', '2': '1101100', '3': '1000010', '4': '1011100',
+        '5': '1001110', '6': '1010000', '7': '1000100', '8': '1001000', '9': '1110100',
+    }
+    const PARITY: Record<string, string> = {
+        '0': 'LLLLLL', '1': 'LLGLGG', '2': 'LLGGLG', '3': 'LLGGGL', '4': 'LGLLGG',
+        '5': 'LGGLLG', '6': 'LGGGLL', '7': 'LGLGLG', '8': 'LGLGGL', '9': 'LGGLGL',
+    }
+    const parity = PARITY[digits[0]] || 'LLLLLL'
+    let bits = '101' // left guard
+    for (let i = 1; i <= 6; i++) {
+        const d = digits[i]
+        bits += parity[i - 1] === 'G' ? G[d] : L[d]
+    }
+    bits += '01010' // center guard
+    for (let i = 7; i <= 12; i++) {
+        bits += R[digits[i]]
+    }
+    bits += '101' // right guard
+    return bits
+}
+
+export default function SeznikVeerReceipt({ invoice, onClose, hideToolbar }: Props) {
     const [isBtPrinting, setIsBtPrinting] = useState<boolean>(false)
     const [btMessage, setBtMessage] = useState<{ text: string; error?: boolean } | null>(null)
 
@@ -26,6 +61,7 @@ export default function SeznikVeerReceipt({ invoice, onClose }: Props) {
     const branchName = managerBranch || invoice.branch || 'Belgaum'
     const branchAddress = getBranchAddress(branchName)
     const branchPhone = getBranchPhone(branchName)
+    const ean13Code = calculateEan13(invoice.invoiceNumber)
 
     // Strict 32-column receipt text for thermal paper preview (brand header & branch block rendered once above)
     const receipt32ColText = generate32ColReceiptText(invoice, {
@@ -33,18 +69,18 @@ export default function SeznikVeerReceipt({ invoice, onClose }: Props) {
         branchAddress,
         branchPhone,
         showUpiQr: false,
-        showEan13: false,
+        showEan13: false, // Visual barcode SVG is rendered cleanly below the text
         omitBrandHeader: true,
         omitBranchInfoBlock: true,
     })
 
-    // Full 32-col text for downloadable file
+    // Full 32-col text for downloadable file (includes ASCII EAN-13 code)
     const fullReceipt32ColText = generate32ColReceiptText(invoice, {
         branchName,
         branchAddress,
         branchPhone,
         showUpiQr: false,
-        showEan13: false,
+        showEan13: true,
         omitBrandHeader: false,
         omitBranchInfoBlock: false,
     })
@@ -59,7 +95,7 @@ export default function SeznikVeerReceipt({ invoice, onClose }: Props) {
                 branchAddress,
                 branchPhone,
                 showUpiQr: false,
-                showEan13: false,
+                showEan13: true,
             })
             setBtMessage({ text: res.message, error: !res.success })
         } catch (err: any) {
@@ -122,80 +158,82 @@ export default function SeznikVeerReceipt({ invoice, onClose }: Props) {
 
     return (
         <div className="seznik-receipt-wrapper">
-            {/* Action Bar: Bluetooth Print ONLY, WhatsApp Share, Download */}
-            <div className="seznik-toolbar no-print">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span className="seznik-printer-badge">
-                        <Bluetooth size={13} style={{ color: '#38bdf8' }} />
-                        SEZNIK Veer (58mm BLE)
-                    </span>
-                    <span className="seznik-spec-pill" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', fontWeight: 600 }}>
-                        Branch: {branchName}
-                    </span>
-                    {managerBranch && (
-                        <span className="seznik-spec-pill" style={{ color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)' }}>
-                            Linked Manager POS
+            {/* Action Bar: Bluetooth Print ONLY, WhatsApp Share, Download (hidden if parent hosts toolbar) */}
+            {!hideToolbar && (
+                <div className="seznik-toolbar no-print">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span className="seznik-printer-badge">
+                            <Bluetooth size={13} style={{ color: '#38bdf8' }} />
+                            SEZNIK Veer (58mm BLE)
                         </span>
-                    )}
-                </div>
+                        <span className="seznik-spec-pill" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', fontWeight: 600 }}>
+                            Branch: {branchName}
+                        </span>
+                        {managerBranch && (
+                            <span className="seznik-spec-pill" style={{ color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)' }}>
+                                Linked Manager POS
+                            </span>
+                        )}
+                    </div>
 
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {/* ONLY Bluetooth Print Option */}
-                    <button
-                        type="button"
-                        className="admin-btn admin-btn-primary"
-                        onClick={handleBluetoothPrint}
-                        disabled={isBtPrinting}
-                        style={{
-                            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                            borderColor: '#0284c7',
-                            color: '#ffffff',
-                            fontWeight: 600,
-                            gap: 7,
-                            padding: '8px 16px',
-                            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.35)',
-                        }}
-                        title="Connect and print receipt directly to SEZNIK Veer via Web Bluetooth"
-                    >
-                        <Bluetooth size={16} />
-                        <span>{isBtPrinting ? 'Connecting SEZNIK Veer…' : 'Pair & Print (Bluetooth)'}</span>
-                    </button>
-
-                    {/* WhatsApp Share */}
-                    <button
-                        type="button"
-                        className="admin-btn admin-btn-whatsapp"
-                        onClick={handleShareWhatsApp}
-                        style={{ gap: 6, fontWeight: 500 }}
-                        title="Send receipt bill copy via WhatsApp"
-                    >
-                        <Share2 size={14} />
-                        <span>Share WhatsApp</span>
-                    </button>
-
-                    {/* Download Button */}
-                    <button
-                        type="button"
-                        className="admin-btn admin-btn-secondary"
-                        onClick={handleDownloadTxt}
-                        style={{ gap: 6 }}
-                        title="Download receipt text file"
-                    >
-                        <Download size={14} />
-                        <span>Download</span>
-                    </button>
-
-                    {onClose && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {/* ONLY Bluetooth Print Option */}
                         <button
                             type="button"
-                            className="admin-btn admin-btn-ghost admin-btn-sm"
-                            onClick={onClose}
+                            className="admin-btn admin-btn-primary"
+                            onClick={handleBluetoothPrint}
+                            disabled={isBtPrinting}
+                            style={{
+                                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                borderColor: '#0284c7',
+                                color: '#ffffff',
+                                fontWeight: 600,
+                                gap: 7,
+                                padding: '8px 16px',
+                                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.35)',
+                            }}
+                            title="Connect and print receipt directly to SEZNIK Veer via Web Bluetooth"
                         >
-                            Close
+                            <Bluetooth size={16} />
+                            <span>{isBtPrinting ? 'Connecting SEZNIK Veer…' : 'Pair & Print (Bluetooth)'}</span>
                         </button>
-                    )}
+
+                        {/* WhatsApp Share */}
+                        <button
+                            type="button"
+                            className="admin-btn admin-btn-whatsapp"
+                            onClick={handleShareWhatsApp}
+                            style={{ gap: 6, fontWeight: 500 }}
+                            title="Send receipt bill copy via WhatsApp"
+                        >
+                            <Share2 size={14} />
+                            <span>Share WhatsApp</span>
+                        </button>
+
+                        {/* Download Button */}
+                        <button
+                            type="button"
+                            className="admin-btn admin-btn-secondary"
+                            onClick={handleDownloadTxt}
+                            style={{ gap: 6 }}
+                            title="Download receipt text file"
+                        >
+                            <Download size={14} />
+                            <span>Download</span>
+                        </button>
+
+                        {onClose && (
+                            <button
+                                type="button"
+                                className="admin-btn admin-btn-ghost admin-btn-sm"
+                                onClick={onClose}
+                            >
+                                Close
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Bluetooth status feedback notification */}
             {btMessage && (
@@ -254,6 +292,24 @@ export default function SeznikVeerReceipt({ invoice, onClose }: Props) {
                 <pre className="seznik-mono-text">
                     {receipt32ColText}
                 </pre>
+
+                {/* EAN-13 Barcode Section */}
+                <div className="seznik-barcode-section" style={{ width: '100%', marginTop: 2, paddingTop: 4, borderTop: '1px dashed #000' }}>
+                    <svg
+                        viewBox="0 0 95 36"
+                        className="seznik-barcode-svg"
+                        style={{ width: 135, height: 36, display: 'block', margin: '2px auto' }}
+                    >
+                        {getEan13Bits(ean13Code).split('').map((bit, idx) => (
+                            bit === '1' ? (
+                                <rect key={idx} x={idx} y={0} width={1} height={36} fill="#000000" />
+                            ) : null
+                        ))}
+                    </svg>
+                    <div style={{ fontSize: 9.5, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '2px', textAlign: 'center', color: '#000000', marginTop: 1 }}>
+                        {ean13Code}
+                    </div>
+                </div>
             </div>
         </div>
     )

@@ -110,7 +110,6 @@ export default function Billing() {
     const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
     const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
     const [showAppointmentShortcut, setShowAppointmentShortcut] = useState(false);
-    const [previewMode, setPreviewMode] = useState<'seznik' | 'standard'>('seznik');
 
     // Derived Financials
     const subtotal = Number(items.reduce((sum, item) => sum + (Number(item.total) || 0), 0).toFixed(2));
@@ -669,10 +668,27 @@ export default function Billing() {
                                     )}
                                 </div>
                                 <div style={{ width: 75 }}>
-                                    <input className="admin-form-input" type="number" min={1} value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)} placeholder="Qty" />
+                                    <input
+                                        className="admin-form-input"
+                                        type="number"
+                                        min={1}
+                                        value={item.quantity === 0 ? '' : item.quantity}
+                                        onChange={e => updateItem(idx, 'quantity', e.target.value === '' ? 1 : parseInt(e.target.value) || 1)}
+                                        onFocus={e => e.target.select()}
+                                        placeholder="1"
+                                    />
                                 </div>
                                 <div style={{ width: 100 }}>
-                                    <input className="admin-form-input" type="number" step="0.01" min={0} value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} placeholder="Price" />
+                                    <input
+                                        className="admin-form-input"
+                                        type="number"
+                                        step="0.01"
+                                        min={0}
+                                        value={item.unitPrice === 0 ? '' : item.unitPrice}
+                                        onChange={e => updateItem(idx, 'unitPrice', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                                        onFocus={e => e.target.select()}
+                                        placeholder="0"
+                                    />
                                 </div>
                                 <div className="billing-item-total">₹{Number(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                 <button className="billing-item-remove" onClick={() => removeItem(idx)}><Trash2 size={16} /></button>
@@ -712,7 +728,16 @@ export default function Billing() {
                                 <option value="percent">% Off</option>
                                 <option value="flat">₹ Flat</option>
                             </select>
-                            <input className="admin-form-input" type="number" step="0.01" min={0} value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)} placeholder="0" />
+                            <input
+                                className="admin-form-input"
+                                type="number"
+                                step="0.01"
+                                min={0}
+                                value={discountValue === 0 ? '' : discountValue}
+                                onChange={e => setDiscountValue(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                                onFocus={e => e.target.select()}
+                                placeholder="0"
+                            />
                         </div>
                     </div>
                     <div>
@@ -741,10 +766,11 @@ export default function Billing() {
                                     type="number"
                                     step="0.1"
                                     min={0}
-                                    value={taxPercent}
-                                    onChange={e => setTaxPercent(parseFloat(e.target.value) || 0)}
+                                    value={!applyGst ? '' : (taxPercent === 0 ? '' : taxPercent)}
+                                    onChange={e => setTaxPercent(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                                    onFocus={e => e.target.select()}
                                     disabled={!applyGst}
-                                    placeholder="5.0"
+                                    placeholder={applyGst ? "0" : "None"}
                                     style={{
                                         opacity: applyGst ? 1 : 0.45,
                                         background: applyGst ? undefined : 'rgba(255, 255, 255, 0.03)',
@@ -795,7 +821,15 @@ export default function Billing() {
                         {paymentMethod === 'cash' && (
                             <div className="payment-extra-card">
                                 <label>Amount Received (₹)</label>
-                                <input className="admin-form-input large-input" type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(parseFloat(e.target.value) || 0)} placeholder={total.toString()} />
+                                <input
+                                    className="admin-form-input large-input"
+                                    type="number"
+                                    step="0.01"
+                                    value={amountReceived === 0 ? '' : amountReceived}
+                                    onChange={e => setAmountReceived(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                                    onFocus={e => e.target.select()}
+                                    placeholder={total > 0 ? total.toFixed(2) : "0"}
+                                />
                                 {changeToReturn > 0 && <div className="payment-change">Change to return: <strong>₹{changeToReturn.toFixed(2)}</strong></div>}
                             </div>
                         )}
@@ -822,15 +856,15 @@ export default function Billing() {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                                     <div>
                                         <label style={{ fontSize: 11, color: 'var(--text-dim)' }}>Cash (₹)</label>
-                                        <input className="admin-form-input" type="number" min={0} value={splitCash || ''} onChange={e => setSplitCash(parseInt(e.target.value) || 0)} placeholder="0" />
+                                        <input className="admin-form-input" type="number" min={0} value={splitCash || ''} onChange={e => setSplitCash(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)} onFocus={e => e.target.select()} placeholder="0" />
                                     </div>
                                     <div>
                                         <label style={{ fontSize: 11, color: 'var(--text-dim)' }}>Card (₹)</label>
-                                        <input className="admin-form-input" type="number" min={0} value={splitCard || ''} onChange={e => setSplitCard(parseInt(e.target.value) || 0)} placeholder="0" />
+                                        <input className="admin-form-input" type="number" min={0} value={splitCard || ''} onChange={e => setSplitCard(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)} onFocus={e => e.target.select()} placeholder="0" />
                                     </div>
                                     <div>
                                         <label style={{ fontSize: 11, color: 'var(--text-dim)' }}>UPI (₹)</label>
-                                        <input className="admin-form-input" type="number" min={0} value={splitUpi || ''} onChange={e => setSplitUpi(parseInt(e.target.value) || 0)} placeholder="0" />
+                                        <input className="admin-form-input" type="number" min={0} value={splitUpi || ''} onChange={e => setSplitUpi(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)} onFocus={e => e.target.select()} placeholder="0" />
                                     </div>
                                 </div>
                                 {(total - (splitCash + splitCard + splitUpi)) !== 0 && (
@@ -857,98 +891,9 @@ export default function Billing() {
                 </div>
             </div>
 
-            {/* RIGHT COLUMN - LIVE PREVIEW */}
+            {/* RIGHT COLUMN - LIVE THERMAL PREVIEW (Graphic bill removed per request) */}
             <div className="billing-preview">
-                {/* Preview Mode Switcher */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14, gap: 4, background: 'rgba(255, 255, 255, 0.04)', padding: 4, borderRadius: 8, border: '1px solid var(--border-color)' }}>
-                    <button
-                        type="button"
-                        className={`admin-btn admin-btn-sm ${previewMode === 'seznik' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
-                        onClick={() => setPreviewMode('seznik')}
-                        style={{ fontSize: 11, gap: 5, padding: '4px 10px' }}
-                        title="SEZNIK Veer (MPT-II compatible 58mm Bluetooth thermal roll)"
-                    >
-                        <Bluetooth size={12} /> SEZNIK Veer (Bluetooth)
-                    </button>
-                    <button
-                        type="button"
-                        className={`admin-btn admin-btn-sm ${previewMode === 'standard' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
-                        onClick={() => setPreviewMode('standard')}
-                        style={{ fontSize: 11, gap: 5, padding: '4px 10px' }}
-                    >
-                        <Receipt size={12} /> Standard Preview
-                    </button>
-                </div>
-
-                {previewMode === 'seznik' ? (
-                    <SeznikVeerReceipt invoice={livePreviewInvoice} initialCompact />
-                ) : (
-                    <div className="preview-receipt">
-                        <div className="preview-header">Bill Preview</div>
-
-                        <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
-                        <div className="preview-salon-name">Christalin Mirrors</div>
-                        <div style={{ fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-primary, #b59458)', textAlign: 'center', fontWeight: 600, marginBottom: 4 }}>Refine · Reflect · Radiate</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center' }}>GSTIN: 29AAVFC4475G1ZU</div>
-
-                        <div className="preview-meta">
-                            <div>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                            <div className="preview-client">
-                                {selectedClient === 'walk-in' ? 'Walk-in Guest' : selectedClient ? selectedClient.name : 'Select Client...'}
-                            </div>
-                            {selectedStaffId && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Stylist: {staff.find(s => s.id === selectedStaffId)?.name}</div>}
-                        </div>
-
-                        <div className="preview-items">
-                            {items.length === 0 && <div className="preview-empty">No items...</div>}
-                            {items.map((item, idx) => item.service ? (
-                                <div key={idx} className="preview-row">
-                                    <div className="preview-row-name">
-                                        {item.service}
-                                        <div className="preview-row-qty">{item.quantity} × ₹{Number(item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                    </div>
-                                    <div className="preview-row-total">₹{Number(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                </div>
-                            ) : null)}
-                        </div>
-
-                        <div className="preview-totals">
-                            <div className="preview-sub">
-                                <span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                            {discountAmount > 0 && (
-                                <div className="preview-discount">
-                                    <span>Discount</span><span>-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                            )}
-                            {applyGst && taxAmount > 0 && (
-                                <>
-                                    <div className="preview-tax">
-                                        <span>CGST ({halfTaxPercent}%)</span><span>₹{cgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="preview-tax">
-                                        <span>SGST ({halfTaxPercent}%)</span><span>₹{sgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                </>
-                            )}
-                            <div className="preview-grand-total">
-                                <span>Total</span><span>₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                        </div>
-
-                        <div className="preview-footer">
-                            <span className="preview-payment-badge">{paymentMethod}</span>
-                            {paymentMethod === 'cash' && changeToReturn > 0 && (
-                                <div className="preview-change">Change: ₹{changeToReturn.toFixed(2)}</div>
-                            )}
-                            <div className="preview-thanks">Thank you! Visit again — Team Christalin Mirrors</div>
-                            <div className="preview-watermark">Christalin Mirrors — {selectedBranch}</div>
-                            {getBranchAddress(selectedBranch) && (
-                                <div className="preview-address">{getBranchAddress(selectedBranch)}</div>
-                            )}
-                        </div>
-                    </div>
-                )}
+                <SeznikVeerReceipt invoice={livePreviewInvoice} initialCompact />
             </div>
 
             {/* Payment Modal */}
@@ -966,7 +911,16 @@ export default function Billing() {
                         {paymentMethod === 'cash' && (
                             <div className="modal-cash-input">
                                 <label>Amount Received</label>
-                                <input className="admin-form-input large-input text-center" type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(parseFloat(e.target.value) || 0)} autoFocus />
+                                <input
+                                    className="admin-form-input large-input text-center"
+                                    type="number"
+                                    step="0.01"
+                                    value={amountReceived === 0 ? '' : amountReceived}
+                                    onChange={e => setAmountReceived(e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                                    onFocus={e => e.target.select()}
+                                    placeholder={total > 0 ? total.toFixed(2) : "0"}
+                                    autoFocus
+                                />
                                 {changeToReturn > 0 && <div className="modal-change">Return Change: ₹{changeToReturn.toFixed(2)}</div>}
                             </div>
                         )}
