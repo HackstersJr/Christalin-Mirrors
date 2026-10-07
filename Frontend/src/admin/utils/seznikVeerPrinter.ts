@@ -145,6 +145,7 @@ export interface SeznikPrintOptions {
     showEan13?: boolean
     customFooterNote?: string
     omitBrandHeader?: boolean
+    omitBranchInfoBlock?: boolean
 }
 
 /**
@@ -190,15 +191,25 @@ export function encodeInvoiceReceipt(invoice: Invoice, opts: SeznikPrintOptions 
     encoder.line(`Branch: ${toCp437Ascii(branchName)}`)
 
     const branchAddr = opts.branchAddress || getBranchAddress(branchName)
-    if (branchAddr) {
-        wrapText(branchAddr, 32).forEach(l => encoder.line(l))
-    }
     const branchPhone = opts.branchPhone || getBranchPhone(branchName)
-    if (branchPhone) {
-        encoder.line(`Ph: ${branchPhone}`)
+    const gstin = opts.gstin || '29AAVFC4475G1ZU'
+
+    if (branchAddr) {
+        encoder.font('b') // Font B: smaller 9x17 dot matrix font so address prints in smaller, neat text (42 cols)
+        wrapText(branchAddr, 42).forEach(l => encoder.line(l))
+        if (branchPhone) {
+            encoder.line(`Ph: ${branchPhone}  GSTIN: ${gstin}`)
+        } else {
+            encoder.line(`GSTIN: ${gstin}`)
+        }
+        encoder.font('a') // Back to standard Font A
+    } else {
+        if (branchPhone) {
+            encoder.line(`Ph: ${branchPhone}`)
+        }
+        encoder.line(`GSTIN: ${gstin}`)
     }
     encoder
-        .line(`GSTIN: ${opts.gstin || '29AAVFC4475G1ZU'}`)
         .line(dash)
         .align('left')
         .line(justifyTwo(`Inv: ${invoice.invoiceNumber}`, dateStr, 32))
@@ -382,30 +393,32 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
     const eq = '='.repeat(SEZNIK_LINE_WIDTH)
     const dash = '-'.repeat(SEZNIK_LINE_WIDTH)
 
-    if (!opts.omitBrandHeader) {
-        lines.push(eq)
-        lines.push(centerText('CHRISTALIN MIRRORS'))
-        lines.push(centerText('Refine . Reflect . Radiate'))
-        lines.push(eq)
-    } else {
-        lines.push(eq)
-    }
+    if (!opts.omitBranchInfoBlock) {
+        if (!opts.omitBrandHeader) {
+            lines.push(eq)
+            lines.push(centerText('CHRISTALIN MIRRORS'))
+            lines.push(centerText('Refine . Reflect . Radiate'))
+            lines.push(eq)
+        } else {
+            lines.push(eq)
+        }
 
-    const branchName = invoice.branch || 'Belgaum'
-    lines.push(centerText(`Branch: ${branchName}`))
+        const branchName = invoice.branch || 'Belgaum'
+        lines.push(centerText(`Branch: ${branchName}`))
 
-    const branchAddress = opts.branchAddress || getBranchAddress(branchName)
-    if (branchAddress) {
-        const addrLines = wrapText(branchAddress, SEZNIK_LINE_WIDTH)
-        addrLines.forEach(l => lines.push(centerText(l)))
+        const branchAddress = opts.branchAddress || getBranchAddress(branchName)
+        if (branchAddress) {
+            const addrLines = wrapText(branchAddress, SEZNIK_LINE_WIDTH)
+            addrLines.forEach(l => lines.push(centerText(l)))
+        }
+        const branchPhone = opts.branchPhone || getBranchPhone(branchName)
+        if (branchPhone) {
+            lines.push(centerText(`Ph: ${branchPhone}`))
+        }
+        const gstin = opts.gstin || '29AAVFC4475G1ZU'
+        lines.push(centerText(`GSTIN: ${gstin}`))
+        lines.push(dash)
     }
-    const branchPhone = opts.branchPhone || getBranchPhone(branchName)
-    if (branchPhone) {
-        lines.push(centerText(`Ph: ${branchPhone}`))
-    }
-    const gstin = opts.gstin || '29AAVFC4475G1ZU'
-    lines.push(centerText(`GSTIN: ${gstin}`))
-    lines.push(dash)
 
     const dateStr = new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', {
         day: '2-digit', month: 'short', year: 'numeric',

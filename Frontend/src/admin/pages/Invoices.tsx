@@ -326,10 +326,10 @@ function InvoiceList() {
         updated[idx] = { ...updated[idx], [field]: value }
         if (field === 'service') {
             const svc = services.find(s => s.name === value)
-            if (svc) { updated[idx].unitPrice = svc.price; updated[idx].total = svc.price * updated[idx].quantity }
+            if (svc) { updated[idx].unitPrice = svc.price; updated[idx].total = Number((svc.price * updated[idx].quantity).toFixed(2)) }
         }
         if (field === 'quantity' || field === 'unitPrice') {
-            updated[idx].total = updated[idx].unitPrice * updated[idx].quantity
+            updated[idx].total = Number(((Number(updated[idx].unitPrice) || 0) * (Number(updated[idx].quantity) || 1)).toFixed(2))
         }
         setItems(updated)
     }
@@ -339,11 +339,11 @@ function InvoiceList() {
         if (isSaving) return // guards against double-click creating two invoices
         const client = clients.find(c => c.id === formData.clientId)
         if (!client || items.length === 0) return
-        const subtotal = items.reduce((s, i) => s + i.total, 0)
-        const discountAmount = Math.round(subtotal * formData.discountPercent / 100)
-        const taxable = subtotal - discountAmount
-        const taxAmount = Math.round(taxable * formData.taxPercent / 100)
-        const total = taxable + taxAmount
+        const subtotal = Number(items.reduce((s, i) => s + (Number(i.total) || 0), 0).toFixed(2))
+        const discountAmount = Number(((subtotal * formData.discountPercent) / 100).toFixed(2))
+        const taxable = Math.max(0, Number((subtotal - discountAmount).toFixed(2)))
+        const taxAmount = Number(((taxable * formData.taxPercent) / 100).toFixed(2))
+        const total = Number((taxable + taxAmount).toFixed(2))
 
         setIsSaving(true)
         const invNum = await invoiceStore.getNextInvoiceNumber()
@@ -359,7 +359,7 @@ function InvoiceList() {
         setIsSaving(false)
         setShowForm(false)
         setItems([{ service: '', quantity: 1, unitPrice: 0, total: 0 }])
-        setFormData({ clientId: '', discountPercent: 0, taxPercent: 5, paymentMethod: 'cash', branch: 'Bengaluru', stylist: '', notes: '' })
+        setFormData({ clientId: '', discountPercent: 0, taxPercent: 5, paymentMethod: 'cash', branch: 'Belgaum', stylist: '', notes: '' })
         await reload()
     }
 
@@ -427,8 +427,8 @@ function InvoiceList() {
                                         {services.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                     </select>
                                     <input className="admin-form-input" type="number" min={1} value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)} />
-                                    <input className="admin-form-input" type="number" value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', parseInt(e.target.value) || 0)} />
-                                    <div style={{ fontWeight: 500, color: 'var(--accent)', fontSize: 13 }}>₹{item.total.toLocaleString()}</div>
+                                    <input className="admin-form-input" type="number" step="0.01" min={0} value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                                    <div style={{ fontWeight: 500, color: 'var(--accent)', fontSize: 13 }}>₹{Number(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     {items.length > 1 && <button type="button" className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setItems(items.filter((_, i) => i !== idx))}>×</button>}
                                 </div>
                             ))}
@@ -438,11 +438,11 @@ function InvoiceList() {
                         <div className="admin-form-grid" style={{ marginTop: 16 }}>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Discount (%)</label>
-                                <input className="admin-form-input" type="number" min={0} max={100} value={formData.discountPercent} onChange={e => setFormData({ ...formData, discountPercent: parseInt(e.target.value) || 0 })} />
+                                <input className="admin-form-input" type="number" step="0.1" min={0} max={100} value={formData.discountPercent} onChange={e => setFormData({ ...formData, discountPercent: parseFloat(e.target.value) || 0 })} />
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">GST (%)</label>
-                                <input className="admin-form-input" type="number" min={0} value={formData.taxPercent} onChange={e => setFormData({ ...formData, taxPercent: parseInt(e.target.value) || 0 })} />
+                                <input className="admin-form-input" type="number" step="0.1" min={0} value={formData.taxPercent} onChange={e => setFormData({ ...formData, taxPercent: parseFloat(e.target.value) || 0 })} />
                             </div>
                             <div className="admin-form-group full">
                                 <label className="admin-form-label">Notes</label>

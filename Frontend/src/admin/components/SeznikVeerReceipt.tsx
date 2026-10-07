@@ -30,6 +30,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
     const [btMessage, setBtMessage] = useState<{ text: string; error?: boolean } | null>(null)
     const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
     const [addressSaved, setAddressSaved] = useState<boolean>(false)
+    const [addressSize, setAddressSize] = useState<'xs' | 'sm' | 'md'>('sm')
 
     const branchName = invoice.branch || 'Belgaum'
     const [customAddress, setCustomAddress] = useState<string>(() => getBranchAddress(branchName))
@@ -42,13 +43,14 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
 
     const ean13Code = calculateEan13(invoice.invoiceNumber)
 
-    // Generate strict 32-column plain text for 58mm roll (omitBrandHeader: true so logo/name/tagline appears only ONCE at the top)
+    // Generate strict 32-column plain text for 58mm roll (omitBrandHeader & omitBranchInfoBlock so header & small address are rendered cleanly once above)
     const receipt32ColText = generate32ColReceiptText(invoice, {
         branchAddress: customAddress,
         branchPhone: customPhone,
         showUpiQr: false,
         showEan13: showBarcode,
         omitBrandHeader: true,
+        omitBranchInfoBlock: true,
     })
 
     // Full 32-col text including ASCII branding for raw .txt download and copy
@@ -58,6 +60,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
         showUpiQr: false,
         showEan13: showBarcode,
         omitBrandHeader: false,
+        omitBranchInfoBlock: false,
     })
 
     // Generate optional EAN-13 / Code128 Barcode
@@ -322,6 +325,20 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                     </div>
 
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>Address Font:</span>
+                            <select
+                                className="admin-form-input"
+                                value={addressSize}
+                                onChange={e => setAddressSize(e.target.value as any)}
+                                style={{ padding: '3px 8px', fontSize: 12 }}
+                            >
+                                <option value="xs">Extra Small (7px - ultra compact)</option>
+                                <option value="sm">Small (8px - recommended)</option>
+                                <option value="md">Medium (9px)</option>
+                            </select>
+                        </div>
+
                         <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                             <input
                                 type="checkbox"
@@ -351,7 +368,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
 
             {/* ─── PHYSICAL 58mm ROLL PREVIEW & PRINT TARGET ───────── */}
             <div id="seznik-thermal-target" className="seznik-roll-paper">
-                {/* Brand Logo & Name & Tagline at Top of Receipt */}
+                {/* Brand Logo & Name & Tagline at Top of Receipt (rendered ONCE) */}
                 <div className="seznik-brand-header">
                     <img
                         src={cmLogo}
@@ -362,7 +379,20 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                     <div className="seznik-brand-tagline">Refine · Reflect · Radiate</div>
                 </div>
 
-                {/* Monospace 32-column Plain Text Header, Items, and Clean Footer */}
+                {/* Branch Details Block with reduced address font */}
+                <div className="seznik-branch-block">
+                    <div className="seznik-branch-title">Branch: {branchName}</div>
+                    <div className={`seznik-branch-address size-${addressSize}`}>
+                        {customAddress}
+                    </div>
+                    <div className="seznik-branch-contact">
+                        Ph: {customPhone} &bull; GSTIN: 29AAVFC4475G1ZU
+                    </div>
+                </div>
+
+                <div className="seznik-divider-line">================================</div>
+
+                {/* Monospace 32-column Plain Text: Inv details, Item Table, Totals with 2 decimals, and Clean Thank You Footer */}
                 <pre className="seznik-mono-text">
                     {receipt32ColText}
                 </pre>

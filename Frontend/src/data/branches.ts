@@ -151,7 +151,7 @@ export function getBranchAddress(branchName?: string): string {
     if (lower.includes('beng') || lower.includes('blr')) {
         return 'Century Ethos Club House, Bellary Rd, Bengaluru 560092'
     }
-    if (lower.includes('kala') || lower.includes('gulb') || lower.includes('klb') || lower.includes('brham')) {
+    if (lower.includes('kala') || lower.includes('kalb') || lower.includes('gulb') || lower.includes('klb') || lower.includes('brham') || lower.includes('orchid')) {
         return '2nd floor, Orchid Mall, Mahaveer Nagar, Khuba Plot, Brhampur, Kalaburagi, Karnataka 585102'
     }
     if (lower.includes('yelah')) {

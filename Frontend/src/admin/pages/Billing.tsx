@@ -253,7 +253,7 @@ export default function Billing() {
         }
         
         if (['quantity', 'unitPrice', 'service'].includes(field as string)) {
-            copy[idx].total = (copy[idx].unitPrice || 0) * (copy[idx].quantity || 1);
+            copy[idx].total = Number(((Number(copy[idx].unitPrice) || 0) * (Number(copy[idx].quantity) || 1)).toFixed(2));
         }
         setItems(copy);
     };
@@ -665,9 +665,9 @@ export default function Billing() {
                                     <input className="admin-form-input" type="number" min={1} value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)} placeholder="Qty" />
                                 </div>
                                 <div style={{ width: 100 }}>
-                                    <input className="admin-form-input" type="number" min={0} value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', parseInt(e.target.value) || 0)} placeholder="Price" />
+                                    <input className="admin-form-input" type="number" step="0.01" min={0} value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} placeholder="Price" />
                                 </div>
-                                <div className="billing-item-total">₹{item.total.toLocaleString()}</div>
+                                <div className="billing-item-total">₹{Number(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                 <button className="billing-item-remove" onClick={() => removeItem(idx)}><Trash2 size={16} /></button>
                             </div>
                         ))}
@@ -705,12 +705,12 @@ export default function Billing() {
                                 <option value="percent">% Off</option>
                                 <option value="flat">₹ Flat</option>
                             </select>
-                            <input className="admin-form-input" type="number" min={0} value={discountValue} onChange={e => setDiscountValue(parseInt(e.target.value) || 0)} placeholder="0" />
+                            <input className="admin-form-input" type="number" step="0.01" min={0} value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)} placeholder="0" />
                         </div>
                     </div>
                     <div>
                         <div className="billing-section-header"><h3>GST (%)</h3></div>
-                        <input className="admin-form-input" type="number" min={0} value={taxPercent} onChange={e => setTaxPercent(parseInt(e.target.value) || 0)} />
+                        <input className="admin-form-input" type="number" step="0.1" min={0} value={taxPercent} onChange={e => setTaxPercent(parseFloat(e.target.value) || 0)} />
                         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Applied post-discount</div>
                     </div>
                 </div>
@@ -737,8 +737,8 @@ export default function Billing() {
                         {paymentMethod === 'cash' && (
                             <div className="payment-extra-card">
                                 <label>Amount Received (₹)</label>
-                                <input className="admin-form-input large-input" type="number" value={amountReceived} onChange={e => setAmountReceived(parseInt(e.target.value) || 0)} placeholder={total.toString()} />
-                                {changeToReturn > 0 && <div className="payment-change">Change to return: <strong>₹{changeToReturn}</strong></div>}
+                                <input className="admin-form-input large-input" type="number" step="0.01" value={amountReceived} onChange={e => setAmountReceived(parseFloat(e.target.value) || 0)} placeholder={total.toString()} />
+                                {changeToReturn > 0 && <div className="payment-change">Change to return: <strong>₹{changeToReturn.toFixed(2)}</strong></div>}
                             </div>
                         )}
                         {paymentMethod === 'upi' && (
