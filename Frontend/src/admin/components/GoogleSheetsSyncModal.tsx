@@ -8,6 +8,7 @@ import { googleAuthService } from '../data/googleAuthService'
 import {
     googleSheetsSyncService,
     extractSpreadsheetId,
+    downloadCsvTemplate,
     type GoogleSheetConfig,
     type SyncResult,
 } from '../data/googleSheetsSyncService'
@@ -18,26 +19,44 @@ interface Props {
     isOpen: boolean
     onClose: () => void
     onSyncComplete?: (result: SyncResult) => void
+    targetBranch?: string
+    syncType?: 'manual-sales' | 'daily-sales' | 'all'
 }
 
 export default function GoogleSheetsSyncModal({
     isOpen,
     onClose,
     onSyncComplete,
+    targetBranch = 'all',
+    syncType = 'all',
 }: Props) {
     const [user, setUser] = useState<User | null>(googleAuthService.getCurrentUser())
     const [token, setToken] = useState<string | null>(googleAuthService.getAccessToken())
     const [isSigningIn, setIsSigningIn] = useState(false)
     const [authError, setAuthError] = useState<string | null>(null)
 
-    const [config, setConfig] = useState<GoogleSheetConfig>(googleSheetsSyncService.getConfig())
-    const [urlInput, setUrlInput] = useState(config.spreadsheetUrl || (config.spreadsheetId ? `https://docs.google.com/spreadsheets/d/${config.spreadsheetId}/edit` : ''))
+    const [selectedBranch, setSelectedBranch] = useState<string>(targetBranch)
+    const [selectedType, setSelectedType] = useState<'manual-sales' | 'daily-sales' | 'all'>(syncType)
+    const [config, setConfig] = useState<GoogleSheetConfig>(() => googleSheetsSyncService.getConfig())
+    
+    // Resolve current active sheet based on branch and type
+    const activeBranchConfig = selectedBranch !== 'all' ? config.branches?.[selectedBranch] : null
+    const currentSheetUrl = selectedBranch === 'all'
+        ? (config.spreadsheetUrl || (config.spreadsheetId ? `https://docs.google.com/spreadsheets/d/${config.spreadsheetId}/edit` : ''))
+        : selectedType === 'daily-sales'
+            ? (activeBranchConfig?.dailySalesSpreadsheetUrl || '')
+            : (activeBranchConfig?.manualSalesSpreadsheetUrl || '')
+
+    const [urlInput, setUrlInput] = useState<string>(currentSheetUrl)
     const [availableTabs, setAvailableTabs] = useState<string[]>([])
     const [isInspecting, setIsInspecting] = useState(false)
     const [inspectError, setInspectError] = useState<string | null>(null)
 
     const [isSyncing, setIsSyncing] = useState(false)
     const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
+
+    const [isAutoCreatingInDrive, setIsAutoCreatingInDrive] = useState(false)
+    const [autoCreateFeedback, setAutoCreateFeedback] = useState<string | null>(null)
 
     // Listen for Google Auth state changes
     useEffect(() => {
@@ -48,12 +67,33 @@ export default function GoogleSheetsSyncModal({
         return unsubscribe
     }, [])
 
-    // Whenever sheet ID or token changes, inspect available tabs if we have a valid ID and token
+    // Update state when modal props change
     useEffect(() => {
-        if (isOpen && token && config.spreadsheetId) {
-            handleInspectSheet(config.spreadsheetId, token)
+        if (isOpen) {
+            setSelectedBranch(targetBranch)
+            setSelectedType(syncType)
+            const latest = googleSheetsSyncService.getConfig()
+            setConfig(latest)
+            const bConf = targetBranch !== 'all' ? latest.branches?.[targetBranch] : null
+            const u = targetBranch === 'all'
+                ? (latest.spreadsheetUrl || (latest.spreadsheetId ? `https://docs.google.com/spreadsheets/d/${latest.spreadsheetId}/edit` : ''))
+                : syncType === 'daily-sales'
+                    ? (bConf?.dailySalesSpreadsheetUrl || '')
+                    : (bConf?.manualSalesSpreadsheetUrl || '')
+            setUrlInput(u)
         }
-    }, [isOpen, token, config.spreadsheetId])
+    }, [isOpen, targetBranch, syncType])
+
+    // Update url input when selected branch or type changes
+    useEffect(() => {
+        const bConf = selectedBranch !== 'all' ? config.branches?.[selectedBranch] : null
+        const u = selectedBranch === 'all'
+            ? (config.spreadsheetUrl || (config.spreadsheetId ? `https://docs.google.com/spreadsheets/d/${config.spreadsheetId}/edit` : ''))
+            : selectedType === 'daily-sales'
+                ? (bConf?.dailySalesSpreadsheetUrl || '')
+                : (bConf?.manualSalesSpreadsheetUrl || '')
+        setUrlInput(u)
+    }, [selectedBranch, selectedType, config])
 
     if (!isOpen) return null
 
@@ -64,11 +104,6 @@ export default function GoogleSheetsSyncModal({
             const result = await googleAuthService.signIn()
             setUser(result.user)
             setToken(result.accessToken)
-
-            // If spreadsheet already entered, inspect immediately
-            if (config.spreadsheetId) {
-                await handleInspectSheet(config.spreadsheetId, result.accessToken)
-            }
         } catch (err: any) {
             const errStr = String(err?.message || err)
             const isCancelled = err?.code === 'auth/popup-closed-by-user' ||
@@ -80,13 +115,10 @@ export default function GoogleSheetsSyncModal({
                               errStr.includes('popup-blocked')
 
             if (isCancelled) {
-                console.info('Google Sign-In popup closed by user or dismissed.')
-                setAuthError('Sign-in popup was closed before completing. If you wish to connect, please click Connect Google Account again, or open the app in a new tab.')
+                setAuthError('Sign-in popup was closed before completing. Click Connect Google Account to try again.')
             } else if (isBlocked) {
-                console.warn('Google Sign-In popup blocked.')
-                setAuthError('Popups are currently blocked by your browser. Please allow popups or open the app in a new tab to authorize Google Sheets.')
+                setAuthError('Popups are currently blocked by your browser. Please allow popups to authorize Google Sheets.')
             } else {
-                console.warn('Google Sign-In note:', err?.message || err)
                 setAuthError(err.message || 'Failed to authenticate with Google. Please try again.')
             }
         } finally {
@@ -101,45 +133,78 @@ export default function GoogleSheetsSyncModal({
         setAvailableTabs([])
     }
 
-    const handleUrlBlurOrSubmit = async () => {
+    const handleSaveSheetUrl = async () => {
         const id = extractSpreadsheetId(urlInput)
-        if (!id) {
-            if (urlInput.trim()) {
-                setInspectError('Please provide a valid Google Sheet URL or spreadsheet ID.')
-            }
+        if (!id && urlInput.trim()) {
+            setInspectError('Please provide a valid Google Sheet URL or spreadsheet ID.')
             return
         }
 
         setInspectError(null)
-        const updated = googleSheetsSyncService.saveConfig({
-            spreadsheetId: id,
-            spreadsheetUrl: urlInput.trim(),
-        })
-        setConfig(updated)
+        if (selectedBranch === 'all') {
+            const updated = await googleSheetsSyncService.saveConfig({
+                spreadsheetId: id || config.spreadsheetId,
+                spreadsheetUrl: urlInput.trim(),
+            })
+            setConfig(updated)
+        } else {
+            const branches = { ...(config.branches || {}) }
+            const bConf = branches[selectedBranch] || {
+                dailySalesSpreadsheetUrl: '',
+                dailySalesSpreadsheetId: '',
+                dailySalesTab: `${selectedBranch} POS Sales`,
+                manualSalesSpreadsheetUrl: '',
+                manualSalesSpreadsheetId: '',
+                manualSalesTab: `${selectedBranch} Daily Sales`,
+            }
 
-        if (token) {
-            await handleInspectSheet(id, token)
+            if (selectedType === 'daily-sales') {
+                bConf.dailySalesSpreadsheetUrl = urlInput.trim()
+                bConf.dailySalesSpreadsheetId = id || ''
+            } else {
+                bConf.manualSalesSpreadsheetUrl = urlInput.trim()
+                bConf.manualSalesSpreadsheetId = id || ''
+            }
+            branches[selectedBranch] = bConf
+
+            const updated = await googleSheetsSyncService.saveConfig({ branches })
+            setConfig(updated)
         }
     }
 
-    const handleInspectSheet = async (id: string, currentToken: string) => {
-        setIsInspecting(true)
-        setInspectError(null)
+    const handleAutoCreateInDrive = async () => {
+        let activeToken = token
+        if (!activeToken) {
+            try {
+                setIsSigningIn(true)
+                const res = await googleAuthService.signIn()
+                setUser(res.user)
+                setToken(res.accessToken)
+                activeToken = res.accessToken
+            } catch (authErr: any) {
+                setAuthError('Google sign-in required to create files in your Drive folder.')
+                setIsSigningIn(false)
+                return
+            } finally {
+                setIsSigningIn(false)
+            }
+        }
+
+        if (!activeToken) return
+
+        setIsAutoCreatingInDrive(true)
+        setAutoCreateFeedback('Creating "Christalin mirror" folder in Google Drive…')
         try {
-            const meta = await googleSheetsSyncService.getSpreadsheetMetadata(id, currentToken)
-            setAvailableTabs(meta.tabs)
-            const updated = googleSheetsSyncService.saveConfig({
-                spreadsheetTitle: meta.title,
-                // If Daily Sales tab not found in sheet, keep default or select first tab
-                dailySalesTab: meta.tabs.includes(config.dailySalesTab) ? config.dailySalesTab : (meta.tabs[0] || 'Daily Sales'),
-                expensesTab: meta.tabs.includes(config.expensesTab) ? config.expensesTab : (meta.tabs[1] || meta.tabs[0] || 'Expenses & CapEx'),
+            const res = await googleSheetsSyncService.autoCreateAllBranchSheetsInDrive(activeToken, msg => {
+                setAutoCreateFeedback(msg)
             })
+            const updated = googleSheetsSyncService.getConfig()
             setConfig(updated)
+            setAutoCreateFeedback(`All branch spreadsheets created in Drive folder "Christalin mirror"! Config synchronized for all Branch Managers.`)
         } catch (err: any) {
-            console.error('Inspect failed', err)
-            setInspectError(err.message || 'Unable to inspect spreadsheet. Verify permissions and sharing settings.')
+            setAutoCreateFeedback(`Drive creation note: ${err.message}`)
         } finally {
-            setIsInspecting(false)
+            setIsAutoCreatingInDrive(false)
         }
     }
 
@@ -149,7 +214,8 @@ export default function GoogleSheetsSyncModal({
         setInspectError(null)
         try {
             await googleSheetsSyncService.initializeStandardTabs(config.spreadsheetId, token, ['Daily Sales', 'Expenses & CapEx'])
-            await handleInspectSheet(config.spreadsheetId, token)
+            const meta = await googleSheetsSyncService.getSpreadsheetMetadata(config.spreadsheetId, token)
+            setAvailableTabs(meta.tabs)
         } catch (err: any) {
             setInspectError(err.message || 'Failed to initialize sheet tabs.')
         } finally {
@@ -158,16 +224,14 @@ export default function GoogleSheetsSyncModal({
     }
 
     const handleRunSync = async () => {
-        if (!config.spreadsheetId) {
-            setInspectError('Please connect your Google Sheet first.')
-            return
-        }
-
         setIsSyncing(true)
         setSyncResult(null)
 
         try {
-            const res = await googleSheetsSyncService.performSync()
+            const res = await googleSheetsSyncService.performSync({
+                branch: selectedBranch,
+                sheetType: selectedType
+            })
             setSyncResult(res)
             setConfig(googleSheetsSyncService.getConfig())
             if (onSyncComplete) {
@@ -315,35 +379,170 @@ export default function GoogleSheetsSyncModal({
                         </div>
                     )}
 
+                    {/* Step 1.5: Branch & Sales Type Selection */}
+                    <div className="gs-config-section" style={{ background: 'rgba(255, 255, 255, 0.02)', padding: 14, borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                            <label className="gs-label" style={{ margin: 0 }}>
+                                <Layers size={15} className="text-primary" />
+                                Target Salon Branch &amp; Sales Stream
+                            </label>
+                            <span style={{ fontSize: 11, color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: 10 }}>
+                                <CheckCircle2 size={11} /> Admin Controlled · Shared with Branch Managers
+                            </span>
+                        </div>
+
+                        {/* Branch Selection Pills */}
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                            <button
+                                type="button"
+                                className={`admin-btn admin-btn-sm ${selectedBranch === 'all' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
+                                onClick={() => setSelectedBranch('all')}
+                                style={{ fontSize: 11, padding: '4px 10px' }}
+                            >
+                                🏢 All Branches (Consolidated Master)
+                            </button>
+                            {['Bengaluru', 'Kalaburagi', 'Belgaum', 'Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)'].map(b => (
+                                <button
+                                    key={b}
+                                    type="button"
+                                    className={`admin-btn admin-btn-sm ${selectedBranch === b ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
+                                    onClick={() => setSelectedBranch(b)}
+                                    style={{ fontSize: 11, padding: '4px 10px' }}
+                                >
+                                    {b.includes('Upcoming') ? '🏗️' : '📍'} {b}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Stream Selection */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Sales Stream:</span>
+                            <button
+                                type="button"
+                                className={`admin-btn admin-btn-sm ${selectedType === 'manual-sales' ? 'admin-btn-secondary' : 'admin-btn-ghost'}`}
+                                onClick={() => setSelectedType('manual-sales')}
+                                style={{ fontSize: 11, padding: '3px 8px', borderColor: selectedType === 'manual-sales' ? '#b59458' : undefined }}
+                            >
+                                📝 Manual Daily Sales (Cash + UPI + Retail)
+                            </button>
+                            <button
+                                type="button"
+                                className={`admin-btn admin-btn-sm ${selectedType === 'daily-sales' ? 'admin-btn-secondary' : 'admin-btn-ghost'}`}
+                                onClick={() => setSelectedType('daily-sales')}
+                                style={{ fontSize: 11, padding: '3px 8px', borderColor: selectedType === 'daily-sales' ? '#b59458' : undefined }}
+                            >
+                                🧾 POS Daily Sales (Invoices)
+                            </button>
+                            <button
+                                type="button"
+                                className={`admin-btn admin-btn-sm ${selectedType === 'all' ? 'admin-btn-secondary' : 'admin-btn-ghost'}`}
+                                onClick={() => setSelectedType('all')}
+                                style={{ fontSize: 11, padding: '3px 8px' }}
+                            >
+                                🔄 All Streams
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Drive 1-Click Auto Creation */}
+                    <div style={{
+                        background: 'linear-gradient(135deg, rgba(181, 148, 88, 0.08), rgba(16, 185, 129, 0.08))',
+                        border: '1px solid rgba(181, 148, 88, 0.25)',
+                        borderRadius: 8,
+                        padding: '12px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 12
+                    }}>
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-bright)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Sparkles size={14} style={{ color: '#b59458' }} />
+                                Google Drive: &quot;Christalin mirror&quot; Folder
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                Auto-create separate spreadsheets in your Drive folder for every salon branch and save links in Settings.
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <button
+                                type="button"
+                                className="admin-btn admin-btn-sm admin-btn-secondary"
+                                onClick={handleAutoCreateInDrive}
+                                disabled={isAutoCreatingInDrive}
+                                style={{ fontSize: 12, gap: 5, background: 'rgba(181, 148, 88, 0.15)', borderColor: '#b59458' }}
+                            >
+                                <Sparkles size={12} className={isAutoCreatingInDrive ? 'spin' : ''} />
+                                {isAutoCreatingInDrive ? 'Creating in Drive…' : '✨ Auto-Create in "Christalin mirror"'}
+                            </button>
+                            <button
+                                type="button"
+                                className="admin-btn admin-btn-sm admin-btn-ghost"
+                                onClick={() => downloadCsvTemplate(selectedBranch === 'all' ? 'Bengaluru' : selectedBranch, selectedType === 'daily-sales' ? 'daily-sales' : 'manual-sales')}
+                                style={{ fontSize: 12, gap: 5 }}
+                            >
+                                <Download size={12} />
+                                <span>Get Template (.csv)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {autoCreateFeedback && (
+                        <div style={{
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                            color: '#10b981',
+                            fontSize: 12,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                        }}>
+                            <CheckCircle2 size={14} />
+                            <span>{autoCreateFeedback}</span>
+                        </div>
+                    )}
+
                     {/* Step 2: Spreadsheet URL / ID Input */}
                     <div className="gs-config-section">
-                        <label className="gs-label">
-                            <FileSpreadsheet size={15} className="text-primary" />
-                            Existing Google Spreadsheet Link or ID
-                        </label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <label className="gs-label" style={{ margin: 0 }}>
+                                <FileSpreadsheet size={15} className="text-primary" />
+                                {selectedBranch === 'all'
+                                    ? 'Master Google Spreadsheet Link'
+                                    : `${selectedBranch} — ${selectedType === 'daily-sales' ? 'POS Daily Sales' : 'Manual Daily Sales'} Link`}
+                            </label>
+                            {urlInput && (
+                                <a
+                                    href={urlInput.startsWith('http') ? urlInput : `https://docs.google.com/spreadsheets/d/${extractSpreadsheetId(urlInput) || urlInput}/edit`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ fontSize: 11, color: '#10b981', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                >
+                                    Open in Drive <ExternalLink size={11} />
+                                </a>
+                            )}
+                        </div>
+
                         <div className="gs-input-group">
                             <input
                                 type="text"
                                 className="gs-input"
-                                placeholder="https://docs.google.com/spreadsheets/d/your-sheet-id/edit"
+                                placeholder={`https://docs.google.com/spreadsheets/d/.../edit (${selectedBranch === 'all' ? 'Master' : `${selectedBranch} dedicated sheet`})`}
                                 value={urlInput}
                                 onChange={e => setUrlInput(e.target.value)}
-                                onBlur={handleUrlBlurOrSubmit}
                             />
                             <button
                                 type="button"
                                 className="admin-btn admin-btn-secondary admin-btn-sm"
-                                onClick={handleUrlBlurOrSubmit}
-                                disabled={isInspecting || !urlInput.trim()}
+                                onClick={handleSaveSheetUrl}
+                                disabled={!urlInput.trim()}
                                 style={{ whiteSpace: 'nowrap' }}
                             >
-                                {isInspecting ? (
-                                    <>
-                                        <RefreshCw size={13} className="spin" /> Checking…
-                                    </>
-                                ) : (
-                                    'Connect Sheet'
-                                )}
+                                Save Link
                             </button>
                         </div>
 
@@ -353,32 +552,6 @@ export default function GoogleSheetsSyncModal({
                                     <AlertCircle size={15} />
                                     <span>{inspectError}</span>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Connected Sheet Details Banner */}
-                        {config.spreadsheetId && config.spreadsheetTitle && (
-                            <div className="gs-sheet-banner">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <CheckCircle2 size={18} style={{ color: '#10b981' }} />
-                                    <div>
-                                        <div style={{ fontWeight: 600, color: 'var(--text-bright)' }}>
-                                            {config.spreadsheetTitle}
-                                        </div>
-                                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                            ID: <code>{config.spreadsheetId}</code>
-                                        </div>
-                                    </div>
-                                </div>
-                                <a
-                                    href={`https://docs.google.com/spreadsheets/d/${config.spreadsheetId}/edit`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="admin-btn admin-btn-ghost admin-btn-sm"
-                                    style={{ gap: 6, fontSize: 12, color: '#10b981' }}
-                                >
-                                    Open Sheet <ExternalLink size={12} />
-                                </a>
                             </div>
                         )}
                     </div>
@@ -415,8 +588,9 @@ export default function GoogleSheetsSyncModal({
                                             className="gs-select"
                                             value={config.dailySalesTab}
                                             onChange={e => {
-                                                const updated = googleSheetsSyncService.saveConfig({ dailySalesTab: e.target.value })
-                                                setConfig(updated)
+                                                const val = e.target.value
+                                                setConfig(prev => ({ ...prev, dailySalesTab: val }))
+                                                googleSheetsSyncService.saveConfig({ dailySalesTab: val })
                                             }}
                                         >
                                             {availableTabs.map(t => (
@@ -429,8 +603,9 @@ export default function GoogleSheetsSyncModal({
                                             className="gs-input"
                                             value={config.dailySalesTab}
                                             onChange={e => {
-                                                const updated = googleSheetsSyncService.saveConfig({ dailySalesTab: e.target.value })
-                                                setConfig(updated)
+                                                const val = e.target.value
+                                                setConfig(prev => ({ ...prev, dailySalesTab: val }))
+                                                googleSheetsSyncService.saveConfig({ dailySalesTab: val })
                                             }}
                                             placeholder="Daily Sales"
                                         />
@@ -446,8 +621,9 @@ export default function GoogleSheetsSyncModal({
                                             className="gs-select"
                                             value={config.expensesTab}
                                             onChange={e => {
-                                                const updated = googleSheetsSyncService.saveConfig({ expensesTab: e.target.value })
-                                                setConfig(updated)
+                                                const val = e.target.value
+                                                setConfig(prev => ({ ...prev, expensesTab: val }))
+                                                googleSheetsSyncService.saveConfig({ expensesTab: val })
                                             }}
                                         >
                                             {availableTabs.map(t => (
@@ -460,8 +636,9 @@ export default function GoogleSheetsSyncModal({
                                             className="gs-input"
                                             value={config.expensesTab}
                                             onChange={e => {
-                                                const updated = googleSheetsSyncService.saveConfig({ expensesTab: e.target.value })
-                                                setConfig(updated)
+                                                const val = e.target.value
+                                                setConfig(prev => ({ ...prev, expensesTab: val }))
+                                                googleSheetsSyncService.saveConfig({ expensesTab: val })
                                             }}
                                             placeholder="Expenses & CapEx"
                                         />
@@ -487,8 +664,8 @@ export default function GoogleSheetsSyncModal({
                                             name="syncDir"
                                             checked={config.syncDirection === 'two-way'}
                                             onChange={() => {
-                                                const updated = googleSheetsSyncService.saveConfig({ syncDirection: 'two-way' })
-                                                setConfig(updated)
+                                                setConfig(prev => ({ ...prev, syncDirection: 'two-way' }))
+                                                googleSheetsSyncService.saveConfig({ syncDirection: 'two-way' })
                                             }}
                                         />
                                         <span style={{ fontWeight: 600 }}>Two-Way Sync (Save on Both Sides)</span>
@@ -499,8 +676,8 @@ export default function GoogleSheetsSyncModal({
                                             name="syncDir"
                                             checked={config.syncDirection === 'pull-only'}
                                             onChange={() => {
-                                                const updated = googleSheetsSyncService.saveConfig({ syncDirection: 'pull-only' })
-                                                setConfig(updated)
+                                                setConfig(prev => ({ ...prev, syncDirection: 'pull-only' }))
+                                                googleSheetsSyncService.saveConfig({ syncDirection: 'pull-only' })
                                             }}
                                         />
                                         <span>Pull from Sheet only</span>
@@ -511,8 +688,8 @@ export default function GoogleSheetsSyncModal({
                                             name="syncDir"
                                             checked={config.syncDirection === 'push-only'}
                                             onChange={() => {
-                                                const updated = googleSheetsSyncService.saveConfig({ syncDirection: 'push-only' })
-                                                setConfig(updated)
+                                                setConfig(prev => ({ ...prev, syncDirection: 'push-only' }))
+                                                googleSheetsSyncService.saveConfig({ syncDirection: 'push-only' })
                                             }}
                                         />
                                         <span>Push to Sheet only</span>

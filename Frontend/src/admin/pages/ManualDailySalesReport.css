@@ -47,6 +47,10 @@
     width: 100%;
 }
 
+.manual-dsr-print-only {
+    display: none;
+}
+
 .manual-dsr-input {
     width: 100%;
     max-width: 84px;
@@ -308,7 +312,8 @@
         display: none !important;
     }
 
-    .manual-dsr-val-text {
+    .manual-dsr-val-text,
+    .manual-dsr-print-only {
         display: inline !important;
         color: #000 !important;
         font-size: 7.5px !important;

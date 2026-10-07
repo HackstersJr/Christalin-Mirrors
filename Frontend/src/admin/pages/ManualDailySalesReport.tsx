@@ -2,7 +2,7 @@ import { Fragment, useState, useEffect, useMemo, useCallback } from 'react'
 import {
     Printer, ChevronLeft, ChevronRight, Edit3, Eye,
     RotateCcw, Download, FileText, Sparkles, ArrowLeftRight,
-    PlusCircle, Calculator
+    PlusCircle, Calculator, ExternalLink
 } from 'lucide-react'
 import { invoiceStore } from '../data/store'
 import cmLogo from '../../assets/cm-logo-white.png'
@@ -427,6 +427,25 @@ export default function ManualDailySalesReport() {
                         </span>
                     )}
 
+                    {branch !== 'all' && (() => {
+                        const effective = googleSheetsSyncService.getEffectiveSheetForBranch(branch, 'manual-sales')
+                        return effective.isBranchSpecific ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                                <span>📍 {branch} Sheet Linked ({effective.tabName})</span>
+                                {effective.spreadsheetUrl && (
+                                    <a
+                                        href={effective.spreadsheetUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 4 }}
+                                    >
+                                        Open <ExternalLink size={11} />
+                                    </a>
+                                )}
+                            </div>
+                        ) : null
+                    })()}
+
                     {branch === 'all' && isEditMode && (
                         <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                             * Editing in All Salons saves under Bengaluru by default. Select a specific branch above to target it directly.
@@ -596,13 +615,13 @@ export default function ManualDailySalesReport() {
                                                                 <input
                                                                     type="number"
                                                                     min="0"
-                                                                    className="manual-dsr-input"
+                                                                    className="manual-dsr-input no-print"
                                                                     placeholder="0"
                                                                     value={stats.clientCount === 0 ? '' : stats.clientCount}
                                                                     onChange={e => handleCellChange(d.iso, 'clientCount', e.target.value)}
                                                                     title={`${d.iso} Client Count`}
                                                                 />
-                                                                <span className="manual-dsr-val-text" style={{ display: 'none' }}>
+                                                                <span className="manual-dsr-val-text manual-dsr-print-only">
                                                                     {formatCount(stats.clientCount)}
                                                                 </span>
                                                             </div>
@@ -619,12 +638,9 @@ export default function ManualDailySalesReport() {
                                             </td>
                                         </tr>
 
-                                        {/* Cash Collection Row */}
+                                        {/* Cash Sales Row */}
                                         <tr>
-                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>CASH</span>
-                                                <span>Cash Sales</span>
-                                            </td>
+                                            <td className="cell-primary">Cash Sales</td>
                                             {week.days.map((d, i) => {
                                                 if (!d.inMonth) {
                                                     return <td key={i}><span className="manual-dsr-val-dim">—</span></td>
@@ -637,13 +653,13 @@ export default function ManualDailySalesReport() {
                                                                 <input
                                                                     type="number"
                                                                     min="0"
-                                                                    className="manual-dsr-input"
+                                                                    className="manual-dsr-input no-print"
                                                                     placeholder="₹0"
                                                                     value={stats.cash === 0 ? '' : stats.cash}
                                                                     onChange={e => handleCellChange(d.iso, 'cash', e.target.value)}
                                                                     title={`${d.iso} Cash`}
                                                                 />
-                                                                <span className="manual-dsr-val-text" style={{ display: 'none' }}>
+                                                                <span className="manual-dsr-val-text manual-dsr-print-only">
                                                                     {money(stats.cash)}
                                                                 </span>
                                                             </div>
@@ -660,12 +676,9 @@ export default function ManualDailySalesReport() {
                                             </td>
                                         </tr>
 
-                                        {/* UPI Collection Row */}
+                                        {/* UPI Sales Row */}
                                         <tr>
-                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', fontWeight: 700 }}>UPI</span>
-                                                <span>UPI Sales</span>
-                                            </td>
+                                            <td className="cell-primary">UPI Sales</td>
                                             {week.days.map((d, i) => {
                                                 if (!d.inMonth) {
                                                     return <td key={i}><span className="manual-dsr-val-dim">—</span></td>
@@ -678,13 +691,13 @@ export default function ManualDailySalesReport() {
                                                                 <input
                                                                     type="number"
                                                                     min="0"
-                                                                    className="manual-dsr-input"
+                                                                    className="manual-dsr-input no-print"
                                                                     placeholder="₹0"
                                                                     value={stats.upi === 0 ? '' : stats.upi}
                                                                     onChange={e => handleCellChange(d.iso, 'upi', e.target.value)}
                                                                     title={`${d.iso} UPI`}
                                                                 />
-                                                                <span className="manual-dsr-val-text" style={{ display: 'none' }}>
+                                                                <span className="manual-dsr-val-text manual-dsr-print-only">
                                                                     {money(stats.upi)}
                                                                 </span>
                                                             </div>
@@ -703,10 +716,7 @@ export default function ManualDailySalesReport() {
 
                                         {/* Retail Sales Row */}
                                         <tr>
-                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>RETAIL</span>
-                                                <span>Retail Sales</span>
-                                            </td>
+                                            <td className="cell-primary">Retail Sales</td>
                                             {week.days.map((d, i) => {
                                                 if (!d.inMonth) {
                                                     return <td key={i}><span className="manual-dsr-val-dim">—</span></td>
@@ -719,13 +729,13 @@ export default function ManualDailySalesReport() {
                                                                 <input
                                                                     type="number"
                                                                     min="0"
-                                                                    className="manual-dsr-input"
+                                                                    className="manual-dsr-input no-print"
                                                                     placeholder="₹0"
                                                                     value={stats.retail === 0 ? '' : stats.retail}
                                                                     onChange={e => handleCellChange(d.iso, 'retail', e.target.value)}
                                                                     title={`${d.iso} Retail Sales`}
                                                                 />
-                                                                <span className="manual-dsr-val-text" style={{ display: 'none' }}>
+                                                                <span className="manual-dsr-val-text manual-dsr-print-only">
                                                                     {money(stats.retail)}
                                                                 </span>
                                                             </div>
@@ -783,24 +793,15 @@ export default function ManualDailySalesReport() {
                                         <td style={{ fontWeight: 600 }}>{monthTotals.clientCount.toLocaleString('en-IN')}</td>
                                     </tr>
                                     <tr>
-                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>CASH</span>
-                                            <span>Total Cash Sales</span>
-                                        </td>
+                                        <td className="cell-primary">Total Cash Sales</td>
                                         <td style={{ fontWeight: 600, color: '#10b981' }}>{money(monthTotals.cash)}</td>
                                     </tr>
                                     <tr>
-                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', fontWeight: 700 }}>UPI</span>
-                                            <span>Total UPI Sales</span>
-                                        </td>
+                                        <td className="cell-primary">Total UPI Sales</td>
                                         <td style={{ fontWeight: 600, color: '#6366f1' }}>{money(monthTotals.upi)}</td>
                                     </tr>
                                     <tr>
-                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>RETAIL</span>
-                                            <span>Total Retail Sales</span>
-                                        </td>
+                                        <td className="cell-primary">Total Retail Sales</td>
                                         <td style={{ fontWeight: 600, color: '#f59e0b' }}>{money(monthTotals.retail)}</td>
                                     </tr>
                                     <tr className="report-totals-row" style={{ background: 'rgba(181, 148, 88, 0.1)' }}>
@@ -878,6 +879,8 @@ export default function ManualDailySalesReport() {
             <GoogleSheetsSyncModal
                 isOpen={isGoogleSheetsModalOpen}
                 onClose={() => setIsGoogleSheetsModalOpen(false)}
+                targetBranch={branch}
+                syncType="manual-sales"
                 onSyncComplete={result => {
                     if (result.success) {
                         setData(manualSalesStore.getAll())

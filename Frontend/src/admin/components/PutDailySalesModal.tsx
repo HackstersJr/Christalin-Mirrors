@@ -111,7 +111,7 @@ export default function PutDailySalesModal({
     }
 
     return (
-        <div className="put-sales-modal-backdrop" onClick={onClose}>
+        <div className="put-sales-modal-backdrop no-print" onClick={onClose}>
             <div className="put-sales-modal" onClick={e => e.stopPropagation()}>
                 <div className="put-sales-modal-header">
                     <h3 className="put-sales-modal-title">

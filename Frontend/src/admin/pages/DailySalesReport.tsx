@@ -1,10 +1,12 @@
 import { Fragment, useEffect, useState } from 'react'
-import { Printer, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Printer, ChevronLeft, ChevronRight, ArrowLeftRight, ExternalLink } from 'lucide-react'
 import { invoiceStore } from '../data/store'
 import { branches as branchList } from '../../data/branches'
 import type { Invoice } from '../data/types'
 import cmLogo from '../../assets/cm-logo-white.png'
 import { toIso, todayIso, monthKeyOf, shiftMonth, monthLabel } from './reportUtils'
+import { googleSheetsSyncService } from '../data/googleSheetsSyncService'
+import GoogleSheetsSyncModal from '../components/GoogleSheetsSyncModal'
 import '../AdminShared.css'
 import '../ReportShared.css'
 import './DailySalesReport.css'
@@ -47,6 +49,9 @@ export default function DailySalesReport() {
     const [monthKey, setMonthKey] = useState(monthKeyOf(todayIso()))
     const [branch, setBranch] = useState('all')
     const [invoices, setInvoices] = useState<Invoice[]>([])
+    const [isGoogleSheetsModalOpen, setIsGoogleSheetsModalOpen] = useState(false)
+
+    const effectiveSheet = googleSheetsSyncService.getEffectiveSheetForBranch(branch, 'daily-sales')
 
     useEffect(() => { invoiceStore.getAll().then(setInvoices) }, [])
 
@@ -95,7 +100,18 @@ export default function DailySalesReport() {
                     <h1 className="admin-page-title" style={{ marginBottom: 0 }}>Daily Sales Report</h1>
                     <p className="admin-page-sub">Client count, retail &amp; service sales by day and week — per branch or combined</p>
                 </div>
-                <button className="admin-btn admin-btn-primary" onClick={() => window.print()}><Printer size={14} /> Print</button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button
+                        className="admin-btn admin-btn-secondary"
+                        onClick={() => setIsGoogleSheetsModalOpen(true)}
+                        title="Synchronize Daily POS Sales with Google Sheets in Drive"
+                        style={{ gap: 6 }}
+                    >
+                        <ArrowLeftRight size={14} style={{ color: '#10b981' }} />
+                        <span>Google Sheets Sync</span>
+                    </button>
+                    <button className="admin-btn admin-btn-primary" onClick={() => window.print()}><Printer size={14} /> Print</button>
+                </div>
             </div>
 
             <div className="no-print" style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -109,6 +125,30 @@ export default function DailySalesReport() {
                     <option value="all">All Branches</option>
                     {branchNames.map(name => <option key={name} value={name}>{name}</option>)}
                 </select>
+
+                {branch !== 'all' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                        {effectiveSheet.isBranchSpecific ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                                <span>📍 Dedicated Sheet Linked ({effectiveSheet.tabName})</span>
+                                {effectiveSheet.spreadsheetUrl && (
+                                    <a
+                                        href={effectiveSheet.spreadsheetUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 4 }}
+                                    >
+                                        Open <ExternalLink size={11} />
+                                    </a>
+                                )}
+                            </div>
+                        ) : (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                Using Master Sheet · Configure dedicated link in Settings
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="report-sheet print-doc">
@@ -177,26 +217,17 @@ export default function DailySalesReport() {
                                             <td className="dsr-week-total">{weekTotals.clientCount}</td>
                                         </tr>
                                         <tr>
-                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>CASH</span>
-                                                <span>Cash Sales</span>
-                                            </td>
+                                            <td className="cell-primary">Cash Sales</td>
                                             {stats.map((s, i) => <td key={i}>{s ? money(s.cash) : '—'}</td>)}
                                             <td className="dsr-week-total" style={{ color: '#10b981' }}>{money(weekTotals.cash)}</td>
                                         </tr>
                                         <tr>
-                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', fontWeight: 700 }}>UPI</span>
-                                                <span>UPI Sales</span>
-                                            </td>
+                                            <td className="cell-primary">UPI Sales</td>
                                             {stats.map((s, i) => <td key={i}>{s ? money(s.upi) : '—'}</td>)}
                                             <td className="dsr-week-total" style={{ color: '#6366f1' }}>{money(weekTotals.upi)}</td>
                                         </tr>
                                         <tr>
-                                            <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>RETAIL</span>
-                                                <span>Retail Sales</span>
-                                            </td>
+                                            <td className="cell-primary">Retail Sales</td>
                                             {stats.map((s, i) => <td key={i}>{s ? money(s.retail) : '—'}</td>)}
                                             <td className="dsr-week-total" style={{ color: '#f59e0b' }}>{money(weekTotals.retail)}</td>
                                         </tr>
@@ -222,24 +253,15 @@ export default function DailySalesReport() {
                                 <tbody>
                                     <tr><td className="cell-primary">Client Count</td><td>{monthTotals.clientCount.toLocaleString()}</td></tr>
                                     <tr>
-                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>CASH</span>
-                                            <span>Cash Sales</span>
-                                        </td>
+                                        <td className="cell-primary">Total Cash Sales</td>
                                         <td style={{ color: '#10b981', fontWeight: 600 }}>{money(monthTotals.cash)}</td>
                                     </tr>
                                     <tr>
-                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', fontWeight: 700 }}>UPI</span>
-                                            <span>UPI Sales</span>
-                                        </td>
+                                        <td className="cell-primary">Total UPI Sales</td>
                                         <td style={{ color: '#6366f1', fontWeight: 600 }}>{money(monthTotals.upi)}</td>
                                     </tr>
                                     <tr>
-                                        <td className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontWeight: 700 }}>RETAIL</span>
-                                            <span>Retail Sales</span>
-                                        </td>
+                                        <td className="cell-primary">Total Retail Sales</td>
                                         <td style={{ color: '#f59e0b', fontWeight: 600 }}>{money(monthTotals.retail)}</td>
                                     </tr>
                                     <tr className="report-totals-row">
@@ -268,6 +290,16 @@ export default function DailySalesReport() {
                     {reportNo} · Generated {generatedAt} · Christalin Mirrors — Confidential, Internal Use Only. Retain for records.
                 </div>
             </div>
+
+            <GoogleSheetsSyncModal
+                isOpen={isGoogleSheetsModalOpen}
+                onClose={() => setIsGoogleSheetsModalOpen(false)}
+                targetBranch={branch}
+                syncType="daily-sales"
+                onSyncComplete={() => {
+                    invoiceStore.getAll().then(setInvoices)
+                }}
+            />
         </div>
     )
 }

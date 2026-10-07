@@ -51,6 +51,7 @@ const ownerOnlyNavItems = [
 ]
 
 const managerNavItems = [
+    { label: 'Daily Sales Report', icon: ClipboardList, path: '/admin/daily-sales-report' },
     { label: 'Manual Daily Sales', icon: FileSpreadsheet, path: '/admin/daily-sales-report-manual' },
     { label: 'Manual Profit & Loss', icon: FileSpreadsheet, path: '/admin/profit-loss-manual' },
 ]

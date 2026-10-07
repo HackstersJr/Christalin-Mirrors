@@ -458,7 +458,12 @@
         line-height: 1.1 !important;
     }
 
+    .print-doc .manual-dsr-input {
+        display: none !important;
+    }
+
     .print-doc .manual-dsr-val-text,
+    .print-doc .manual-dsr-print-only,
     .print-doc .manual-dsr-calculated-val {
         font-size: 7.5px !important;
         line-height: 1.15 !important;

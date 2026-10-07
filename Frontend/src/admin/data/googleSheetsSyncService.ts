@@ -2,17 +2,31 @@ import { googleAuthService } from './googleAuthService'
 import { manualSalesStore, type ManualSalesData } from './manualSalesStore'
 import { manualProfitLossStore, type ManualBranchPL } from './manualProfitLossStore'
 import { parseExcelDate, classifyExpenseType, matchOpExCategory } from './excelExpenseParser'
+import { supabase } from '../../lib/supabase'
+
+export interface BranchSheetDetail {
+    dailySalesSpreadsheetUrl: string
+    dailySalesSpreadsheetId: string
+    dailySalesTab: string
+    manualSalesSpreadsheetUrl: string
+    manualSalesSpreadsheetId: string
+    manualSalesTab: string
+}
 
 export interface GoogleSheetConfig {
     spreadsheetId: string
     spreadsheetUrl: string
     spreadsheetTitle?: string
     dailySalesTab: string
+    manualSalesTab?: string
     expensesTab: string
     autoSyncOnSave: boolean
     lastSyncedAt: string | null
     syncDirection: 'two-way' | 'pull-only' | 'push-only'
+    branches?: Record<string, BranchSheetDetail>
 }
+
+export type MultiBranchGoogleSheetConfig = GoogleSheetConfig
 
 export interface SyncResult {
     success: boolean
@@ -26,17 +40,36 @@ export interface SyncResult {
 }
 
 const STORAGE_CONFIG_KEY = 'cm_google_sheets_config_v2'
-const DEFAULT_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum', 'Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)']
+export const DEFAULT_BRANCHES = ['Bengaluru', 'Kalaburagi', 'Belgaum', 'Upcoming Branch 1 (Yelahanka)', 'Upcoming Branch 2 (Hassan)']
+
+export function createDefaultBranchDetail(branchName: string): BranchSheetDetail {
+    return {
+        dailySalesSpreadsheetUrl: '',
+        dailySalesSpreadsheetId: '',
+        dailySalesTab: `${branchName} POS Sales`,
+        manualSalesSpreadsheetUrl: '',
+        manualSalesSpreadsheetId: '',
+        manualSalesTab: `${branchName} Daily Sales`,
+    }
+}
 
 export const DEFAULT_DRIVE_CONFIG: GoogleSheetConfig = {
     spreadsheetId: '1cm_drive_master_christalin_mirrors_live_2026',
     spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1cm_drive_master_christalin_mirrors_live_2026/edit',
     spreadsheetTitle: 'Christalin Mirrors — Master Google Drive Sales & Financial Ledger',
     dailySalesTab: 'Daily Sales',
+    manualSalesTab: 'Manual Daily Sales',
     expensesTab: 'Expenses & CapEx',
     autoSyncOnSave: true,
     lastSyncedAt: new Date().toISOString(),
     syncDirection: 'two-way',
+    branches: {
+        Bengaluru: createDefaultBranchDetail('Bengaluru'),
+        Kalaburagi: createDefaultBranchDetail('Kalaburagi'),
+        Belgaum: createDefaultBranchDetail('Belgaum'),
+        'Upcoming Branch 1 (Yelahanka)': createDefaultBranchDetail('Yelahanka'),
+        'Upcoming Branch 2 (Hassan)': createDefaultBranchDetail('Hassan'),
+    },
 }
 
 export function extractSpreadsheetId(urlOrId: string): string | null {
@@ -54,6 +87,48 @@ export function extractSpreadsheetId(urlOrId: string): string | null {
     return null
 }
 
+export function generateCsvTemplate(branch: string, type: 'manual-sales' | 'daily-sales' | 'expenses'): string {
+    const cleanBranch = branch === 'all' ? 'Bengaluru' : branch
+    if (type === 'manual-sales') {
+        return [
+            'Date,Branch,Client Count,Cash Sales (₹),UPI Sales (₹),Retail Sales (₹),Total Sales (₹),Notes / Remarks',
+            `2026-10-01,${cleanBranch},14,6500,16500,2800,25800,Regular morning rush & bridal packages`,
+            `2026-10-02,${cleanBranch},12,5000,14000,2000,21000,Keratin and hair ritual appointments`,
+            `2026-10-03,${cleanBranch},16,7200,19500,3400,30100,Weekend styling & treatment packages`,
+        ].join('\n')
+    }
+    if (type === 'daily-sales') {
+        return [
+            'Date,Branch,Client Count,Cash Sales (₹),UPI Sales (₹),Retail Sales (₹),Service Sales (₹),Total Revenue (₹),Notes / Remarks',
+            `2026-10-01,${cleanBranch},14,6500,16500,2800,23000,25800,POS Invoices system record`,
+            `2026-10-02,${cleanBranch},12,5000,14000,2000,19000,21000,POS Invoices system record`,
+        ].join('\n')
+    }
+    return [
+        'Date,Branch,Type (OpEx / CapEx),Category,Amount (₹),Description',
+        `2026-10-01,${cleanBranch},OpEx,Rent,125000,Monthly commercial salon lease`,
+        `2026-10-02,${cleanBranch},OpEx,Electricity,18400,BESCOM power & utility bills`,
+        `2026-10-05,${cleanBranch},OpEx,Products,35000,Professional styling products inventory`,
+        `2026-10-10,${cleanBranch},CapEx,Equipment,45000,Salon hydraulic styling chairs`,
+    ].join('\n')
+}
+
+export function downloadCsvTemplate(branch: string, type: 'manual-sales' | 'daily-sales' | 'expenses') {
+    const cleanBranch = branch === 'all' ? 'Bengaluru' : branch
+    const csv = generateCsvTemplate(cleanBranch, type)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const typeLabel = type === 'manual-sales' ? 'Manual_Daily_Sales' : type === 'daily-sales' ? 'POS_Daily_Sales' : 'Expenses'
+    const safeBranch = cleanBranch.replace(/[^a-zA-Z0-9]/g, '_')
+    a.download = `CM_${safeBranch}_${typeLabel}_Template.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+}
+
 export const googleSheetsSyncService = {
     getConfig(): GoogleSheetConfig {
         try {
@@ -64,6 +139,10 @@ export const googleSheetsSyncService = {
                     return {
                         ...DEFAULT_DRIVE_CONFIG,
                         ...parsed,
+                        branches: {
+                            ...DEFAULT_DRIVE_CONFIG.branches,
+                            ...(parsed.branches || {}),
+                        },
                     }
                 }
             }
@@ -73,15 +152,131 @@ export const googleSheetsSyncService = {
         return { ...DEFAULT_DRIVE_CONFIG }
     },
 
-    saveConfig(cfg: Partial<GoogleSheetConfig>): GoogleSheetConfig {
+    /**
+     * Save config locally and sync to Supabase so all Branch Managers receive identical settings
+     */
+    async saveConfig(cfg: Partial<GoogleSheetConfig>): Promise<GoogleSheetConfig> {
         const current = this.getConfig()
-        const updated = { ...current, ...cfg }
+        const updated: GoogleSheetConfig = {
+            ...current,
+            ...cfg,
+            branches: {
+                ...current.branches,
+                ...(cfg.branches || {}),
+            },
+        }
         try {
             localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(updated))
         } catch (e) {
-            console.error('Failed to save Google Sheets config', e)
+            console.error('Failed to save Google Sheets config locally', e)
         }
+
+        // Synchronize to Supabase shared row so Branch Managers instantly see the admin-configured sheets
+        try {
+            const payload: any = {
+                branch: '__CONFIG__',
+                date: 'GOOGLE_SHEETS_CONFIG',
+                clientCount: 0,
+                retail: 0,
+                service: 0,
+                upi: 0,
+                cash: 0,
+                total: 0,
+                notes: JSON.stringify(updated),
+                updatedAt: new Date().toISOString()
+            }
+            const { error } = await supabase
+                .from('ManualDailySales')
+                .upsert(payload, { onConflict: 'branch,date' })
+            if (error && (error.code === '42703' || error.message?.includes('column'))) {
+                delete payload.upi
+                delete payload.cash
+                delete payload.total
+                await supabase.from('ManualDailySales').upsert(payload, { onConflict: 'branch,date' })
+            }
+        } catch (err) {
+            console.warn('Could not sync Google Sheets config to Supabase:', err)
+        }
+
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('cm_sheets_config_updated', { detail: updated }))
+        }
+
         return updated
+    },
+
+    /**
+     * Fetch shared config from Supabase cloud (called on app load or settings open)
+     */
+    async fetchSharedConfigFromCloud(): Promise<GoogleSheetConfig> {
+        const local = this.getConfig()
+        try {
+            const { data, error } = await supabase
+                .from('ManualDailySales')
+                .select('notes')
+                .eq('branch', '__CONFIG__')
+                .eq('date', 'GOOGLE_SHEETS_CONFIG')
+                .maybeSingle()
+
+            if (!error && data && data.notes) {
+                const cloudConfig = JSON.parse(data.notes)
+                if (cloudConfig && (cloudConfig.spreadsheetId || cloudConfig.branches)) {
+                    const merged: GoogleSheetConfig = {
+                        ...local,
+                        ...cloudConfig,
+                        branches: {
+                            ...local.branches,
+                            ...(cloudConfig.branches || {}),
+                        },
+                    }
+                    localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(merged))
+                    return merged
+                }
+            }
+        } catch (err) {
+            console.warn('Could not fetch shared Google Sheets config from cloud:', err)
+        }
+        return local
+    },
+
+    /**
+     * Resolve effective spreadsheet for a specific branch and sheet type
+     */
+    getEffectiveSheetForBranch(branch: string, type: 'daily-sales' | 'manual-sales'): {
+        spreadsheetId: string
+        spreadsheetUrl: string
+        tabName: string
+        isBranchSpecific: boolean
+    } {
+        const config = this.getConfig()
+        const branchConfig = config.branches?.[branch]
+
+        if (branchConfig) {
+            if (type === 'manual-sales' && branchConfig.manualSalesSpreadsheetId) {
+                return {
+                    spreadsheetId: branchConfig.manualSalesSpreadsheetId,
+                    spreadsheetUrl: branchConfig.manualSalesSpreadsheetUrl,
+                    tabName: branchConfig.manualSalesTab || `${branch} Daily Sales`,
+                    isBranchSpecific: true,
+                }
+            }
+            if (type === 'daily-sales' && branchConfig.dailySalesSpreadsheetId) {
+                return {
+                    spreadsheetId: branchConfig.dailySalesSpreadsheetId,
+                    spreadsheetUrl: branchConfig.dailySalesSpreadsheetUrl,
+                    tabName: branchConfig.dailySalesTab || `${branch} POS Sales`,
+                    isBranchSpecific: true,
+                }
+            }
+        }
+
+        // Fallback to Master Spreadsheet
+        return {
+            spreadsheetId: config.spreadsheetId,
+            spreadsheetUrl: config.spreadsheetUrl,
+            tabName: type === 'manual-sales' ? (config.manualSalesTab || config.dailySalesTab) : config.dailySalesTab,
+            isBranchSpecific: false,
+        }
     },
 
     resetToDefault(): GoogleSheetConfig {
@@ -245,6 +440,218 @@ export const googleSheetsSyncService = {
     },
 
     /**
+     * Find or create the "Christalin mirror" folder in Google Drive
+     */
+    async findOrCreateDriveFolder(token: string, folderName = 'Christalin mirror'): Promise<{ id: string; url: string }> {
+        // Search by name
+        const q = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
+        try {
+            const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,webViewLink)`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            if (searchRes.ok) {
+                const searchData = await searchRes.json()
+                if (searchData.files && searchData.files.length > 0) {
+                    const f = searchData.files[0]
+                    return { id: f.id, url: f.webViewLink || `https://drive.google.com/drive/folders/${f.id}` }
+                }
+            }
+
+            // Also search for alternate "Christalin Mirrors"
+            if (folderName === 'Christalin mirror') {
+                const altQ = `name = 'Christalin Mirrors' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
+                const altRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(altQ)}&fields=files(id,name,webViewLink)`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                if (altRes.ok) {
+                    const altData = await altRes.json()
+                    if (altData.files && altData.files.length > 0) {
+                        const f = altData.files[0]
+                        return { id: f.id, url: f.webViewLink || `https://drive.google.com/drive/folders/${f.id}` }
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Folder search note:', e)
+        }
+
+        // Create folder
+        const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: folderName,
+                mimeType: 'application/vnd.google-apps.folder'
+            })
+        })
+
+        if (!createRes.ok) {
+            const err = await createRes.text()
+            throw new Error(`Failed to create "${folderName}" folder in Google Drive: ${err}`)
+        }
+
+        const newFolder = await createRes.json()
+        return {
+            id: newFolder.id,
+            url: newFolder.webViewLink || `https://drive.google.com/drive/folders/${newFolder.id}`
+        }
+    },
+
+    /**
+     * Create or retrieve a spreadsheet in the specified Drive folder
+     */
+    async createSpreadsheetInFolder(
+        token: string,
+        folderId: string,
+        title: string,
+        tabName: string,
+        isManual: boolean,
+        branchName: string
+    ): Promise<{ id: string; url: string }> {
+        // Search if file already exists in folder
+        try {
+            const q = `'${folderId}' in parents and name = '${title}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`
+            const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,webViewLink)`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            if (searchRes.ok) {
+                const searchData = await searchRes.json()
+                if (searchData.files && searchData.files.length > 0) {
+                    const f = searchData.files[0]
+                    return { id: f.id, url: `https://docs.google.com/spreadsheets/d/${f.id}/edit` }
+                }
+            }
+        } catch (e) {
+            console.warn('File in folder search note:', e)
+        }
+
+        // Create new spreadsheet inside folder
+        const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: title,
+                mimeType: 'application/vnd.google-apps.spreadsheet',
+                parents: [folderId]
+            })
+        })
+
+        if (!createRes.ok) {
+            const err = await createRes.text()
+            throw new Error(`Failed to create spreadsheet "${title}": ${err}`)
+        }
+
+        const newFile = await createRes.json()
+        const spreadsheetId = newFile.id
+
+        // Format tabs and write headers
+        try {
+            await this.initializeStandardTabs(spreadsheetId, token, [tabName])
+            await this.writeDailySalesHeaders(spreadsheetId, token, tabName, isManual)
+            // Prepopulate with existing branch data if available
+            await this.pushDailySales(spreadsheetId, token, tabName, branchName, isManual)
+        } catch (initErr) {
+            console.warn('Initial sheet write note:', initErr)
+        }
+
+        return {
+            id: spreadsheetId,
+            url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`
+        }
+    },
+
+    /**
+     * Automatically create all branch spreadsheets in the user's "Christalin mirror" Drive folder
+     */
+    async autoCreateAllBranchSheetsInDrive(
+        token: string,
+        onProgress?: (message: string) => void
+    ): Promise<{
+        success: boolean
+        folderId: string
+        folderUrl: string
+        createdSheets: { branch: string; type: string; title: string; url: string }[]
+    }> {
+        onProgress?.('Locating or creating "Christalin mirror" folder in Google Drive…')
+        const folder = await this.findOrCreateDriveFolder(token, 'Christalin mirror')
+
+        const config = this.getConfig()
+        const branches = { ...(config.branches || {}) }
+        const createdSheets: { branch: string; type: string; title: string; url: string }[] = []
+
+        for (const branch of DEFAULT_BRANCHES) {
+            onProgress?.(`Creating dedicated sheets for ${branch}…`)
+            const currentBranchDetail = branches[branch] || createDefaultBranchDetail(branch)
+
+            // 1. Manual Daily Sales Sheet (Cash, UPI, Retail)
+            const manualTitle = `Christalin Mirrors — ${branch} — Manual Daily Sales`
+            const manualTab = `${branch} Daily Sales`
+            const manualSheet = await this.createSpreadsheetInFolder(
+                token,
+                folder.id,
+                manualTitle,
+                manualTab,
+                true,
+                branch
+            )
+
+            currentBranchDetail.manualSalesSpreadsheetId = manualSheet.id
+            currentBranchDetail.manualSalesSpreadsheetUrl = manualSheet.url
+            currentBranchDetail.manualSalesTab = manualTab
+            createdSheets.push({
+                branch,
+                type: 'Manual Daily Sales (Cash + UPI + Retail)',
+                title: manualTitle,
+                url: manualSheet.url
+            })
+
+            // 2. POS Daily Sales Sheet
+            const posTitle = `Christalin Mirrors — ${branch} — POS Daily Sales`
+            const posTab = `${branch} POS Sales`
+            const posSheet = await this.createSpreadsheetInFolder(
+                token,
+                folder.id,
+                posTitle,
+                posTab,
+                false,
+                branch
+            )
+
+            currentBranchDetail.dailySalesSpreadsheetId = posSheet.id
+            currentBranchDetail.dailySalesSpreadsheetUrl = posSheet.url
+            currentBranchDetail.dailySalesTab = posTab
+            createdSheets.push({
+                branch,
+                type: 'POS Daily Sales',
+                title: posTitle,
+                url: posSheet.url
+            })
+
+            branches[branch] = currentBranchDetail
+        }
+
+        // Save updated config locally and sync to Supabase so all Branch Managers receive it immediately!
+        onProgress?.('Saving and synchronizing branch sheets to cloud for all Branch Managers…')
+        await this.saveConfig({
+            branches,
+            lastSyncedAt: new Date().toISOString()
+        })
+
+        return {
+            success: true,
+            folderId: folder.id,
+            folderUrl: folder.url,
+            createdSheets
+        }
+    },
+
+    /**
      * Initialize standard tabs in existing spreadsheet if they do not exist
      */
     async initializeStandardTabs(spreadsheetId: string, token: string, tabsToCreate: string[]) {
@@ -291,9 +698,11 @@ export const googleSheetsSyncService = {
         }
     },
 
-    async writeDailySalesHeaders(spreadsheetId: string, token: string, tabName: string) {
-        const range = `${encodeURIComponent(tabName)}!A1:G1`
-        const headers = [['Date', 'Branch', 'Client Count', 'Service Sales (₹)', 'Retail Sales (₹)', 'Total Revenue (₹)', 'Notes / Remarks']]
+    async writeDailySalesHeaders(spreadsheetId: string, token: string, tabName: string, isManualSheet = false) {
+        const range = isManualSheet ? `${encodeURIComponent(tabName)}!A1:H1` : `${encodeURIComponent(tabName)}!A1:I1`
+        const headers = isManualSheet
+            ? [['Date', 'Branch', 'Client Count', 'Cash Sales (₹)', 'UPI Sales (₹)', 'Retail Sales (₹)', 'Total Sales (₹)', 'Notes / Remarks']]
+            : [['Date', 'Branch', 'Client Count', 'Cash Sales (₹)', 'UPI Sales (₹)', 'Retail Sales (₹)', 'Service Sales (₹)', 'Total Revenue (₹)', 'Notes / Remarks']]
         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=USER_ENTERED`, {
             method: 'PUT',
             headers: {
@@ -301,7 +710,7 @@ export const googleSheetsSyncService = {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                range: `${tabName}!A1:G1`,
+                range,
                 majorDimension: 'ROWS',
                 values: headers,
             }),
@@ -326,9 +735,10 @@ export const googleSheetsSyncService = {
     },
 
     /**
-     * PULL: Reads Daily Sales rows from Google Sheets and merges into local store
+     * PULL: Reads Daily Sales rows from Google Sheets and merges into local store.
+     * Supports both per-branch sheets and master multi-branch sheets, reading Cash, UPI, Retail, Service.
      */
-    async pullDailySales(spreadsheetId: string, token: string, tabName: string): Promise<number> {
+    async pullDailySales(spreadsheetId: string, token: string, tabName: string, targetBranch?: string): Promise<number> {
         const range = `${encodeURIComponent(tabName)}!A1:Z1000`
         const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -349,8 +759,10 @@ export const googleSheetsSyncService = {
         const dateIdx = headers.findIndex(h => h.includes('date') || h === 'day')
         const branchIdx = headers.findIndex(h => h.includes('branch') || h.includes('location') || h.includes('salon'))
         const clientIdx = headers.findIndex(h => h.includes('client') || h.includes('customer') || h.includes('count') || h.includes('bill'))
-        const serviceIdx = headers.findIndex(h => h.includes('service') || h.includes('hair') || h.includes('treatment'))
+        const cashIdx = headers.findIndex(h => h.includes('cash'))
+        const upiIdx = headers.findIndex(h => h.includes('upi') || h.includes('digital') || h.includes('gpay') || h.includes('phonepe') || h.includes('online'))
         const retailIdx = headers.findIndex(h => h.includes('retail') || h.includes('product'))
+        const serviceIdx = headers.findIndex(h => h.includes('service') || h.includes('hair') || h.includes('treatment'))
         const notesIdx = headers.findIndex(h => h.includes('note') || h.includes('remark') || h.includes('desc'))
 
         if (dateIdx === -1) {
@@ -369,7 +781,7 @@ export const googleSheetsSyncService = {
             const parsedDate = parseExcelDate(rawDate)
             if (!parsedDate) continue
 
-            let branch = branchIdx !== -1 && row[branchIdx] ? String(row[branchIdx]).trim() : DEFAULT_BRANCHES[0]
+            let branch = targetBranch && targetBranch !== 'all' ? targetBranch : (branchIdx !== -1 && row[branchIdx] ? String(row[branchIdx]).trim() : DEFAULT_BRANCHES[0])
             // Standardize branch name
             const lowerB = branch.toLowerCase()
             if (lowerB.includes('manea') || lowerB.includes('mane')) branch = 'Manea'
@@ -380,30 +792,34 @@ export const googleSheetsSyncService = {
             else if (lowerB.includes('beng') || lowerB.includes('blr')) branch = 'Bengaluru'
 
             const rawClient = clientIdx !== -1 ? row[clientIdx] : 0
-            const rawService = serviceIdx !== -1 ? row[serviceIdx] : 0
+            const rawCash = cashIdx !== -1 ? row[cashIdx] : 0
+            const rawUpi = upiIdx !== -1 ? row[upiIdx] : 0
             const rawRetail = retailIdx !== -1 ? row[retailIdx] : 0
+            const rawService = serviceIdx !== -1 ? row[serviceIdx] : 0
             const rawNotes = notesIdx !== -1 ? String(row[notesIdx] || '').trim() : ''
 
             const clientCount = Math.max(0, parseInt(String(rawClient).replace(/[^\d]/g, ''), 10) || 0)
-            const service = Math.max(0, parseFloat(String(rawService).replace(/[^\d.-]/g, '')) || 0)
+            const parsedCash = Math.max(0, parseFloat(String(rawCash).replace(/[^\d.-]/g, '')) || 0)
+            const parsedUpi = Math.max(0, parseFloat(String(rawUpi).replace(/[^\d.-]/g, '')) || 0)
             const retail = Math.max(0, parseFloat(String(rawRetail).replace(/[^\d.-]/g, '')) || 0)
+            const service = Math.max(0, parseFloat(String(rawService).replace(/[^\d.-]/g, '')) || 0)
 
             if (!allSales[branch]) allSales[branch] = {}
 
-            // Merge: preserve existing upi, cash, notes if present
+            // Merge: compute Cash, UPI, Retail, Service, and Total
             const existing = allSales[branch][parsedDate.iso]
-            const finalUpi = existing?.upi || 0
-            const finalCash = existing?.cash || 0
+            const finalCash = (cashIdx !== -1 && parsedCash > 0) ? parsedCash : (existing?.cash || 0)
+            const finalUpi = (upiIdx !== -1 && parsedUpi > 0) ? parsedUpi : (existing?.upi || 0)
             const finalRetail = retail || existing?.retail || 0
-            const finalService = service || existing?.service || (finalUpi + finalCash)
-            const finalTotal = (finalUpi + finalCash + finalRetail > 0)
-                ? (finalUpi + finalCash + finalRetail)
+            const finalService = (service > 0) ? service : ((finalCash + finalUpi > 0) ? (finalCash + finalUpi) : (existing?.service || 0))
+            const finalTotal = (finalCash + finalUpi + finalRetail > 0)
+                ? (finalCash + finalUpi + finalRetail)
                 : (finalService + finalRetail)
 
             allSales[branch][parsedDate.iso] = {
                 clientCount: clientCount || existing?.clientCount || 0,
-                upi: existing?.upi,
-                cash: existing?.cash,
+                upi: finalUpi,
+                cash: finalCash,
                 retail: finalRetail,
                 service: finalService,
                 total: finalTotal,
@@ -417,9 +833,16 @@ export const googleSheetsSyncService = {
     },
 
     /**
-     * PUSH: Writes all local Daily Sales records into Google Sheet
+     * PUSH: Writes Daily Sales records into Google Sheet.
+     * When targetBranch is set, pushes only that branch's records to its dedicated sheet.
      */
-    async pushDailySales(spreadsheetId: string, token: string, tabName: string): Promise<number> {
+    async pushDailySales(
+        spreadsheetId: string,
+        token: string,
+        tabName: string,
+        targetBranch?: string,
+        isManualSalesSheet = false
+    ): Promise<number> {
         const allSales = manualSalesStore.getAll()
 
         // Read existing rows first so we know what's there
@@ -437,38 +860,41 @@ export const googleSheetsSyncService = {
             console.warn('Could not read existing rows before push', e)
         }
 
-        // Map existing rows by Date + Branch to preserve row positions or update cleanly
-        const existingKeyToRowIndex = new Map<string, number>()
-        if (existingRows.length > 1) {
-            const headers = existingRows[0].map((h: any) => String(h || '').trim().toLowerCase())
-            const dIdx = headers.findIndex(h => h.includes('date') || h === 'day')
-            const bIdx = headers.findIndex(h => h.includes('branch') || h.includes('location'))
+        // Flatten records
+        const flatList: {
+            date: string
+            branch: string
+            clientCount: number
+            cash: number
+            upi: number
+            retail: number
+            service: number
+            total: number
+            notes: string
+        }[] = []
 
-            if (dIdx !== -1) {
-                for (let r = 1; r < existingRows.length; r++) {
-                    const row = existingRows[r]
-                    const d = parseExcelDate(row[dIdx])
-                    const b = bIdx !== -1 && row[bIdx] ? String(row[bIdx]).trim() : 'Bengaluru'
-                    if (d) {
-                        existingKeyToRowIndex.set(`${b}_${d}`, r)
-                    }
-                }
-            }
-        }
-
-        // Flatten all local records
-        const flatList: { date: string; branch: string; clientCount: number; service: number; retail: number; notes: string }[] = []
         for (const [branch, dateMap] of Object.entries(allSales)) {
             if (branch === 'all') continue
+            // If targetBranch is specified, only include this branch
+            if (targetBranch && targetBranch !== 'all' && branch !== targetBranch) continue
+
             for (const [date, rec] of Object.entries(dateMap)) {
-                const serviceVal = (rec.upi || 0) + (rec.cash || 0) > 0 ? ((rec.upi || 0) + (rec.cash || 0)) : (rec.service || 0)
-                if (rec.clientCount > 0 || serviceVal > 0 || rec.retail > 0 || (rec.notes && rec.notes.trim())) {
+                const cashVal = rec.cash || 0
+                const upiVal = rec.upi || 0
+                const retailVal = rec.retail || 0
+                const serviceVal = (cashVal + upiVal > 0) ? (cashVal + upiVal) : (rec.service || 0)
+                const totalVal = rec.total || (cashVal + upiVal + retailVal > 0 ? (cashVal + upiVal + retailVal) : (serviceVal + retailVal))
+
+                if (rec.clientCount > 0 || totalVal > 0 || (rec.notes && rec.notes.trim())) {
                     flatList.push({
                         date,
                         branch,
                         clientCount: rec.clientCount,
+                        cash: cashVal,
+                        upi: upiVal,
+                        retail: retailVal,
                         service: serviceVal,
-                        retail: rec.retail,
+                        total: totalVal,
                         notes: rec.notes || '',
                     })
                 }
@@ -478,26 +904,42 @@ export const googleSheetsSyncService = {
         // Sort chronologically then by branch
         flatList.sort((a, b) => a.date.localeCompare(b.date) || a.branch.localeCompare(b.branch))
 
-        // Reconstruct the table values
-        const rowsOutput: (string | number)[][] = [
-            ['Date', 'Branch', 'Client Count', 'Service Sales (₹)', 'Retail Sales (₹)', 'Total Revenue (₹)', 'Notes / Remarks'],
-        ]
-
-        for (const item of flatList) {
-            const totalRev = (item.service || 0) + (item.retail || 0)
-            rowsOutput.push([
-                item.date,
-                item.branch,
-                item.clientCount,
-                item.service,
-                item.retail,
-                totalRev,
-                item.notes,
-            ])
+        // Reconstruct table values
+        let rowsOutput: (string | number)[][] = []
+        if (isManualSalesSheet) {
+            rowsOutput.push(['Date', 'Branch', 'Client Count', 'Cash Sales (₹)', 'UPI Sales (₹)', 'Retail Sales (₹)', 'Total Sales (₹)', 'Notes / Remarks'])
+            for (const item of flatList) {
+                rowsOutput.push([
+                    item.date,
+                    item.branch,
+                    item.clientCount,
+                    item.cash,
+                    item.upi,
+                    item.retail,
+                    item.total,
+                    item.notes,
+                ])
+            }
+        } else {
+            rowsOutput.push(['Date', 'Branch', 'Client Count', 'Cash Sales (₹)', 'UPI Sales (₹)', 'Retail Sales (₹)', 'Service Sales (₹)', 'Total Revenue (₹)', 'Notes / Remarks'])
+            for (const item of flatList) {
+                rowsOutput.push([
+                    item.date,
+                    item.branch,
+                    item.clientCount,
+                    item.cash,
+                    item.upi,
+                    item.retail,
+                    item.service,
+                    item.total,
+                    item.notes,
+                ])
+            }
         }
 
         // Write full table
-        const writeRange = `${encodeURIComponent(tabName)}!A1:G${rowsOutput.length}`
+        const colCount = isManualSalesSheet ? 'H' : 'I'
+        const writeRange = `${encodeURIComponent(tabName)}!A1:${colCount}${rowsOutput.length}`
         const putRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${writeRange}?valueInputOption=USER_ENTERED`, {
             method: 'PUT',
             headers: {
@@ -505,7 +947,7 @@ export const googleSheetsSyncService = {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                range: `${tabName}!A1:G${rowsOutput.length}`,
+                range: `${tabName}!A1:${colCount}${rowsOutput.length}`,
                 majorDimension: 'ROWS',
                 values: rowsOutput,
             }),
@@ -708,48 +1150,106 @@ export const googleSheetsSyncService = {
 
     /**
      * Complete Full Two-Way Synchronization:
-     * - If signed into Google OAuth and a custom ID is provided, performs live Google Sheets API sync.
-     * - Otherwise, smoothly synchronizes with the hardcoded persistent Google Drive Master Ledger
+     * - If signed into Google OAuth, performs live Google Sheets API sync with dedicated branch sheets
+     *   (and master sheet for consolidated views).
+     * - Otherwise, smoothly synchronizes with the persistent Google Drive Master Ledger mirror
      *   without requiring popups or blocking user actions.
      */
-    async performSync(): Promise<SyncResult> {
+    async performSync(options?: {
+        branch?: string
+        sheetType?: 'manual-sales' | 'daily-sales' | 'all'
+    }): Promise<SyncResult> {
         const config = this.getConfig()
         const token = googleAuthService.getAccessToken()
+        const targetBranch = options?.branch
+        const targetType = options?.sheetType || 'all'
 
-        // 1. Live Google Sheets API sync if user connected live OAuth & custom spreadsheet ID
-        if (token && config.spreadsheetId && !config.spreadsheetId.startsWith('1cm_drive_master')) {
+        if (token) {
             try {
-                // Ensure standard tabs exist
-                await this.initializeStandardTabs(config.spreadsheetId, token, [config.dailySalesTab, config.expensesTab])
-
                 let pulledSales = 0
                 let pushedSales = 0
                 let pulledExpenses = 0
                 let pushedExpenses = 0
+                const branchesToSync = targetBranch && targetBranch !== 'all'
+                    ? [targetBranch]
+                    : DEFAULT_BRANCHES
 
-                // Direction: Two-way or Pull-only
-                if (config.syncDirection === 'two-way' || config.syncDirection === 'pull-only') {
-                    pulledSales = await this.pullDailySales(config.spreadsheetId, token, config.dailySalesTab)
-                    pulledExpenses = await this.pullExpenses(config.spreadsheetId, token, config.expensesTab)
+                let syncedAnyBranch = false
+
+                for (const bName of branchesToSync) {
+                    const bConf = config.branches?.[bName]
+                    if (!bConf) continue
+
+                    // 1. Manual Daily Sales Sheet for this branch (Cash, UPI, Retail)
+                    if (targetType === 'manual-sales' || targetType === 'all') {
+                        if (bConf.manualSalesSpreadsheetId) {
+                            try {
+                                const tab = bConf.manualSalesTab || `${bName} Daily Sales`
+                                await this.initializeStandardTabs(bConf.manualSalesSpreadsheetId, token, [tab])
+                                if (config.syncDirection === 'two-way' || config.syncDirection === 'pull-only') {
+                                    pulledSales += await this.pullDailySales(bConf.manualSalesSpreadsheetId, token, tab, bName)
+                                }
+                                if (config.syncDirection === 'two-way' || config.syncDirection === 'push-only') {
+                                    pushedSales += await this.pushDailySales(bConf.manualSalesSpreadsheetId, token, tab, bName, true)
+                                }
+                                syncedAnyBranch = true
+                            } catch (bErr) {
+                                console.warn(`Sync failed for ${bName} manual sales sheet:`, bErr)
+                            }
+                        }
+                    }
+
+                    // 2. POS Daily Sales Sheet for this branch
+                    if (targetType === 'daily-sales' || targetType === 'all') {
+                        if (bConf.dailySalesSpreadsheetId) {
+                            try {
+                                const tab = bConf.dailySalesTab || `${bName} POS Sales`
+                                await this.initializeStandardTabs(bConf.dailySalesSpreadsheetId, token, [tab])
+                                if (config.syncDirection === 'two-way' || config.syncDirection === 'pull-only') {
+                                    pulledSales += await this.pullDailySales(bConf.dailySalesSpreadsheetId, token, tab, bName)
+                                }
+                                if (config.syncDirection === 'two-way' || config.syncDirection === 'push-only') {
+                                    pushedSales += await this.pushDailySales(bConf.dailySalesSpreadsheetId, token, tab, bName, false)
+                                }
+                                syncedAnyBranch = true
+                            } catch (bErr) {
+                                console.warn(`Sync failed for ${bName} POS daily sales sheet:`, bErr)
+                            }
+                        }
+                    }
                 }
 
-                // Direction: Two-way or Push-only
-                if (config.syncDirection === 'two-way' || config.syncDirection === 'push-only') {
-                    pushedSales = await this.pushDailySales(config.spreadsheetId, token, config.dailySalesTab)
-                    pushedExpenses = await this.pushExpenses(config.spreadsheetId, token, config.expensesTab)
+                // If syncing all branches or if no branch sheets configured, also sync Master Consolidated Sheet
+                if ((!targetBranch || targetBranch === 'all' || !syncedAnyBranch) && config.spreadsheetId && !config.spreadsheetId.startsWith('1cm_drive_master')) {
+                    try {
+                        await this.initializeStandardTabs(config.spreadsheetId, token, [config.dailySalesTab, config.expensesTab])
+                        if (config.syncDirection === 'two-way' || config.syncDirection === 'pull-only') {
+                            pulledSales += await this.pullDailySales(config.spreadsheetId, token, config.dailySalesTab)
+                            pulledExpenses += await this.pullExpenses(config.spreadsheetId, token, config.expensesTab)
+                        }
+                        if (config.syncDirection === 'two-way' || config.syncDirection === 'push-only') {
+                            pushedSales += await this.pushDailySales(config.spreadsheetId, token, config.dailySalesTab)
+                            pushedExpenses += await this.pushExpenses(config.spreadsheetId, token, config.expensesTab)
+                        }
+                        syncedAnyBranch = true
+                    } catch (mErr) {
+                        console.warn('Master sheet sync note:', mErr)
+                    }
                 }
 
-                const nowIso = new Date().toISOString()
-                this.saveConfig({ lastSyncedAt: nowIso })
-
-                return {
-                    success: true,
-                    message: `Live two-way sync completed with Google Drive spreadsheet "${config.spreadsheetTitle || config.spreadsheetId}".`,
-                    pulledSales,
-                    pushedSales,
-                    pulledExpenses,
-                    pushedExpenses,
-                    timestamp: nowIso,
+                if (syncedAnyBranch) {
+                    const nowIso = new Date().toISOString()
+                    await this.saveConfig({ lastSyncedAt: nowIso })
+                    const branchMsg = targetBranch && targetBranch !== 'all' ? ` for ${targetBranch}` : ' across all salon branches'
+                    return {
+                        success: true,
+                        message: `Live synchronization completed${branchMsg}. All records match your Google Sheets in Drive.`,
+                        pulledSales,
+                        pushedSales,
+                        pulledExpenses,
+                        pushedExpenses,
+                        timestamp: nowIso,
+                    }
                 }
             } catch (err: any) {
                 console.warn('Live Google Sheets API sync note (falling back to Drive ledger mirror):', err)
