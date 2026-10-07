@@ -90,7 +90,7 @@ export default function SeznikVeerReceipt({ invoice, onClose }: Props) {
             const discLabel = invoice.discountPercent > 0 ? `Discount (${invoice.discountPercent}%):` : 'Discount:'
             text += `${discLabel} -₹${Number(invoice.discountAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`
         }
-        if (invoice.taxAmount > 0 || invoice.taxPercent > 0) {
+        if (invoice.taxAmount > 0) {
             text += `CGST (${halfRate}%): ₹${halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`
             text += `SGST (${halfRate}%): ₹${halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`
         }

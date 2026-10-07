@@ -82,14 +82,15 @@ export default function Billing() {
     const [clientSearch, setClientSearch] = useState('');
     const [clientSearchFocused, setClientSearchFocused] = useState(false);
     const [showNewClientForm, setShowNewClientForm] = useState(false);
-    const [newClient, setNewClient] = useState({ name: '', phone: '', gender: 'female' as Client['gender'] });
+    const [newClient, setNewClient] = useState({ name: '', phone: '', email: '', gender: 'female' as Client['gender'] });
 
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [items, setItems] = useState<InvoiceItem[]>([]);
     
-    // Discount & Tax
+    // Discount & Tax (GST Option: Toggle On/Off + Editable Text Box)
     const [discountType, setDiscountType] = useState<'percent' | 'flat'>('percent');
     const [discountValue, setDiscountValue] = useState<number>(0);
+    const [applyGst, setApplyGst] = useState<boolean>(true);
     const [taxPercent, setTaxPercent] = useState<number>(5);
     
     // Payment
@@ -117,9 +118,10 @@ export default function Billing() {
         ? Number(((subtotal * discountValue) / 100).toFixed(2))
         : Number((discountValue || 0).toFixed(2));
     const taxableAmount = Math.max(0, Number((subtotal - discountAmount).toFixed(2)));
-    const halfTaxPercent = taxPercent / 2;
-    const cgstAmount = Number(((taxableAmount * halfTaxPercent) / 100).toFixed(2));
-    const sgstAmount = Number(((taxableAmount * halfTaxPercent) / 100).toFixed(2));
+    const effectiveTaxPercent = applyGst ? taxPercent : 0;
+    const halfTaxPercent = effectiveTaxPercent / 2;
+    const cgstAmount = applyGst ? Number(((taxableAmount * halfTaxPercent) / 100).toFixed(2)) : 0;
+    const sgstAmount = applyGst ? Number(((taxableAmount * halfTaxPercent) / 100).toFixed(2)) : 0;
     const taxAmount = Number((cgstAmount + sgstAmount).toFixed(2));
     const total = Number((taxableAmount + taxAmount).toFixed(2));
     const changeToReturn = Number((amountReceived - total).toFixed(2));
@@ -146,7 +148,7 @@ export default function Billing() {
             subtotal,
             discountPercent: discountType === 'percent' ? discountValue : 0,
             discountAmount,
-            taxPercent,
+            taxPercent: effectiveTaxPercent,
             taxAmount,
             total,
             amountPaid: total,
@@ -157,7 +159,7 @@ export default function Billing() {
             notes,
             createdAt: new Date().toISOString(),
         };
-    }, [selectedClient, staff, selectedStaffId, items, subtotal, discountType, discountValue, discountAmount, taxPercent, taxAmount, total, paymentMethod, selectedBranch, notes]);
+    }, [selectedClient, staff, selectedStaffId, items, subtotal, discountType, discountValue, discountAmount, effectiveTaxPercent, taxAmount, total, paymentMethod, selectedBranch, notes]);
 
     // Derived Client Search (Searches ALL clients if query entered, or branch clients if empty)
     const filteredClients = useMemo(() => {
@@ -167,19 +169,19 @@ export default function Billing() {
         const term = clientSearch.toLowerCase();
         return allClients.filter(c => 
             c.name.toLowerCase().includes(term) || 
-            c.phone.includes(term) || 
-            c.email.toLowerCase().includes(term)
+            (c.phone && c.phone.includes(term)) || 
+            (c.email && c.email.toLowerCase().includes(term))
         ).slice(0, 10);
     }, [allClients, selectedBranch, clientSearch]);
 
     const handleCreateClient = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newClient.name || !newClient.phone) return;
+        if (!newClient.name?.trim()) return;
         const created = await clientStore.create({
-            name: newClient.name,
-            phone: newClient.phone,
+            name: newClient.name.trim(),
+            phone: newClient.phone.trim(),
+            email: newClient.email.trim(),
             gender: newClient.gender,
-            email: '',
             branch: selectedBranch,
             joinedDate: new Date().toISOString().split('T')[0],
             totalVisits: 0,
@@ -189,7 +191,7 @@ export default function Billing() {
         setAllClients(cls);
         setSelectedClient(created);
         setShowNewClientForm(false);
-        setNewClient({ name: '', phone: '', gender: 'female' });
+        setNewClient({ name: '', phone: '', email: '', gender: 'female' });
         setClientSearch('');
     };
 
@@ -317,7 +319,7 @@ export default function Billing() {
             subtotal,
             discountPercent: discountType === 'percent' ? discountValue : 0,
             discountAmount,
-            taxPercent,
+            taxPercent: effectiveTaxPercent,
             taxAmount,
             total,
             amountPaid: status === 'paid' ? total : 0,
@@ -426,6 +428,7 @@ export default function Billing() {
         setItems([]);
         setDiscountType('percent');
         setDiscountValue(0);
+        setApplyGst(true);
         setTaxPercent(5);
         setPaymentMethod('cash');
         setAmountReceived(0);
@@ -438,6 +441,7 @@ export default function Billing() {
         setSelectedAppointmentId('');
         setShowSuccess(false);
         setLastInvoice(null);
+        setNewClient({ name: '', phone: '', email: '', gender: 'female' });
     };
 
     const shareWhatsApp = () => {
@@ -453,8 +457,10 @@ export default function Billing() {
         const lastHalfTax = Number(((lastTaxable * lastHalfRate) / 100).toFixed(2)) || Number(((lastInvoice.taxAmount || 0) / 2).toFixed(2));
         text += `\nSubtotal: ₹${Number(lastInvoice.subtotal || 0).toFixed(2)}\n`;
         if (lastInvoice.discountAmount > 0) text += `Discount: -₹${Number(lastInvoice.discountAmount || 0).toFixed(2)}\n`;
-        text += `CGST (${lastHalfRate}%): ₹${lastHalfTax.toFixed(2)}\n`;
-        text += `SGST (${lastHalfRate}%): ₹${lastHalfTax.toFixed(2)}\n`;
+        if (lastInvoice.taxAmount > 0) {
+            text += `CGST (${lastHalfRate}%): ₹${lastHalfTax.toFixed(2)}\n`;
+            text += `SGST (${lastHalfRate}%): ₹${lastHalfTax.toFixed(2)}\n`;
+        }
         text += `*Total: ₹${Number(lastInvoice.total || 0).toFixed(2)}*\n\n`;
         text += `Thank you for your visit!`;
         
@@ -523,15 +529,16 @@ export default function Billing() {
                     </div>
                     
                     {showNewClientForm ? (
-                        <form className="billing-inline-form" onSubmit={handleCreateClient}>
-                            <input className="admin-form-input" placeholder="Name *" value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} required autoFocus />
-                            <input className="admin-form-input" placeholder="Phone *" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} required />
-                            <select className="admin-form-select" value={newClient.gender} onChange={e => setNewClient({...newClient, gender: e.target.value as Client['gender']})}>
+                        <form className="billing-inline-form" onSubmit={handleCreateClient} style={{ gap: 8, flexWrap: 'wrap' }}>
+                            <input className="admin-form-input" placeholder="Name *" value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} required autoFocus style={{ minWidth: 140, flex: 1 }} />
+                            <input className="admin-form-input" placeholder="Phone (Optional)" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} style={{ minWidth: 130, flex: 1 }} />
+                            <input className="admin-form-input" placeholder="Email (Optional)" type="email" value={newClient.email} onChange={e => setNewClient({...newClient, email: e.target.value})} style={{ minWidth: 140, flex: 1 }} />
+                            <select className="admin-form-select" value={newClient.gender} onChange={e => setNewClient({...newClient, gender: e.target.value as Client['gender']})} style={{ width: 95 }}>
                                 <option value="female">Female</option>
                                 <option value="male">Male</option>
                                 <option value="other">Other</option>
                             </select>
-                            <div style={{ display: 'flex', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 6 }}>
                                 <button type="submit" className="admin-btn admin-btn-primary admin-btn-sm">Save</button>
                                 <button type="button" className="admin-btn admin-btn-secondary admin-btn-sm" onClick={() => setShowNewClientForm(false)}>Cancel</button>
                             </div>
@@ -709,9 +716,60 @@ export default function Billing() {
                         </div>
                     </div>
                     <div>
-                        <div className="billing-section-header"><h3>GST (%)</h3></div>
-                        <input className="admin-form-input" type="number" step="0.1" min={0} value={taxPercent} onChange={e => setTaxPercent(parseFloat(e.target.value) || 0)} />
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Applied post-discount</div>
+                        <div className="billing-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3>GST Tax</h3>
+                            <button
+                                type="button"
+                                className={`admin-btn admin-btn-sm ${applyGst ? 'admin-btn-secondary' : 'admin-btn-primary'}`}
+                                onClick={() => setApplyGst(!applyGst)}
+                                style={{
+                                    fontSize: 11,
+                                    padding: '2px 8px',
+                                    height: 24,
+                                    color: applyGst ? '#ef4444' : '#10b981',
+                                    borderColor: applyGst ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)',
+                                    background: applyGst ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.12)'
+                                }}
+                            >
+                                {applyGst ? '✕ Remove GST' : '+ Add GST'}
+                            </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <div style={{ flex: 1, position: 'relative' }}>
+                                <input
+                                    className="admin-form-input"
+                                    type="number"
+                                    step="0.1"
+                                    min={0}
+                                    value={taxPercent}
+                                    onChange={e => setTaxPercent(parseFloat(e.target.value) || 0)}
+                                    disabled={!applyGst}
+                                    placeholder="5.0"
+                                    style={{
+                                        opacity: applyGst ? 1 : 0.45,
+                                        background: applyGst ? undefined : 'rgba(255, 255, 255, 0.03)',
+                                        cursor: applyGst ? 'text' : 'not-allowed',
+                                    }}
+                                />
+                                <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-dim)', pointerEvents: 'none' }}>%</span>
+                            </div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={applyGst}
+                                    onChange={e => setApplyGst(e.target.checked)}
+                                    style={{ cursor: 'pointer', width: 16, height: 16 }}
+                                />
+                                <span style={{ color: applyGst ? 'var(--text-bright)' : 'var(--text-dim)', fontWeight: 500 }}>
+                                    {applyGst ? 'GST Active' : 'No GST'}
+                                </span>
+                            </label>
+                        </div>
+                        <div style={{ fontSize: 11, color: applyGst ? 'var(--text-dim)' : '#f59e0b', marginTop: 4 }}>
+                            {applyGst
+                                ? `CGST (${(taxPercent / 2).toFixed(1)}%) + SGST (${(taxPercent / 2).toFixed(1)}%) applied`
+                                : 'GST is removed from this bill (0% tax)'}
+                        </div>
                     </div>
                 </div>
 
@@ -863,12 +921,16 @@ export default function Billing() {
                                     <span>Discount</span><span>-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             )}
-                            <div className="preview-tax">
-                                <span>CGST ({halfTaxPercent}%)</span><span>₹{cgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="preview-tax">
-                                <span>SGST ({halfTaxPercent}%)</span><span>₹{sgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
+                            {applyGst && taxAmount > 0 && (
+                                <>
+                                    <div className="preview-tax">
+                                        <span>CGST ({halfTaxPercent}%)</span><span>₹{cgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="preview-tax">
+                                        <span>SGST ({halfTaxPercent}%)</span><span>₹{sgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                </>
+                            )}
                             <div className="preview-grand-total">
                                 <span>Total</span><span>₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>

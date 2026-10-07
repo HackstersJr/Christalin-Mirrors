@@ -124,12 +124,12 @@ export default function Clients() {
                                 <input className="admin-form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
                             </div>
                             <div className="admin-form-group">
-                                <label className="admin-form-label">Email *</label>
-                                <input className="admin-form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+                                <label className="admin-form-label">Email (Optional)</label>
+                                <input className="admin-form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@example.com (optional)" />
                             </div>
                             <div className="admin-form-group">
-                                <label className="admin-form-label">Phone *</label>
-                                <input className="admin-form-input" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} required />
+                                <label className="admin-form-label">Phone / Mobile (Optional)</label>
+                                <input className="admin-form-input" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Mobile number (optional)" />
                             </div>
                             <div className="admin-form-group">
                                 <label className="admin-form-label">Gender</label>

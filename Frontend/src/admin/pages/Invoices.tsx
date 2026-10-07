@@ -110,8 +110,10 @@ function InvoiceDetail() {
         const halfTax = Number(((taxable * halfRate) / 100).toFixed(2)) || Number(((invoice.taxAmount || 0) / 2).toFixed(2));
         text += `\nSubtotal: ₹${Number(invoice.subtotal || 0).toFixed(2)}\n`;
         if (invoice.discountAmount > 0) text += `Discount: -₹${Number(invoice.discountAmount || 0).toFixed(2)}\n`;
-        text += `CGST (${halfRate}%): ₹${halfTax.toFixed(2)}\n`;
-        text += `SGST (${halfRate}%): ₹${halfTax.toFixed(2)}\n`;
+        if (invoice.taxAmount > 0) {
+            text += `CGST (${halfRate}%): ₹${halfTax.toFixed(2)}\n`;
+            text += `SGST (${halfRate}%): ₹${halfTax.toFixed(2)}\n`;
+        }
         text += `*Total: ₹${Number(invoice.total || 0).toFixed(2)}*\n\n`;
         text += `Thank you for your visit!`;
         return text;
@@ -237,12 +239,16 @@ function InvoiceDetail() {
                                         <span>Discount ({invoice.discountPercent}%)</span><span>-₹{invoice.discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     </div>
                                 )}
-                                <div className="preview-tax">
-                                    <span>CGST ({halfRate}%)</span><span>₹{halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                                <div className="preview-tax">
-                                    <span>SGST ({halfRate}%)</span><span>₹{halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
+                                {halfTax > 0 && (
+                                    <>
+                                        <div className="preview-tax">
+                                            <span>CGST ({halfRate}%)</span><span>₹{halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <div className="preview-tax">
+                                            <span>SGST ({halfRate}%)</span><span>₹{halfTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                    </>
+                                )}
                                 <div className="preview-grand-total">
                                     <span>Total</span><span>₹{invoice.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
@@ -438,8 +444,18 @@ function InvoiceList() {
                                 <input className="admin-form-input" type="number" step="0.1" min={0} max={100} value={formData.discountPercent} onChange={e => setFormData({ ...formData, discountPercent: parseFloat(e.target.value) || 0 })} />
                             </div>
                             <div className="admin-form-group">
-                                <label className="admin-form-label">GST (%)</label>
-                                <input className="admin-form-input" type="number" step="0.1" min={0} value={formData.taxPercent} onChange={e => setFormData({ ...formData, taxPercent: parseFloat(e.target.value) || 0 })} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <label className="admin-form-label">GST (%)</label>
+                                    <button
+                                        type="button"
+                                        className="admin-btn admin-btn-ghost admin-btn-sm"
+                                        style={{ fontSize: 11, padding: '1px 6px', height: 20, color: formData.taxPercent > 0 ? '#ef4444' : '#10b981' }}
+                                        onClick={() => setFormData({ ...formData, taxPercent: formData.taxPercent > 0 ? 0 : 5 })}
+                                    >
+                                        {formData.taxPercent > 0 ? '✕ Remove GST' : '+ Add GST (5%)'}
+                                    </button>
+                                </div>
+                                <input className="admin-form-input" type="number" step="0.1" min={0} value={formData.taxPercent} onChange={e => setFormData({ ...formData, taxPercent: parseFloat(e.target.value) || 0 })} placeholder="0" />
                             </div>
                             <div className="admin-form-group full">
                                 <label className="admin-form-label">Notes</label>
