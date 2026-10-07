@@ -6,6 +6,7 @@ import { getBranchScope, scopeByBranch } from '../data/authStore'
 import type { Invoice, InvoiceItem } from '../data/types'
 import { getBranchAddress } from '../../data/branches'
 import cmLogo from '../../assets/cm-logo-white.png'
+import SeznikVeerReceipt from '../components/SeznikVeerReceipt'
 import '../AdminShared.css'
 import './Billing.css'
 
@@ -75,6 +76,7 @@ function InvoiceDetail() {
     const { invoiceId } = useParams<{ invoiceId: string }>()
     const navigate = useNavigate()
     const [invoice, setInvoice] = useState<Invoice | null>(null)
+    const [viewMode, setViewMode] = useState<'seznik' | 'standard'>('seznik')
 
     useEffect(() => {
         if (invoiceId) {
@@ -145,7 +147,7 @@ function InvoiceDetail() {
 
     return (
         <div>
-            <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
+            <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
                 <button className="admin-btn admin-btn-ghost" onClick={() => navigate('/admin/invoices')}>
                     <ArrowLeft size={18} />
                 </button>
@@ -154,83 +156,116 @@ function InvoiceDetail() {
                     <p className="admin-page-sub">Invoice for {invoice.clientName}</p>
                 </div>
                 <span className={`status-badge ${invoice.status === 'paid' ? 'confirmed' : invoice.status === 'sent' ? 'pending' : invoice.status}`}>{invoice.status}</span>
+                
+                {/* Print Layout Switcher */}
+                <div style={{ display: 'inline-flex', borderRadius: 8, padding: 3, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-color)', gap: 3 }}>
+                    <button
+                        type="button"
+                        className={`admin-btn admin-btn-sm ${viewMode === 'seznik' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
+                        onClick={() => setViewMode('seznik')}
+                        style={{ fontSize: 12, gap: 5, padding: '4px 10px' }}
+                        title="SEZNIK Veer (MPT-II compatible 58mm / 32 characters per line Font A)"
+                    >
+                        <Printer size={13} />
+                        <span>SEZNIK Veer (58mm)</span>
+                    </button>
+                    <button
+                        type="button"
+                        className={`admin-btn admin-btn-sm ${viewMode === 'standard' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
+                        onClick={() => setViewMode('standard')}
+                        style={{ fontSize: 12, gap: 5, padding: '4px 10px' }}
+                    >
+                        <FileText size={13} />
+                        <span>Graphic Bill</span>
+                    </button>
+                </div>
+
                 <button className="admin-btn admin-btn-whatsapp" onClick={shareWhatsApp}>Share on WhatsApp</button>
-                <button className="admin-btn admin-btn-secondary" onClick={() => downloadInvoicePdf(invoice)}><Download size={14} /> Download</button>
-                <button className="admin-btn admin-btn-secondary" onClick={handlePrint}><Printer size={14} /> Print</button>
-            </div>
-
-            {/* Invoice Card — mirrors the Billing "Bill Preview" receipt style */}
-            <div className="preview-receipt" id="invoice-print" style={{ position: 'static', boxShadow: 'none', border: '1px solid var(--border-color)' }}>
-                <div className="preview-header">Tax Invoice</div>
-
-                <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
-                <div className="preview-salon-name" style={{ marginBottom: 4 }}>Christalin Mirrors</div>
-                <div className="preview-branch-line">
-                    {invoice.branch}<br />GSTIN: 29AAVFC4475G1ZU
-                </div>
-
-                <div className="preview-meta">
-                    <div>{invoice.invoiceNumber} • {new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                    {invoice.stylist && <div style={{ fontSize: 12, marginTop: 4 }}>Stylist: {invoice.stylist}</div>}
-                    <div className="preview-client">{invoice.clientName}</div>
-                    {invoice.clientPhone && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{invoice.clientPhone}</div>}
-                </div>
-
-                <div className="preview-items">
-                    {invoice.items.map((item, i) => item.service ? (
-                        <div key={i} className="preview-row">
-                            <div className="preview-row-name">
-                                {item.service}
-                                <div className="preview-row-qty">{item.quantity} × ₹{item.unitPrice.toLocaleString()}</div>
-                            </div>
-                            <div className="preview-row-total">₹{item.total.toLocaleString()}</div>
-                        </div>
-                    ) : null)}
-                </div>
-
-                <div className="preview-totals">
-                    <div className="preview-sub">
-                        <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString()}</span>
-                    </div>
-                    {invoice.discountAmount > 0 && (
-                        <div className="preview-discount">
-                            <span>Discount ({invoice.discountPercent}%)</span><span>-₹{invoice.discountAmount.toLocaleString()}</span>
-                        </div>
-                    )}
-                    <div className="preview-tax">
-                        <span>CGST ({invoice.taxPercent / 2}%)</span><span>₹{Math.floor(invoice.taxAmount / 2).toLocaleString()}</span>
-                    </div>
-                    <div className="preview-tax">
-                        <span>SGST ({invoice.taxPercent / 2}%)</span><span>₹{(invoice.taxAmount - Math.floor(invoice.taxAmount / 2)).toLocaleString()}</span>
-                    </div>
-                    <div className="preview-grand-total">
-                        <span>Total</span><span>₹{invoice.total.toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
-                        <span>Amount Paid</span><span>₹{invoice.amountPaid.toLocaleString()}</span>
-                    </div>
-                    {invoice.total - invoice.amountPaid > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--danger)' }}>
-                            <span>Balance Due</span><span>₹{(invoice.total - invoice.amountPaid).toLocaleString()}</span>
-                        </div>
-                    )}
-                </div>
-
-                {invoice.notes && (
-                    <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
-                        <strong>Notes:</strong> {invoice.notes}
-                    </div>
+                <button className="admin-btn admin-btn-secondary" onClick={() => downloadInvoicePdf(invoice)}><Download size={14} /> Download PDF</button>
+                {viewMode === 'standard' && (
+                    <button className="admin-btn admin-btn-secondary" onClick={handlePrint}><Printer size={14} /> Print</button>
                 )}
-
-                <div className="preview-footer">
-                    {invoice.paymentMethod && <span className="preview-payment-badge">{invoice.paymentMethod}</span>}
-                    <div className="preview-thanks">Thank you for visiting — Team Christalin Mirrors</div>
-                    <div className="preview-watermark">Christalin Mirrors — {invoice.branch}</div>
-                    {getBranchAddress(invoice.branch) && (
-                        <div className="preview-address">{getBranchAddress(invoice.branch)}</div>
-                    )}
-                </div>
             </div>
+
+            {/* SEZNIK Veer (MPT-II 58mm Thermal View) */}
+            {viewMode === 'seznik' ? (
+                <div style={{ maxWidth: 580, margin: '0 auto', padding: '10px 0' }}>
+                    <SeznikVeerReceipt invoice={invoice} />
+                </div>
+            ) : (
+                /* Standard Graphic Invoice Card — mirrors the Billing "Bill Preview" style */
+                <div className="preview-receipt" id="invoice-print" style={{ position: 'static', boxShadow: 'none', border: '1px solid var(--border-color)' }}>
+                    <div className="preview-header">Tax Invoice</div>
+
+                    <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
+                    <div className="preview-salon-name" style={{ marginBottom: 4 }}>Christalin Mirrors</div>
+                    <div className="preview-branch-line">
+                        {invoice.branch}<br />GSTIN: 29AAVFC4475G1ZU
+                    </div>
+
+                    <div className="preview-meta">
+                        <div>{invoice.invoiceNumber} • {new Date(invoice.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                        {invoice.stylist && <div style={{ fontSize: 12, marginTop: 4 }}>Stylist: {invoice.stylist}</div>}
+                        <div className="preview-client">{invoice.clientName}</div>
+                        {invoice.clientPhone && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{invoice.clientPhone}</div>}
+                    </div>
+
+                    <div className="preview-items">
+                        {invoice.items.map((item, i) => item.service ? (
+                            <div key={i} className="preview-row">
+                                <div className="preview-row-name">
+                                    {item.service}
+                                    <div className="preview-row-qty">{item.quantity} × ₹{item.unitPrice.toLocaleString()}</div>
+                                </div>
+                                <div className="preview-row-total">₹{item.total.toLocaleString()}</div>
+                            </div>
+                        ) : null)}
+                    </div>
+
+                    <div className="preview-totals">
+                        <div className="preview-sub">
+                            <span>Subtotal</span><span>₹{invoice.subtotal.toLocaleString()}</span>
+                        </div>
+                        {invoice.discountAmount > 0 && (
+                            <div className="preview-discount">
+                                <span>Discount ({invoice.discountPercent}%)</span><span>-₹{invoice.discountAmount.toLocaleString()}</span>
+                            </div>
+                        )}
+                        <div className="preview-tax">
+                            <span>CGST ({invoice.taxPercent / 2}%)</span><span>₹{Math.floor(invoice.taxAmount / 2).toLocaleString()}</span>
+                        </div>
+                        <div className="preview-tax">
+                            <span>SGST ({invoice.taxPercent / 2}%)</span><span>₹{(invoice.taxAmount - Math.floor(invoice.taxAmount / 2)).toLocaleString()}</span>
+                        </div>
+                        <div className="preview-grand-total">
+                            <span>Total</span><span>₹{invoice.total.toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                            <span>Amount Paid</span><span>₹{invoice.amountPaid.toLocaleString()}</span>
+                        </div>
+                        {invoice.total - invoice.amountPaid > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--danger)' }}>
+                                <span>Balance Due</span><span>₹{(invoice.total - invoice.amountPaid).toLocaleString()}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {invoice.notes && (
+                        <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+                            <strong>Notes:</strong> {invoice.notes}
+                        </div>
+                    )}
+
+                    <div className="preview-footer">
+                        {invoice.paymentMethod && <span className="preview-payment-badge">{invoice.paymentMethod}</span>}
+                        <div className="preview-thanks">Thank you for visiting — Team Christalin Mirrors</div>
+                        <div className="preview-watermark">Christalin Mirrors — {invoice.branch}</div>
+                        {getBranchAddress(invoice.branch) && (
+                            <div className="preview-address">{getBranchAddress(invoice.branch)}</div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Actions */}
             <div className="no-print" style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap', maxWidth: 420, margin: '16px auto 0' }}>
@@ -447,7 +482,8 @@ function InvoiceList() {
                                 </td>
                                 <td>
                                     <div className="admin-actions">
-                                        <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate(`/admin/invoices/${inv.id}`)}><Eye size={14} /></button>
+                                        <button className="admin-btn admin-btn-ghost admin-btn-sm" title="View Bill" onClick={() => navigate(`/admin/invoices/${inv.id}`)}><Eye size={14} /></button>
+                                        <button className="admin-btn admin-btn-ghost admin-btn-sm" title="Print to SEZNIK Veer (58mm)" onClick={() => navigate(`/admin/invoices/${inv.id}`)} style={{ color: '#10b981' }}><Printer size={14} /></button>
                                     </div>
                                 </td>
                             </tr>
@@ -491,8 +527,9 @@ function InvoiceList() {
                                 <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>₹{inv.total.toLocaleString()}</span>
                             </div>
                         </div>
-                        <div className="mobile-card-actions" style={{ justifyContent: 'flex-end' }}>
-                            <button className="admin-btn admin-btn-ghost" onClick={() => navigate(`/admin/invoices/${inv.id}`)}><Eye size={16} /></button>
+                        <div className="mobile-card-actions" style={{ justifyContent: 'flex-end', gap: 6 }}>
+                            <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate(`/admin/invoices/${inv.id}`)} title="View Bill"><Eye size={16} /></button>
+                            <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => navigate(`/admin/invoices/${inv.id}`)} title="Print to SEZNIK Veer (58mm)" style={{ color: '#10b981' }}><Printer size={16} /></button>
                         </div>
                     </div>
                 ))}

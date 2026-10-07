@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import {
     Save, RotateCcw, FileSpreadsheet, RefreshCw, ExternalLink,
-    CheckCircle2, Cloud, Download, Folder, Layers, ShieldCheck, Sparkles
+    CheckCircle2, Cloud, Download, Folder, Layers, ShieldCheck, Sparkles,
+    Printer, X
 } from 'lucide-react'
+import SeznikVeerReceipt from '../components/SeznikVeerReceipt'
 import { settingsStore, resetStore } from '../data/store'
 import type { SalonSettings } from '../data/types'
 import {
@@ -36,6 +38,35 @@ export default function SettingsPage() {
     const [syncFeedback, setSyncFeedback] = useState<string | null>(null)
     const [isAutoCreatingInDrive, setIsAutoCreatingInDrive] = useState(false)
     const [driveCreationStatus, setDriveCreationStatus] = useState<string | null>(null)
+    const [showPrinterTest, setShowPrinterTest] = useState(false)
+
+    const sampleTestInvoice = {
+        id: 'seznik-test',
+        invoiceNumber: 'CM-TEST-1001',
+        clientId: 'client_sample',
+        clientName: 'Rahul Sharma',
+        clientEmail: 'rahul@example.com',
+        clientPhone: '+91 98765 43210',
+        date: new Date().toISOString().split('T')[0],
+        items: [
+            { service: 'Signature Haircut & Style', quantity: 1, unitPrice: 450, total: 450 },
+            { service: 'Beard Trim & Clean Shave', quantity: 1, unitPrice: 150, total: 150 },
+            { service: 'Moroccanoil Hair Serum', quantity: 1, unitPrice: 900, total: 900 },
+        ],
+        subtotal: 1500,
+        discountPercent: 10,
+        discountAmount: 150,
+        taxPercent: 5,
+        taxAmount: 68,
+        total: 1418,
+        amountPaid: 1500,
+        status: 'paid' as const,
+        paymentMethod: 'cash' as const,
+        branch: selectedBranchTab === 'master' ? 'Bengaluru' : selectedBranchTab,
+        stylist: 'Priya (Master Stylist)',
+        notes: 'Test print for SEZNIK Veer (MPT-II) 58mm',
+        createdAt: new Date().toISOString(),
+    }
 
     const handleAutoCreateInDrive = async () => {
         let token = googleAuthService.getAccessToken()
@@ -894,6 +925,69 @@ export default function SettingsPage() {
                 </div>
             </div>
 
+            {/* POS Thermal Printer Specifications Card */}
+            <div className="admin-form-card" id="pos-printer-settings" style={{ border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(16, 185, 129, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                            <Printer size={24} />
+                        </div>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <h3 style={{ margin: 0 }}>POS Thermal Printer — SEZNIK Veer (MPT-II)</h3>
+                                <span style={{
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    padding: '2px 8px',
+                                    borderRadius: 12,
+                                    background: 'rgba(16, 185, 129, 0.15)',
+                                    color: '#10b981',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                }}>
+                                    <CheckCircle2 size={12} /> Active for All Salon Branches &amp; POS
+                                </span>
+                            </div>
+                            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
+                                Pre-calibrated for SEZNIK Veer 58mm continuous roll printers with exact 32-character monospace layout, CP437 ASCII codepage, UPI QR codes, and EAN-13 barcodes.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        className="admin-btn admin-btn-secondary"
+                        onClick={() => setShowPrinterTest(true)}
+                        style={{ fontSize: 12, gap: 6 }}
+                    >
+                        <Printer size={13} style={{ color: '#10b981' }} />
+                        <span>Test SEZNIK Veer Print (58mm)</span>
+                    </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, fontSize: 12 }}>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: 12, borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-bright)', marginBottom: 4 }}>Hardware Specifications:</div>
+                        <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                            <li><strong>Model:</strong> SEZNIK Veer (MPT-II compatible)</li>
+                            <li><strong>Roll Width:</strong> 58mm / 2-inch roll continuous paper</li>
+                            <li><strong>Character Width:</strong> Exactly 32 chars/line (Font A: 12x24)</li>
+                            <li><strong>Interface:</strong> Bluetooth 4.0 / USB / ESC/POS commands</li>
+                        </ul>
+                    </div>
+
+                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: 12, borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-bright)', marginBottom: 4 }}>Formatting &amp; Feature Constraints:</div>
+                        <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                            <li><strong>Codepage:</strong> CP437 (Standard ASCII, &quot;Rs.&quot; currency prefix)</li>
+                            <li><strong>Layout:</strong> Monospace plain text, ASCII dividers (====, ----)</li>
+                            <li><strong>QR Codes:</strong> Dynamic UPI payment string (<code style={{ fontSize: 11 }}>upi://pay?pa=...</code>)</li>
+                            <li><strong>Barcodes:</strong> Standard EAN-13 (13 digits with checksum) &amp; Code-128</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             {/* General Info */}
             <div className="admin-form-card">
                 <h3>General Information</h3>
@@ -1101,6 +1195,72 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* SEZNIK Veer Test Print Modal */}
+            {showPrinterTest && (
+                <div
+                    className="no-print"
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0, 0, 0, 0.75)',
+                        backdropFilter: 'blur(4px)',
+                        zIndex: 9999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 16,
+                    }}
+                    onClick={() => setShowPrinterTest(false)}
+                >
+                    <div
+                        style={{
+                            background: 'var(--bg-card, #1c1c1e)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 14,
+                            width: '100%',
+                            maxWidth: 620,
+                            maxHeight: '92vh',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden',
+                            boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{
+                            padding: '16px 20px',
+                            borderBottom: '1px solid var(--border-color)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <Printer size={20} style={{ color: '#10b981' }} />
+                                <div>
+                                    <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-bright)' }}>
+                                        SEZNIK Veer (MPT-II) — 58mm Test Receipt
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                        32 Chars/Line · Font A (12x24) · CP437 ASCII · EAN-13 Barcode · UPI QR
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                className="admin-btn admin-btn-ghost admin-btn-sm"
+                                onClick={() => setShowPrinterTest(false)}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div style={{ padding: '20px', overflowY: 'auto', background: 'var(--bg-subtle, rgba(0,0,0,0.2))' }}>
+                            <SeznikVeerReceipt invoice={sampleTestInvoice as any} onClose={() => setShowPrinterTest(false)} />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

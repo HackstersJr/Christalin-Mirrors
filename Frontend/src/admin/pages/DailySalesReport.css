@@ -27,6 +27,57 @@
     color: var(--color-primary, #b59458);
 }
 
+/* ─── Mobile View Optimizations (Screens <= 768px and <= 480px) ────── */
+@media screen and (max-width: 768px) {
+    .table-scroll {
+        -webkit-overflow-scrolling: touch;
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 16px;
+    }
+
+    /* Sticky first date/day column so table remains readable horizontally */
+    .dsr-week-table th:first-child,
+    .dsr-week-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        background: var(--bg-card, #1c1c1e);
+        box-shadow: 2px 0 6px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme='light'] .dsr-week-table th:first-child,
+    [data-theme='light'] .dsr-week-table td:first-child {
+        background: #ffffff;
+        box-shadow: 2px 0 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .report-letterhead {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .report-letterhead-meta {
+        text-align: left;
+    }
+
+    .dsr-week-table th,
+    .dsr-week-table td {
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .dsr-week-table th,
+    .dsr-week-table td {
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+}
+
 @media print {
     .dsr-date-cell {
         font-size: 7px !important;

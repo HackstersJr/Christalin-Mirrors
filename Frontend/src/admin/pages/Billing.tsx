@@ -13,6 +13,7 @@ import { getBranchAddress } from '../../data/branches';
 import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice, ClientReview, ServicePackage } from '../data/types';
 import { useToast } from '../components/Toast';
 import VoiceRecorderModal from '../components/VoiceRecorderModal';
+import SeznikVeerReceipt from '../components/SeznikVeerReceipt';
 import cmLogo from '../../assets/cm-logo-white.png';
 import '../AdminShared.css';
 import './Billing.css';
@@ -108,6 +109,7 @@ export default function Billing() {
     const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
     const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
     const [showAppointmentShortcut, setShowAppointmentShortcut] = useState(false);
+    const [previewMode, setPreviewMode] = useState<'seznik' | 'standard'>('seznik');
 
     // Derived Financials
     const subtotal = items.reduce((sum, item) => sum + item.total, 0);
@@ -116,6 +118,41 @@ export default function Billing() {
     const taxAmount = Math.round(taxableAmount * (taxPercent / 100));
     const total = taxableAmount + taxAmount;
     const changeToReturn = amountReceived - total;
+
+    // Pseudo-invoice for live SEZNIK Veer (32-column Font A) preview
+    const livePreviewInvoice: Invoice = useMemo(() => {
+        const clientName = selectedClient === 'walk-in' ? 'Walk-in Guest' : selectedClient ? selectedClient.name : 'Walk-in Guest';
+        const clientPhone = typeof selectedClient === 'object' && selectedClient ? selectedClient.phone : undefined;
+        const stylistName = staff.find(s => s.id === selectedStaffId)?.name;
+        return {
+            id: 'live-preview',
+            invoiceNumber: 'CM-PREVIEW',
+            clientId: typeof selectedClient === 'object' && selectedClient ? selectedClient.id : 'walk-in',
+            clientName,
+            clientEmail: '',
+            clientPhone,
+            date: new Date().toISOString().split('T')[0],
+            items: items.length > 0 ? items : [{
+                service: 'Select service from list',
+                quantity: 1,
+                unitPrice: 0,
+                total: 0,
+            }],
+            subtotal,
+            discountPercent: discountType === 'percent' ? discountValue : 0,
+            discountAmount,
+            taxPercent,
+            taxAmount,
+            total,
+            amountPaid: total,
+            status: 'paid',
+            paymentMethod,
+            branch: selectedBranch,
+            stylist: stylistName,
+            notes,
+            createdAt: new Date().toISOString(),
+        };
+    }, [selectedClient, staff, selectedStaffId, items, subtotal, discountType, discountValue, discountAmount, taxPercent, taxAmount, total, paymentMethod, selectedBranch, notes]);
 
     // Derived Client Search (Searches ALL clients if query entered, or branch clients if empty)
     const filteredClients = useMemo(() => {
@@ -418,20 +455,25 @@ export default function Billing() {
 
     if (showSuccess && lastInvoice) {
         return (
-            <div id="success-screen" className="billing-success-wrapper">
-                <div className="billing-success-content">
-                    <div className="success-icon-wrapper"><Check size={64} className="success-icon" /></div>
+            <div id="success-screen" className="billing-success-wrapper" style={{ padding: '24px 16px' }}>
+                <div className="billing-success-content" style={{ maxWidth: 620, width: '100%' }}>
+                    <div className="success-icon-wrapper"><Check size={56} className="success-icon" /></div>
                     <h1 className="success-title">Payment Confirmed</h1>
                     <div className="success-amount">₹{lastInvoice.total.toLocaleString()}</div>
                     <p className="success-meta">{lastInvoice.clientName} • {lastInvoice.invoiceNumber}</p>
                     
-                    <div className="success-actions">
-                        <button className="admin-btn admin-btn-secondary" onClick={() => window.open(`/admin/invoices/${lastInvoice.id}`, '_blank')}><Printer size={16} /> Print Bill</button>
+                    <div className="success-actions" style={{ flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
                         <button className="admin-btn admin-btn-whatsapp" onClick={shareWhatsApp}>Share on WhatsApp</button>
+                        <button className="admin-btn admin-btn-secondary" onClick={() => window.open(`/admin/invoices/${lastInvoice.id}`, '_blank')}><Receipt size={15} /> Open Invoice Page</button>
+                        <button className="admin-btn admin-btn-primary" onClick={resetBilling}><Plus size={15} /> New Bill</button>
+                    </div>
+
+                    {/* SEZNIK Veer 58mm Thermal Bill Card (Ready to Print) */}
+                    <div style={{ marginTop: 12, padding: '16px 12px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+                        <SeznikVeerReceipt invoice={lastInvoice} />
                     </div>
                     
-                    <button className="admin-btn admin-btn-primary" style={{ marginTop: 20, width: '100%' }} onClick={resetBilling}><Plus size={16} /> New Bill</button>
-                    <p style={{ marginTop: 20, fontSize: 13, color: 'var(--text-dim)' }}>Automatically resetting in 30 seconds...</p>
+                    <p style={{ marginTop: 16, fontSize: 12, color: 'var(--text-dim)' }}>Automatically resetting in 30 seconds...</p>
                 </div>
             </div>
         );
@@ -751,66 +793,91 @@ export default function Billing() {
 
             {/* RIGHT COLUMN - LIVE PREVIEW */}
             <div className="billing-preview">
-                <div className="preview-receipt">
-                    <div className="preview-header">Bill Preview</div>
-
-                    <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
-                    <div className="preview-salon-name">Christalin Mirrors</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center' }}>GSTIN: 29AAVFC4475G1ZU</div>
-
-                    <div className="preview-meta">
-                        <div>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                        <div className="preview-client">
-                            {selectedClient === 'walk-in' ? 'Walk-in Guest' : selectedClient ? selectedClient.name : 'Select Client...'}
-                        </div>
-                        {selectedStaffId && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Stylist: {staff.find(s => s.id === selectedStaffId)?.name}</div>}
-                    </div>
-
-                    <div className="preview-items">
-                        {items.length === 0 && <div className="preview-empty">No items...</div>}
-                        {items.map((item, idx) => item.service ? (
-                            <div key={idx} className="preview-row">
-                                <div className="preview-row-name">
-                                    {item.service}
-                                    <div className="preview-row-qty">{item.quantity} × ₹{item.unitPrice}</div>
-                                </div>
-                                <div className="preview-row-total">₹{item.total.toLocaleString()}</div>
-                            </div>
-                        ) : null)}
-                    </div>
-
-                    <div className="preview-totals">
-                        <div className="preview-sub">
-                            <span>Subtotal</span><span>₹{subtotal.toLocaleString()}</span>
-                        </div>
-                        {discountAmount > 0 && (
-                            <div className="preview-discount">
-                                <span>Discount</span><span>-₹{discountAmount.toLocaleString()}</span>
-                            </div>
-                        )}
-                        <div className="preview-tax">
-                            <span>CGST ({(taxPercent / 2)}%)</span><span>₹{Math.floor(taxAmount / 2).toLocaleString()}</span>
-                        </div>
-                        <div className="preview-tax">
-                            <span>SGST ({(taxPercent / 2)}%)</span><span>₹{(taxAmount - Math.floor(taxAmount / 2)).toLocaleString()}</span>
-                        </div>
-                        <div className="preview-grand-total">
-                            <span>Total</span><span>₹{total.toLocaleString()}</span>
-                        </div>
-                    </div>
-
-                    <div className="preview-footer">
-                        <span className="preview-payment-badge">{paymentMethod}</span>
-                        {paymentMethod === 'cash' && changeToReturn > 0 && (
-                            <div className="preview-change">Change: ₹{changeToReturn}</div>
-                        )}
-                        <div className="preview-thanks">Thank you for visiting — Team Christalin Mirrors</div>
-                        <div className="preview-watermark">Christalin Mirrors — {selectedBranch}</div>
-                        {getBranchAddress(selectedBranch) && (
-                            <div className="preview-address">{getBranchAddress(selectedBranch)}</div>
-                        )}
-                    </div>
+                {/* Preview Mode Switcher */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14, gap: 4, background: 'rgba(255, 255, 255, 0.04)', padding: 4, borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                    <button
+                        type="button"
+                        className={`admin-btn admin-btn-sm ${previewMode === 'seznik' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
+                        onClick={() => setPreviewMode('seznik')}
+                        style={{ fontSize: 11, gap: 5, padding: '4px 10px' }}
+                        title="SEZNIK Veer (MPT-II compatible, 58mm / 32 characters Font A)"
+                    >
+                        <Printer size={12} /> SEZNIK Veer (58mm)
+                    </button>
+                    <button
+                        type="button"
+                        className={`admin-btn admin-btn-sm ${previewMode === 'standard' ? 'admin-btn-primary' : 'admin-btn-ghost'}`}
+                        onClick={() => setPreviewMode('standard')}
+                        style={{ fontSize: 11, gap: 5, padding: '4px 10px' }}
+                    >
+                        <Receipt size={12} /> Standard Preview
+                    </button>
                 </div>
+
+                {previewMode === 'seznik' ? (
+                    <SeznikVeerReceipt invoice={livePreviewInvoice} initialCompact />
+                ) : (
+                    <div className="preview-receipt">
+                        <div className="preview-header">Bill Preview</div>
+
+                        <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
+                        <div className="preview-salon-name">Christalin Mirrors</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center' }}>GSTIN: 29AAVFC4475G1ZU</div>
+
+                        <div className="preview-meta">
+                            <div>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                            <div className="preview-client">
+                                {selectedClient === 'walk-in' ? 'Walk-in Guest' : selectedClient ? selectedClient.name : 'Select Client...'}
+                            </div>
+                            {selectedStaffId && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Stylist: {staff.find(s => s.id === selectedStaffId)?.name}</div>}
+                        </div>
+
+                        <div className="preview-items">
+                            {items.length === 0 && <div className="preview-empty">No items...</div>}
+                            {items.map((item, idx) => item.service ? (
+                                <div key={idx} className="preview-row">
+                                    <div className="preview-row-name">
+                                        {item.service}
+                                        <div className="preview-row-qty">{item.quantity} × ₹{item.unitPrice}</div>
+                                    </div>
+                                    <div className="preview-row-total">₹{item.total.toLocaleString()}</div>
+                                </div>
+                            ) : null)}
+                        </div>
+
+                        <div className="preview-totals">
+                            <div className="preview-sub">
+                                <span>Subtotal</span><span>₹{subtotal.toLocaleString()}</span>
+                            </div>
+                            {discountAmount > 0 && (
+                                <div className="preview-discount">
+                                    <span>Discount</span><span>-₹{discountAmount.toLocaleString()}</span>
+                                </div>
+                            )}
+                            <div className="preview-tax">
+                                <span>CGST ({(taxPercent / 2)}%)</span><span>₹{Math.floor(taxAmount / 2).toLocaleString()}</span>
+                            </div>
+                            <div className="preview-tax">
+                                <span>SGST ({(taxPercent / 2)}%)</span><span>₹{(taxAmount - Math.floor(taxAmount / 2)).toLocaleString()}</span>
+                            </div>
+                            <div className="preview-grand-total">
+                                <span>Total</span><span>₹{total.toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="preview-footer">
+                            <span className="preview-payment-badge">{paymentMethod}</span>
+                            {paymentMethod === 'cash' && changeToReturn > 0 && (
+                                <div className="preview-change">Change: ₹{changeToReturn}</div>
+                            )}
+                            <div className="preview-thanks">Thank you for visiting — Team Christalin Mirrors</div>
+                            <div className="preview-watermark">Christalin Mirrors — {selectedBranch}</div>
+                            {getBranchAddress(selectedBranch) && (
+                                <div className="preview-address">{getBranchAddress(selectedBranch)}</div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Payment Modal */}

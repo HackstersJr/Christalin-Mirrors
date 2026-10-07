@@ -348,3 +348,79 @@
     border-color: #27272a;
     background: #18181b;
 }
+
+/* ─── Mobile View Optimizations (Screens <= 640px) ────── */
+@media screen and (max-width: 640px) {
+    .gs-sync-overlay {
+        padding: 8px;
+    }
+
+    .gs-sync-modal {
+        max-width: 100%;
+        max-height: 94vh;
+        border-radius: 12px;
+    }
+
+    .gs-sync-header {
+        padding: 14px 16px;
+    }
+
+    .gs-sync-badge-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    .gs-sync-title {
+        font-size: 16px;
+    }
+
+    .gs-sync-subtitle {
+        font-size: 12px;
+    }
+
+    .gs-sync-body {
+        padding: 16px 14px;
+        gap: 14px;
+    }
+
+    .gs-auth-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .gs-auth-card button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .gs-sync-footer {
+        flex-direction: column-reverse;
+        gap: 10px;
+        padding: 12px 16px;
+    }
+
+    .gs-sync-footer > div {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .gs-sync-footer .admin-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .gs-input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .gs-input-group button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+

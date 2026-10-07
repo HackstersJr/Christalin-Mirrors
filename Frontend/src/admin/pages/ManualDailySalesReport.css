@@ -269,6 +269,96 @@
     border-color: var(--color-primary, #b59458);
 }
 
+/* ─── Mobile View Optimizations (Screens <= 768px and <= 480px) ────── */
+@media screen and (max-width: 768px) {
+    .manual-dsr-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .manual-dsr-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .manual-dsr-controls .admin-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    /* First column sticky during touch-based horizontal table scroll */
+    .manual-dsr-table th:first-child,
+    .manual-dsr-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 10;
+        background: var(--bg-card, #1c1c1e);
+        box-shadow: 2px 0 6px rgba(0, 0, 0, 0.25);
+    }
+
+    [data-theme='light'] .manual-dsr-table th:first-child,
+    [data-theme='light'] .manual-dsr-table td:first-child {
+        background: #ffffff;
+        box-shadow: 2px 0 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .table-scroll {
+        -webkit-overflow-scrolling: touch;
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 16px;
+    }
+
+    .manual-dsr-input {
+        min-width: 68px;
+        padding: 5px 6px;
+        font-size: 13px;
+    }
+
+    .manual-dsr-modal {
+        max-width: 95vw;
+        margin: 10px;
+    }
+
+    .manual-dsr-modal-body {
+        padding: 14px 16px;
+    }
+
+    .manual-dsr-modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+        padding: 12px 16px;
+    }
+
+    .manual-dsr-modal-footer .admin-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .manual-dsr-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .manual-dsr-input {
+        min-width: 60px;
+        font-size: 12px;
+    }
+
+    .manual-dsr-table th,
+    .manual-dsr-table td {
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+}
+
 /* Print optimizations */
 @media print {
     .manual-dsr-hidden-banner,
