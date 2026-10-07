@@ -198,7 +198,8 @@ function InvoiceDetail() {
                     <div className="preview-header">Tax Invoice</div>
 
                     <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
-                    <div className="preview-salon-name" style={{ marginBottom: 4 }}>Christalin Mirrors</div>
+                    <div className="preview-salon-name" style={{ marginBottom: 2 }}>Christalin Mirrors</div>
+                    <div style={{ fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-primary, #b59458)', textAlign: 'center', fontWeight: 600, marginBottom: 4 }}>Refine · Reflect · Radiate</div>
                     <div className="preview-branch-line">
                         {invoice.branch}<br />GSTIN: 29AAVFC4475G1ZU
                     </div>
@@ -258,7 +259,7 @@ function InvoiceDetail() {
 
                     <div className="preview-footer">
                         {invoice.paymentMethod && <span className="preview-payment-badge">{invoice.paymentMethod}</span>}
-                        <div className="preview-thanks">Thank you for visiting — Team Christalin Mirrors</div>
+                        <div className="preview-thanks">Thank you! Visit again — Team Christalin Mirrors</div>
                         <div className="preview-watermark">Christalin Mirrors — {invoice.branch}</div>
                         {getBranchAddress(invoice.branch) && (
                             <div className="preview-address">{getBranchAddress(invoice.branch)}</div>

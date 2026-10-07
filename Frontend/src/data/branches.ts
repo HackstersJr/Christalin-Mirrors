@@ -101,14 +101,97 @@ export const ALL_SALON_BRANCH_NAMES = [...OPERATIONAL_BRANCH_NAMES, ...UPCOMING_
 // Active branches available for online client booking (excluding Manea which is booked separately)
 export const bookableBranches = branches.filter(b => b.status === 'operational' && !b.excludeFromBooking)
 
-// Looks up a branch's address by its clean short name (e.g. "Belgaum", "Manea"), as
-// stored on invoices/appointments/clients via mapBranch() in admin/data/store.ts
-export function getBranchAddress(cleanBranchName: string): string | undefined {
-    return branches.find(b => {
-        const clean = b.name.replace('CM — ', '').replace(/\s*\([^)]*\)$/, '').trim()
-        const fullClean = b.name.replace('CM — ', '').trim()
-        return clean === cleanBranchName || fullClean === cleanBranchName || b.name === cleanBranchName
-    })?.address
+// Looks up a branch's address by its name (e.g. "Belgaum", "Bengaluru", "Kalaburagi"),
+// checking localStorage overrides first, then registered branch data.
+export function getBranchAddress(branchName?: string): string {
+    if (!branchName) return 'College Road, Belgaum 590001'
+    const cleanBranch = branchName.replace('CM — ', '').replace(/\s*\([^)]*\)$/, '').trim()
+
+    // 1. Check custom user-defined override from localStorage
+    if (typeof window !== 'undefined') {
+        try {
+            const overrides = JSON.parse(localStorage.getItem('cm_branch_addresses') || '{}')
+            if (overrides[cleanBranch]) return overrides[cleanBranch]
+            if (overrides[branchName]) return overrides[branchName]
+            // Case-insensitive match in overrides
+            const matchedKey = Object.keys(overrides).find(k =>
+                k.toLowerCase() === cleanBranch.toLowerCase() ||
+                k.toLowerCase() === branchName.toLowerCase()
+            )
+            if (matchedKey && overrides[matchedKey]) return overrides[matchedKey]
+
+            // Check admin salon settings in localStorage
+            const savedSettings = localStorage.getItem('cm_settings')
+            if (savedSettings) {
+                const parsed = JSON.parse(savedSettings)
+                if (Array.isArray(parsed.branches)) {
+                    const b = parsed.branches.find((br: any) =>
+                        br.name?.toLowerCase().includes(cleanBranch.toLowerCase()) ||
+                        cleanBranch.toLowerCase().includes(br.name?.toLowerCase() || '')
+                    )
+                    if (b?.address) return b.address
+                }
+            }
+        } catch (_) {}
+    }
+
+    // 2. Match in corporate branch registry
+    const lower = cleanBranch.toLowerCase()
+    const matched = branches.find(b => {
+        const bLower = b.name.toLowerCase()
+        const bClean = b.name.replace('CM — ', '').replace(/\s*\([^)]*\)$/, '').trim().toLowerCase()
+        return bLower === lower || bClean === lower || bLower.includes(lower) || lower.includes(bClean)
+    })
+    if (matched?.address) return matched.address
+
+    // 3. Robust branch defaults
+    if (lower.includes('belg') || lower.includes('bgm')) {
+        return 'College Road, Belgaum 590001'
+    }
+    if (lower.includes('beng') || lower.includes('blr')) {
+        return 'Century Ethos Club House, Bellary Rd, Bengaluru 560092'
+    }
+    if (lower.includes('kala') || lower.includes('gulb') || lower.includes('klb')) {
+        return 'Orchid Mall, Mahaveer Nagar, Khuba Plot, Brahmpur, Kalaburagi 585105'
+    }
+    if (lower.includes('yelah')) {
+        return 'Major Arterial Rd, Yelahanka New Town, Bengaluru 560064'
+    }
+    if (lower.includes('hassan')) {
+        return 'BM Road, Hassan 573201'
+    }
+
+    return 'College Road, Belgaum 590001'
+}
+
+// Get phone number for a branch
+export function getBranchPhone(branchName?: string): string {
+    if (!branchName) return '+91 8050153999'
+    const cleanBranch = branchName.replace('CM — ', '').replace(/\s*\([^)]*\)$/, '').trim()
+    const lower = cleanBranch.toLowerCase()
+
+    const matched = branches.find(b => {
+        const bLower = b.name.toLowerCase()
+        const bClean = b.name.replace('CM — ', '').replace(/\s*\([^)]*\)$/, '').trim().toLowerCase()
+        return bLower === lower || bClean === lower || bLower.includes(lower) || lower.includes(bClean)
+    })
+    if (matched?.phone) return matched.phone
+
+    if (lower.includes('belg') || lower.includes('bgm')) return '+91 8050153999'
+    if (lower.includes('beng') || lower.includes('blr')) return '+91 7204236981'
+    if (lower.includes('kala') || lower.includes('klb')) return '+91 918715909'
+    return '+91 8050153999'
+}
+
+// Save custom address for any branch
+export function saveCustomBranchAddress(branchName: string, address: string): void {
+    if (typeof window === 'undefined') return
+    try {
+        const cleanBranch = branchName.replace('CM — ', '').replace(/\s*\([^)]*\)$/, '').trim()
+        const overrides = JSON.parse(localStorage.getItem('cm_branch_addresses') || '{}')
+        overrides[cleanBranch] = address
+        localStorage.setItem('cm_branch_addresses', JSON.stringify(overrides))
+    } catch (_) {}
 }
 
 export const comingSoonBranches = [

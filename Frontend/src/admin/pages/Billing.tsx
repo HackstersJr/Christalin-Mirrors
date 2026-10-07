@@ -822,6 +822,7 @@ export default function Billing() {
 
                         <img src={cmLogo} alt="Christalin Mirrors" className="preview-brand-logo" />
                         <div className="preview-salon-name">Christalin Mirrors</div>
+                        <div style={{ fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-primary, #b59458)', textAlign: 'center', fontWeight: 600, marginBottom: 4 }}>Refine · Reflect · Radiate</div>
                         <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center' }}>GSTIN: 29AAVFC4475G1ZU</div>
 
                         <div className="preview-meta">
@@ -870,7 +871,7 @@ export default function Billing() {
                             {paymentMethod === 'cash' && changeToReturn > 0 && (
                                 <div className="preview-change">Change: ₹{changeToReturn}</div>
                             )}
-                            <div className="preview-thanks">Thank you for visiting — Team Christalin Mirrors</div>
+                            <div className="preview-thanks">Thank you! Visit again — Team Christalin Mirrors</div>
                             <div className="preview-watermark">Christalin Mirrors — {selectedBranch}</div>
                             {getBranchAddress(selectedBranch) && (
                                 <div className="preview-address">{getBranchAddress(selectedBranch)}</div>

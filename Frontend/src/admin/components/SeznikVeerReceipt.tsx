@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-    Printer, Bluetooth, Copy, Check, Download, QrCode,
-    Barcode, ChevronDown, ChevronUp, AlertCircle
+    Printer, Bluetooth, Copy, Check, Download,
+    ChevronDown, ChevronUp, AlertCircle, MapPin
 } from 'lucide-react'
-import QRCode from 'qrcode'
 import JsBarcode from 'jsbarcode'
 import type { Invoice } from '../data/types'
-import { getBranchAddress } from '../../data/branches'
+import { getBranchAddress, getBranchPhone, saveCustomBranchAddress } from '../../data/branches'
 import {
     generate32ColReceiptText,
     calculateEan13,
-    generateUpiPaymentString,
     printInvoiceViaBluetooth,
     SEZNIK_LINE_WIDTH
 } from '../utils/seznikVeerPrinter'
+import cmLogo from '../../assets/cm-logo-white.png'
 import './SeznikVeerReceipt.css'
 
 interface Props {
@@ -24,48 +23,34 @@ interface Props {
 
 export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = false }: Props) {
     const barcodeRef = useRef<SVGSVGElement | null>(null)
-    const [qrDataUrl, setQrDataUrl] = useState<string>('')
-    const [showUpiQr, setShowUpiQr] = useState<boolean>(true)
-    const [showBarcode, setShowBarcode] = useState<boolean>(true)
+    const [showBarcode, setShowBarcode] = useState<boolean>(false)
     const [barcodeType, setBarcodeType] = useState<'ean13' | 'code128'>('ean13')
-    const [upiVpa, setUpiVpa] = useState<string>('christalinmirrors@okaxis')
     const [isCopied, setIsCopied] = useState<boolean>(false)
     const [isBtPrinting, setIsBtPrinting] = useState<boolean>(false)
     const [btMessage, setBtMessage] = useState<{ text: string; error?: boolean } | null>(null)
     const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
+    const [addressSaved, setAddressSaved] = useState<boolean>(false)
 
-    const branchAddress = getBranchAddress(invoice.branch)
+    const branchName = invoice.branch || 'Belgaum'
+    const [customAddress, setCustomAddress] = useState<string>(() => getBranchAddress(branchName))
+    const [customPhone, setCustomPhone] = useState<string>(() => getBranchPhone(branchName))
+
+    useEffect(() => {
+        setCustomAddress(getBranchAddress(branchName))
+        setCustomPhone(getBranchPhone(branchName))
+    }, [branchName])
+
     const ean13Code = calculateEan13(invoice.invoiceNumber)
 
-    // Generate strict 32-column plain text
+    // Generate strict 32-column plain text (no QR code scan per request)
     const receipt32ColText = generate32ColReceiptText(invoice, {
-        branchAddress,
-        upiVpa,
-        showUpiQr,
+        branchAddress: customAddress,
+        branchPhone: customPhone,
+        showUpiQr: false,
         showEan13: showBarcode,
     })
 
-    // Generate UPI QR Code image
-    useEffect(() => {
-        if (!showUpiQr) {
-            setQrDataUrl('')
-            return
-        }
-        const upiString = generateUpiPaymentString(invoice, upiVpa)
-        QRCode.toDataURL(upiString, {
-            width: 140,
-            margin: 1,
-            color: {
-                dark: '#000000',
-                light: '#ffffff',
-            },
-            errorCorrectionLevel: 'M',
-        })
-            .then(url => setQrDataUrl(url))
-            .catch(() => setQrDataUrl(''))
-    }, [invoice, upiVpa, showUpiQr])
-
-    // Generate EAN-13 / Code128 Barcode
+    // Generate optional EAN-13 / Code128 Barcode
     useEffect(() => {
         if (!showBarcode || !barcodeRef.current) return
         try {
@@ -73,11 +58,11 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                 JsBarcode(barcodeRef.current, ean13Code, {
                     format: 'EAN13',
                     width: 1.4,
-                    height: 42,
+                    height: 40,
                     displayValue: true,
                     font: 'monospace',
-                    fontSize: 11,
-                    textMargin: 3,
+                    fontSize: 10,
+                    textMargin: 2,
                     margin: 0,
                     lineColor: '#000000',
                     background: '#ffffff',
@@ -86,24 +71,23 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                 JsBarcode(barcodeRef.current, invoice.invoiceNumber, {
                     format: 'CODE128',
                     width: 1.2,
-                    height: 40,
+                    height: 38,
                     displayValue: true,
                     font: 'monospace',
                     fontSize: 10,
-                    textMargin: 3,
+                    textMargin: 2,
                     margin: 0,
                     lineColor: '#000000',
                     background: '#ffffff',
                 })
             }
         } catch (_) {
-            // Graceful fallback to Code128 if EAN13 format error
             if (barcodeRef.current) {
                 try {
                     JsBarcode(barcodeRef.current, invoice.invoiceNumber, {
                         format: 'CODE128',
                         width: 1.2,
-                        height: 40,
+                        height: 38,
                         displayValue: true,
                         margin: 0,
                     })
@@ -122,22 +106,21 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
         window.addEventListener('afterprint', handleAfterPrint)
         setTimeout(() => {
             window.print()
-            // Fallback removal in case afterprint does not fire in some browsers
             setTimeout(() => {
                 document.body.classList.remove('seznik-printing-active')
             }, 3000)
         }, 80)
     }
 
-    // Direct Web Bluetooth Print (SEZNIK Veer / MPT-II via @point-of-sale packages)
+    // Direct Web Bluetooth Print (SEZNIK Veer / MPT-II)
     const handleBluetoothPrint = async () => {
         setIsBtPrinting(true)
         setBtMessage(null)
         try {
             const res = await printInvoiceViaBluetooth(invoice, {
-                branchAddress,
-                upiVpa,
-                showUpiQr,
+                branchAddress: customAddress,
+                branchPhone: customPhone,
+                showUpiQr: false,
                 showEan13: showBarcode,
             })
             setBtMessage({ text: res.message, error: !res.success })
@@ -146,6 +129,13 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
         } finally {
             setIsBtPrinting(false)
         }
+    }
+
+    // Save custom address for this branch
+    const handleSaveAddress = () => {
+        saveCustomBranchAddress(branchName, customAddress)
+        setAddressSaved(true)
+        setTimeout(() => setAddressSaved(false), 2000)
     }
 
     // Copy exact 32-col plain text
@@ -175,13 +165,13 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span className="seznik-printer-badge">
                         <Printer size={13} />
-                        SEZNIK Veer (MPT-II · 58mm)
+                        SEZNIK Veer (58mm · MPT-II)
                     </span>
                     <span className="seznik-spec-pill">
-                        {SEZNIK_LINE_WIDTH} Chars/Line (Font A)
+                        {SEZNIK_LINE_WIDTH} Chars/Line
                     </span>
-                    <span className="seznik-spec-pill">
-                        CP437 ASCII
+                    <span className="seznik-spec-pill" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}>
+                        Branch: {branchName}
                     </span>
                 </div>
 
@@ -191,7 +181,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                         className="admin-btn admin-btn-primary"
                         onClick={handleThermalPrint}
                         style={{ background: '#10b981', borderColor: '#10b981', color: '#fff', gap: 6, fontWeight: 600 }}
-                        title="Open thermal print dialog (pre-formatted for 58mm continuous roll)"
+                        title="Print bill on 58mm thermal roll"
                     >
                         <Printer size={14} />
                         <span>Print Bill (58mm)</span>
@@ -217,7 +207,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                         title="Copy exact 32-column text"
                     >
                         {isCopied ? <Check size={13} style={{ color: '#10b981' }} /> : <Copy size={13} />}
-                        <span>{isCopied ? 'Copied 32-Col' : 'Copy Text'}</span>
+                        <span>{isCopied ? 'Copied' : 'Copy Text'}</span>
                     </button>
 
                     <button
@@ -228,7 +218,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                         title="Download raw plain text / PRN spool file"
                     >
                         <Download size={13} />
-                        <span>Download .TXT</span>
+                        <span>.TXT</span>
                     </button>
 
                     <button
@@ -237,7 +227,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                         onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                         style={{ gap: 4 }}
                     >
-                        <span>Options</span>
+                        <span>Branch Address &amp; Options</span>
                         {isSettingsOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                     </button>
                 </div>
@@ -266,7 +256,7 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                 </div>
             )}
 
-            {/* Optional Settings Panel */}
+            {/* Branch Address & Thermal Print Options Drawer */}
             {isSettingsOpen && (
                 <div
                     className="no-print"
@@ -276,33 +266,61 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                         background: 'rgba(255, 255, 255, 0.03)',
                         border: '1px solid var(--border-color)',
                         borderRadius: 8,
-                        padding: '12px 16px',
+                        padding: '14px 16px',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 10,
+                        gap: 12,
                         fontSize: 12,
                     }}
                 >
-                    <div style={{ fontWeight: 600, color: 'var(--text-bright)' }}>
-                        SEZNIK Veer Thermal Print Configuration:
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-bright)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <MapPin size={14} style={{ color: 'var(--color-primary, #b59458)' }} />
+                            <span>Address for {branchName} Branch:</span>
+                        </div>
+                        {addressSaved && (
+                            <span style={{ color: '#10b981', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <Check size={12} /> Saved for {branchName}!
+                            </span>
+                        )}
                     </div>
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                            <input
-                                type="checkbox"
-                                checked={showUpiQr}
-                                onChange={e => setShowUpiQr(e.target.checked)}
-                            />
-                            <span>Include UPI QR Code</span>
-                        </label>
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                            className="admin-form-input"
+                            value={customAddress}
+                            onChange={e => setCustomAddress(e.target.value)}
+                            placeholder="e.g. College Road, Belgaum 590001"
+                            style={{ flex: 1, padding: '6px 10px', fontSize: 12 }}
+                        />
+                        <button
+                            type="button"
+                            className="admin-btn admin-btn-secondary admin-btn-sm"
+                            onClick={handleSaveAddress}
+                            style={{ whiteSpace: 'nowrap' }}
+                        >
+                            Save for Branch
+                        </button>
+                        <button
+                            type="button"
+                            className="admin-btn admin-btn-ghost admin-btn-sm"
+                            onClick={() => setCustomAddress(getBranchAddress(branchName))}
+                            title="Reset to default address"
+                        >
+                            Reset
+                        </button>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                             <input
                                 type="checkbox"
                                 checked={showBarcode}
                                 onChange={e => setShowBarcode(e.target.checked)}
                             />
-                            <span>Include Barcode</span>
+                            <span>Include EAN-13 Barcode</span>
                         </label>
+
                         {showBarcode && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span>Type:</span>
@@ -318,42 +336,26 @@ export default function SeznikVeerReceipt({ invoice, onClose, initialCompact = f
                             </div>
                         )}
                     </div>
-                    {showUpiQr && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ color: 'var(--text-muted)' }}>UPI VPA:</span>
-                            <input
-                                className="admin-form-input"
-                                value={upiVpa}
-                                onChange={e => setUpiVpa(e.target.value)}
-                                placeholder="salon@upi"
-                                style={{ padding: '4px 8px', fontSize: 12, flex: 1 }}
-                            />
-                        </div>
-                    )}
                 </div>
             )}
 
             {/* ─── PHYSICAL 58mm ROLL PREVIEW & PRINT TARGET ───────── */}
             <div id="seznik-thermal-target" className="seznik-roll-paper">
-                {/* Monospace 32-column Plain Text Header & Body */}
+                {/* Brand Logo & Name & Tagline at Top of Receipt */}
+                <div className="seznik-brand-header">
+                    <img
+                        src={cmLogo}
+                        alt="Christalin Mirrors"
+                        className="seznik-thermal-logo"
+                    />
+                    <div className="seznik-brand-title">CHRISTALIN MIRRORS</div>
+                    <div className="seznik-brand-tagline">Refine · Reflect · Radiate</div>
+                </div>
+
+                {/* Monospace 32-column Plain Text Header, Items, and Clean Footer */}
                 <pre className="seznik-mono-text">
                     {receipt32ColText}
                 </pre>
-
-                {/* Optional Dynamic UPI Payment QR Code */}
-                {showUpiQr && qrDataUrl && (
-                    <div className="seznik-qr-section">
-                        <img
-                            src={qrDataUrl}
-                            alt="UPI Payment QR Code"
-                            className="seznik-qr-img"
-                        />
-                        <div className="seznik-qr-caption">Scan to Pay via UPI</div>
-                        <div style={{ fontSize: '8px', color: '#333', fontFamily: 'monospace' }}>
-                            {invoice.total ? `Amount: Rs.${invoice.total.toLocaleString('en-IN')}` : ''}
-                        </div>
-                    </div>
-                )}
 
                 {/* Optional EAN-13 / Code-128 Barcode for Scanner Gun */}
                 {showBarcode && (

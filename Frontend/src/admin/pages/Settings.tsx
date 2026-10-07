@@ -950,7 +950,7 @@ export default function SettingsPage() {
                                 </span>
                             </div>
                             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
-                                Pre-calibrated for SEZNIK Veer 58mm continuous roll printers with exact 32-character monospace layout, CP437 ASCII codepage, UPI QR codes, and EAN-13 barcodes.
+                                Pre-calibrated for SEZNIK Veer 58mm continuous roll printers with brand logo, tagline &quot;Refine · Reflect · Radiate&quot;, exact 32-character monospace layout, branch address (e.g. Belgaum), CP437 ASCII codepage, and clean bill footer.
                             </p>
                         </div>
                     </div>
@@ -981,8 +981,8 @@ export default function SettingsPage() {
                         <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                             <li><strong>Codepage:</strong> CP437 (Standard ASCII, &quot;Rs.&quot; currency prefix)</li>
                             <li><strong>Layout:</strong> Monospace plain text, ASCII dividers (====, ----)</li>
-                            <li><strong>QR Codes:</strong> Dynamic UPI payment string (<code style={{ fontSize: 11 }}>upi://pay?pa=...</code>)</li>
-                            <li><strong>Barcodes:</strong> Standard EAN-13 (13 digits with checksum) &amp; Code-128</li>
+                            <li><strong>Branding:</strong> Logo image, &quot;CHRISTALIN MIRRORS&quot; &amp; tagline &quot;Refine · Reflect · Radiate&quot;</li>
+                            <li><strong>Branch &amp; Footer:</strong> Dynamic branch address (Belgaum &amp; branches) &amp; &quot;Team Christalin Mirrors&quot;</li>
                         </ul>
                     </div>
                 </div>

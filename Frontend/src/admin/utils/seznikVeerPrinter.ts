@@ -11,6 +11,7 @@
 import WebBluetoothReceiptPrinter from '@point-of-sale/webbluetooth-receipt-printer'
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder'
 import type { Invoice } from '../data/types'
+import { getBranchAddress, getBranchPhone } from '../../data/branches'
 
 export const SEZNIK_LINE_WIDTH = 32
 
@@ -173,18 +174,20 @@ export function encodeInvoiceReceipt(invoice: Invoice, opts: SeznikPrintOptions 
         .bold(true)
         .line('CHRISTALIN MIRRORS')
         .bold(false)
-        .line('HAIR & BEAUTY SALON')
+        .line('Refine . Reflect . Radiate')
         .line(eq)
         .align('center')
 
-    if (invoice.branch) {
-        encoder.line(`Branch: ${toCp437Ascii(invoice.branch)}`)
+    const branchName = invoice.branch || 'Belgaum'
+    encoder.line(`Branch: ${toCp437Ascii(branchName)}`)
+
+    const branchAddr = opts.branchAddress || getBranchAddress(branchName)
+    if (branchAddr) {
+        wrapText(branchAddr, 32).forEach(l => encoder.line(l))
     }
-    if (opts.branchAddress) {
-        wrapText(opts.branchAddress, 32).forEach(l => encoder.line(l))
-    }
-    if (opts.branchPhone) {
-        encoder.line(`Ph: ${opts.branchPhone}`)
+    const branchPhone = opts.branchPhone || getBranchPhone(branchName)
+    if (branchPhone) {
+        encoder.line(`Ph: ${branchPhone}`)
     }
     encoder
         .line(`GSTIN: ${opts.gstin || '29AAVFC4475G1ZU'}`)
@@ -271,19 +274,8 @@ export function encodeInvoiceReceipt(invoice: Invoice, opts: SeznikPrintOptions 
             .line(`Note: ${toCp437Ascii(invoice.notes)}`)
     }
 
-    // Dynamic UPI QR Code
-    if (opts.showUpiQr !== false) {
-        const upiString = generateUpiPaymentString(invoice, opts.upiVpa)
-        encoder
-            .line(dash)
-            .align('center')
-            .qrcode(upiString, 1, 6, 'm')
-            .newline()
-            .line('Scan to Pay via UPI')
-    }
-
-    // EAN-13 Barcode
-    if (opts.showEan13 !== false) {
+    // Optional EAN-13 Barcode (disabled by default or on toggle)
+    if (opts.showEan13) {
         const ean13 = calculateEan13(invoice.invoiceNumber)
         try {
             encoder
@@ -296,11 +288,25 @@ export function encodeInvoiceReceipt(invoice: Invoice, opts: SeznikPrintOptions 
         }
     }
 
+    // QR Code is omitted per customer instruction ("we dot need qr scan in this and scan to pay via n all")
+    if (opts.showUpiQr === true) {
+        const upiString = generateUpiPaymentString(invoice, opts.upiVpa)
+        encoder
+            .line(dash)
+            .align('center')
+            .qrcode(upiString, 1, 6, 'm')
+            .newline()
+            .line('Scan to Pay via UPI')
+    }
+
     encoder
         .align('center')
         .line(eq)
+        .bold(true)
         .line('Thank you! Visit again.')
         .line('Team Christalin Mirrors')
+        .bold(false)
+        .line(eq)
         .newline()
         .newline()
         .newline() // Feeds past tear bar (58mm portable printers lack auto-cutters)
@@ -368,18 +374,20 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
 
     lines.push(eq)
     lines.push(centerText('CHRISTALIN MIRRORS'))
-    lines.push(centerText('HAIR & BEAUTY SALON'))
+    lines.push(centerText('Refine . Reflect . Radiate'))
     lines.push(eq)
 
-    if (invoice.branch) {
-        lines.push(centerText(`Branch: ${invoice.branch}`))
-    }
-    if (opts.branchAddress) {
-        const addrLines = wrapText(opts.branchAddress, SEZNIK_LINE_WIDTH)
+    const branchName = invoice.branch || 'Belgaum'
+    lines.push(centerText(`Branch: ${branchName}`))
+
+    const branchAddress = opts.branchAddress || getBranchAddress(branchName)
+    if (branchAddress) {
+        const addrLines = wrapText(branchAddress, SEZNIK_LINE_WIDTH)
         addrLines.forEach(l => lines.push(centerText(l)))
     }
-    if (opts.branchPhone) {
-        lines.push(centerText(`Ph: ${opts.branchPhone}`))
+    const branchPhone = opts.branchPhone || getBranchPhone(branchName)
+    if (branchPhone) {
+        lines.push(centerText(`Ph: ${branchPhone}`))
     }
     const gstin = opts.gstin || '29AAVFC4475G1ZU'
     lines.push(centerText(`GSTIN: ${gstin}`))
@@ -443,21 +451,17 @@ export function generate32ColReceiptText(invoice: Invoice, opts: SeznikPrintOpti
         lines.push(toCp437Ascii(`Note: ${invoice.notes}`))
     }
 
-    lines.push(dash)
-    lines.push(centerText('THANK YOU FOR YOUR VISIT!'))
-    lines.push(centerText('CHRISTALIN MIRRORS'))
-    if (opts.customFooterNote) {
-        lines.push(centerText(opts.customFooterNote))
-    } else {
-        lines.push(centerText('Goods & Services once booked'))
-        lines.push(centerText('are non-refundable'))
-    }
-
-    const ean13 = calculateEan13(invoice.invoiceNumber)
-    lines.push(dash)
-    lines.push(centerText(`EAN13: ${ean13}`))
-    lines.push(centerText(`[SEZNIK Veer 58mm Thermal]`))
     lines.push(eq)
+    lines.push(centerText('Thank you! Visit again.'))
+    lines.push(centerText('Team Christalin Mirrors'))
+    lines.push(eq)
+
+    if (opts.showEan13) {
+        const ean13 = calculateEan13(invoice.invoiceNumber)
+        lines.push(dash)
+        lines.push(centerText(`EAN13: ${ean13}`))
+        lines.push(dash)
+    }
 
     return lines.join('\n')
 }

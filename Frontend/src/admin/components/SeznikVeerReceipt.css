@@ -34,6 +34,48 @@
     user-select: text;
 }
 
+/* Brand Logo & Tagline on Thermal Roll */
+.seznik-brand-header {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 2px;
+}
+
+.seznik-thermal-logo {
+    display: block;
+    height: 36px;
+    width: auto;
+    max-width: 44mm;
+    margin: 0 auto 3px;
+    filter: brightness(0); /* Renders pure black on thermal white paper */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+.seznik-brand-title {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #000000;
+    margin: 1px 0;
+    text-align: center;
+    font-family: inherit;
+}
+
+.seznik-brand-tagline {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #000000;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 2px;
+    font-family: inherit;
+}
+
 /* Monospace Preformatted Block (Strict 32 chars) */
 .seznik-mono-text {
     width: 100%;
