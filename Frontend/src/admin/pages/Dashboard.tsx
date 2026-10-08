@@ -110,9 +110,11 @@ export default function Dashboard() {
                         <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/daily-sales-report-manual')}>
                             <FileSpreadsheet size={14} /> Manual Daily Sales
                         </button>
-                        <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/profit-loss-manual')}>
-                            <FileSpreadsheet size={14} /> Manual Profit &amp; Loss
-                        </button>
+                        {!branchScope && (
+                            <button className="admin-btn admin-btn-primary" onClick={() => navigate('/admin/profit-loss-manual')}>
+                                <FileSpreadsheet size={14} /> Manual Profit &amp; Loss
+                            </button>
+                        )}
                         <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/daily-sales-report')}>
                             <ClipboardList size={14} /> Daily Sales Report
                         </button>
@@ -134,11 +136,6 @@ export default function Dashboard() {
                         <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/daily-sales-report-manual')}>
                             <FileSpreadsheet size={14} /> Manual Daily Sales
                         </button>
-                        {session?.role === 'manager' && (
-                            <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/profit-loss-manual')}>
-                                <FileSpreadsheet size={14} /> Manual Profit &amp; Loss
-                            </button>
-                        )}
                         {session?.role === 'manager' && (
                             <button className="admin-btn admin-btn-secondary" onClick={() => navigate('/admin/attendance')}>
                                 <UserCheck size={14} /> Take Attendance

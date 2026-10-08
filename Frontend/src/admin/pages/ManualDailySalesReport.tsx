@@ -5,6 +5,7 @@ import {
     PlusCircle, Calculator, ExternalLink
 } from 'lucide-react'
 import { invoiceStore } from '../data/store'
+import { authStore, isOwnerLevel } from '../data/authStore'
 import cmLogo from '../../assets/cm-logo-white.png'
 import { toIso, todayIso, monthKeyOf, shiftMonth, monthLabel } from './reportUtils'
 import {
@@ -69,6 +70,8 @@ function formatCount(n: number) {
 }
 
 export default function ManualDailySalesReport() {
+    const session = authStore.getSession()
+    const isOwner = isOwnerLevel(session?.role)
     const { showToast } = useToast()
     const [monthKey, setMonthKey] = useState(monthKeyOf(todayIso()))
     const [branch, setBranch] = useState('all')
@@ -496,22 +499,24 @@ export default function ManualDailySalesReport() {
                             Daily client ticket sales begin upon official grand launch. To record fitout CapEx, advance premises rent, and pre-opening holding costs, visit the Profit &amp; Loss Statement.
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        <a
-                            href="/admin/capital-investments"
-                            className="admin-btn admin-btn-sm"
-                            style={{ textDecoration: 'none', background: 'rgba(181, 148, 88, 0.15)', color: 'var(--color-primary, #b59458)', border: '1px solid rgba(181, 148, 88, 0.3)' }}
-                        >
-                            CEO &amp; Partner Equity Ledger
-                        </a>
-                        <a
-                            href="/admin/manual-profit-loss"
-                            className="admin-btn admin-btn-sm admin-btn-primary"
-                            style={{ textDecoration: 'none' }}
-                        >
-                            View Pre-Opening Statement
-                        </a>
-                    </div>
+                    {isOwner && (
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <a
+                                href="/admin/capital-investments"
+                                className="admin-btn admin-btn-sm"
+                                style={{ textDecoration: 'none', background: 'rgba(181, 148, 88, 0.15)', color: 'var(--color-primary, #b59458)', border: '1px solid rgba(181, 148, 88, 0.3)' }}
+                            >
+                                CEO &amp; Partner Equity Ledger
+                            </a>
+                            <a
+                                href="/admin/manual-profit-loss"
+                                className="admin-btn admin-btn-sm admin-btn-primary"
+                                style={{ textDecoration: 'none' }}
+                            >
+                                View Pre-Opening Statement
+                            </a>
+                        </div>
+                    )}
                 </div>
             )}
 

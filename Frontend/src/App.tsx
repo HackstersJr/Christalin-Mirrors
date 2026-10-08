@@ -145,8 +145,8 @@ function App() {
                 <Route path="manual-sales-report" element={<RoleRoute allow={['owner', 'executive_manager', 'manager', 'receptionist']}><ManualDailySalesReport /></RoleRoute>} />
                 <Route path="manual-daily-sales" element={<RoleRoute allow={['owner', 'executive_manager', 'manager', 'receptionist']}><ManualDailySalesReport /></RoleRoute>} />
                 <Route path="profit-loss" element={<RoleRoute allow={['owner', 'executive_manager']}><ProfitLoss /></RoleRoute>} />
-                <Route path="profit-loss-manual" element={<RoleRoute allow={['owner', 'executive_manager', 'manager']}><ManualProfitLoss /></RoleRoute>} />
-                <Route path="manual-profit-loss" element={<RoleRoute allow={['owner', 'executive_manager', 'manager']}><ManualProfitLoss /></RoleRoute>} />
+                <Route path="profit-loss-manual" element={<RoleRoute allow={['owner', 'executive_manager']}><ManualProfitLoss /></RoleRoute>} />
+                <Route path="manual-profit-loss" element={<RoleRoute allow={['owner', 'executive_manager']}><ManualProfitLoss /></RoleRoute>} />
                 <Route path="capital-investments" element={<RoleRoute allow={['owner', 'executive_manager']}><CapitalInvestments /></RoleRoute>} />
             </Route>
             <Route path="/capital-investments" element={<Navigate to="/admin/capital-investments" replace />} />
