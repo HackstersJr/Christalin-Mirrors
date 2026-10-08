@@ -1,13 +1,16 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
     UserCheck, Clock, Calendar, Upload, Plus, Edit2,
-    Check, Filter, ChevronLeft, ChevronRight, ShieldAlert, Sparkles, MapPin, ArrowRightLeft, UserPlus, X
+    Check, Filter, ChevronLeft, ChevronRight, ShieldAlert, Sparkles, MapPin, ArrowRightLeft, UserPlus, X,
+    Fingerprint, Zap, Cpu
 } from 'lucide-react'
 import { staffStore, attendanceStore } from '../data/store'
 import { authStore, getBranchScope, isOwnerLevel } from '../data/authStore'
 import type { AttendanceRecord, StaffMember } from '../data/types'
 import EditAttendanceModal, { calculateWorkingHours, formatTimeForInput } from '../components/EditAttendanceModal'
 import BulkImportAttendanceModal from '../components/BulkImportAttendanceModal'
+import BiometricPunchesModal from '../components/BiometricPunchesModal'
+import { biometricService } from '../data/biometricService'
 import { useToast } from '../components/Toast'
 import '../AdminShared.css'
 import './Attendance.css'
@@ -58,6 +61,8 @@ export default function Attendance() {
     const [prefillStaffId, setPrefillStaffId] = useState<string>('')
     const [prefillDate, setPrefillDate] = useState<string>('')
     const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+    const [isBiometricPunchesModalOpen, setIsBiometricPunchesModalOpen] = useState(false)
+    const [isSyncingBiometric, setIsSyncingBiometric] = useState(false)
 
     const reloadData = async () => {
         const [att, stfs] = await Promise.all([
@@ -67,6 +72,25 @@ export default function Attendance() {
         setAttendance(att)
         const activeStfs = stfs.filter(s => s.isActive && s.role.toLowerCase() !== 'owner')
         setAllStaff(activeStfs)
+    }
+
+    // Auto-calculate biometric attendance for Belgaum branch
+    const handleSyncBiometric = async () => {
+        setIsSyncingBiometric(true)
+        try {
+            const dateToSync = activeTab === 'today' ? today : selectedDate
+            const res = await biometricService.syncToAttendanceTable(dateToSync)
+            const updated = await attendanceStore.getAll()
+            setAttendance(updated)
+            showToast(
+                'success',
+                `Belgaum Biometric Synced: Calculated ${res.syncedCount} staff attendance records (First In & Last Out)`
+            )
+        } catch {
+            showToast('error', 'Error syncing biometric attendance')
+        } finally {
+            setIsSyncingBiometric(false)
+        }
     }
 
     useEffect(() => {
@@ -301,8 +325,17 @@ export default function Attendance() {
                     </p>
                 </div>
 
-                {/* Owner Actions */}
+                {/* Actions */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <button
+                        className="admin-btn admin-btn-secondary"
+                        onClick={() => setIsBiometricPunchesModalOpen(true)}
+                        style={{ gap: 6 }}
+                        title="Belgaum Biometric Device Monitor — First Punch In & Last Punch Out tracker"
+                    >
+                        <Fingerprint size={14} style={{ color: 'var(--accent)' }} />
+                        <span>Biometric Monitor</span>
+                    </button>
                     {isOwner ? (
                         <>
                             <button
@@ -327,7 +360,7 @@ export default function Attendance() {
                     ) : (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px', borderRadius: 8, background: 'var(--bg-card-alt)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                             <ShieldAlert size={14} style={{ color: 'var(--warning)' }} />
-                            <span>Branch Manager mode: Daily register active. Owner access required for past day edits & CSV import.</span>
+                            <span>Daily register active.</span>
                         </div>
                     )}
                 </div>
@@ -408,6 +441,65 @@ export default function Attendance() {
                         </div>
                     </div>
 
+                    {/* Belgaum Biometric Banner */}
+                    {(todayBranchFilter === 'all' || todayBranchFilter.toLowerCase().includes('belg')) && (
+                        <div style={{
+                            marginBottom: 16,
+                            padding: '12px 16px',
+                            borderRadius: 10,
+                            background: 'rgba(193, 127, 89, 0.08)',
+                            border: '1px solid rgba(193, 127, 89, 0.25)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: 12
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 8,
+                                    background: 'rgba(193, 127, 89, 0.2)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--accent)'
+                                }}>
+                                    <Fingerprint size={18} />
+                                </span>
+                                <div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-bright)' }}>
+                                        Belgaum Biometric Hardware Integration
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                                        First punch sets Punch In • Last punch sets Punch Out • Auto-calculates into attendance
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button
+                                    type="button"
+                                    className="admin-btn admin-btn-secondary admin-btn-sm"
+                                    onClick={() => setIsBiometricPunchesModalOpen(true)}
+                                    style={{ fontSize: 12, padding: '5px 10px' }}
+                                >
+                                    <Clock size={12} /> View Punches Feed
+                                </button>
+                                <button
+                                    type="button"
+                                    className="admin-btn admin-btn-primary admin-btn-sm"
+                                    onClick={handleSyncBiometric}
+                                    disabled={isSyncingBiometric}
+                                    style={{ fontSize: 12, padding: '5px 12px' }}
+                                >
+                                    <Zap size={12} /> {isSyncingBiometric ? 'Syncing...' : 'Sync Biometric Punches'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {visibleTodayStaff.length === 0 ? (
                         <div className="admin-empty" style={{ padding: 32 }}>
                             <h3 style={{ fontSize: 14 }}>No staff currently stationed at {todayBranchFilter} today</h3>
@@ -451,6 +543,29 @@ export default function Attendance() {
                                                 <span className="attendance-branch-pill" title={`Base branch: ${staff.branch}`}>
                                                     Base: {staff.branch}
                                                 </span>
+                                                {staff.biometricPin != null && (
+                                                    <span className="attendance-branch-pill" style={{ color: 'var(--accent)', borderColor: 'rgba(193,127,89,0.3)' }} title={`Biometric Machine User PIN: ${staff.biometricPin}`}>
+                                                        <Fingerprint size={10} style={{ display: 'inline', marginRight: 2 }} /> PIN #{staff.biometricPin}
+                                                    </span>
+                                                )}
+                                                {(rec?.notes?.toLowerCase().includes('biometric') || rec?.updatedBy === 'biometric-system') && (
+                                                    <span
+                                                        style={{
+                                                            fontSize: 10,
+                                                            padding: '2px 6px',
+                                                            borderRadius: 4,
+                                                            background: 'rgba(193, 127, 89, 0.15)',
+                                                            color: 'var(--accent)',
+                                                            fontWeight: 600,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 3
+                                                        }}
+                                                        title={rec.notes || 'Calculated from Belgaum Biometric Device'}
+                                                    >
+                                                        <Zap size={10} /> Biometric Synced
+                                                    </span>
+                                                )}
                                             </div>
                                             <span className="cell-secondary" style={{ textTransform: 'capitalize', fontSize: 12 }}>
                                                 {staff.role}
@@ -651,6 +766,48 @@ export default function Attendance() {
                             )}
                         </div>
                     </div>
+
+                    {/* Belgaum Biometric Banner in History */}
+                    {(selectedBranch === 'all' || selectedBranch.toLowerCase().includes('belg')) && (
+                        <div style={{
+                            marginBottom: 16,
+                            padding: '10px 14px',
+                            borderRadius: 10,
+                            background: 'rgba(193, 127, 89, 0.07)',
+                            border: '1px solid rgba(193, 127, 89, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: 10
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Fingerprint size={16} style={{ color: 'var(--accent)' }} />
+                                <span style={{ fontSize: 12, color: 'var(--text-bright)' }}>
+                                    Belgaum Biometric Hardware: Calculate & sync First In and Last Out for <strong>{selectedDate}</strong>
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button
+                                    type="button"
+                                    className="admin-btn admin-btn-secondary admin-btn-sm"
+                                    onClick={() => setIsBiometricPunchesModalOpen(true)}
+                                    style={{ fontSize: 11, padding: '4px 8px' }}
+                                >
+                                    <Clock size={11} /> View Raw Punches
+                                </button>
+                                <button
+                                    type="button"
+                                    className="admin-btn admin-btn-primary admin-btn-sm"
+                                    onClick={handleSyncBiometric}
+                                    disabled={isSyncingBiometric}
+                                    style={{ fontSize: 11, padding: '4px 10px' }}
+                                >
+                                    <Zap size={11} /> {isSyncingBiometric ? 'Syncing...' : 'Calculate Day from Biometric'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Day Records Table */}
                     <div className="admin-table-wrapper" style={{ marginBottom: 0 }}>
@@ -943,6 +1100,13 @@ export default function Attendance() {
                 onImported={reloadData}
                 staffList={allStaff}
                 isOwner={isOwner}
+            />
+
+            <BiometricPunchesModal
+                isOpen={isBiometricPunchesModalOpen}
+                onClose={() => setIsBiometricPunchesModalOpen(false)}
+                targetDate={activeTab === 'today' ? today : selectedDate}
+                onAttendanceSynced={reloadData}
             />
         </div>
     )

@@ -1,0 +1,452 @@
+/* Biometric PIN Mapping Modal Styling */
+.biometric-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    animation: fadeInModal 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInModal {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.biometric-modal-content {
+    background: var(--bg-card, #1c1a19);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+    border-radius: 16px;
+    width: 100%;
+    max-width: 860px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+}
+
+.biometric-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.biometric-modal-title-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.biometric-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(193, 127, 89, 0.15);
+    border: 1px solid rgba(193, 127, 89, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent, #c17f59);
+    flex-shrink: 0;
+}
+
+.biometric-modal-title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--text-bright, #fff);
+}
+
+.biometric-modal-subtitle {
+    margin: 2px 0 0 0;
+    font-size: 13px;
+    color: var(--text-dim, #999);
+}
+
+.biometric-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-dim, #888);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.biometric-modal-close:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Branch Bar */
+.biometric-branch-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.biometric-branch-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.biometric-branch-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    color: var(--text-dim, #aaa);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.biometric-branch-tab:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.biometric-branch-tab.active {
+    background: rgba(193, 127, 89, 0.18);
+    border-color: rgba(193, 127, 89, 0.45);
+    color: var(--accent, #c17f59);
+    font-weight: 600;
+}
+
+.biometric-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    background: rgba(193, 127, 89, 0.25);
+    color: var(--accent, #e59f77);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.biometric-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim, #aaa);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 6px 12px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.biometric-stat-pill .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.biometric-stat-pill .dot.online {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+/* Body */
+.biometric-modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Non-branch info card */
+.biometric-non-branch-card {
+    text-align: center;
+    padding: 48px 24px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.non-branch-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: rgba(193, 127, 89, 0.12);
+    margin-bottom: 16px;
+}
+
+.biometric-non-branch-card h3 {
+    font-size: 18px;
+    margin: 0 0 8px 0;
+    color: var(--text-bright, #fff);
+}
+
+.biometric-non-branch-card p {
+    font-size: 14px;
+    color: var(--text-dim, #aaa);
+    max-width: 500px;
+    margin: 0 auto 8px auto;
+    line-height: 1.5;
+}
+
+.biometric-non-branch-card p.sub-text {
+    font-size: 13px;
+    color: var(--text-dim, #777);
+}
+
+/* Info Banner */
+.biometric-info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(193, 127, 89, 0.08);
+    border: 1px solid rgba(193, 127, 89, 0.22);
+    border-radius: 10px;
+    margin-bottom: 16px;
+}
+
+.banner-icon {
+    color: var(--accent, #c17f59);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.banner-text {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-bright, #eee);
+}
+
+/* Toolbar */
+.biometric-table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.biometric-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 240px;
+}
+
+.biometric-search-wrap .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim, #777);
+}
+
+.biometric-search-wrap .search-input {
+    padding-left: 36px;
+    width: 100%;
+}
+
+/* Table */
+.biometric-table-container {
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.biometric-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.biometric-table th {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dim, #aaa);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.biometric-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+}
+
+.biometric-table tr:last-child td {
+    border-bottom: none;
+}
+
+.biometric-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.biometric-table tr.row-mapped {
+    background: rgba(16, 185, 129, 0.02);
+}
+
+.staff-info-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.staff-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(193, 127, 89, 0.2);
+    color: var(--accent, #c17f59);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.staff-name {
+    font-weight: 600;
+    color: var(--text-bright, #fff);
+}
+
+.staff-id {
+    font-size: 11px;
+    color: var(--text-dim, #777);
+}
+
+.staff-contact {
+    font-size: 12px;
+    color: var(--text-dim, #aaa);
+}
+
+/* PIN Input Group */
+.pin-input-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pin-input-group {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 0 8px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.pin-input-group:focus-within {
+    border-color: var(--accent, #c17f59);
+    box-shadow: 0 0 0 2px rgba(193, 127, 89, 0.2);
+}
+
+.pin-prefix {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim, #888);
+    margin-right: 6px;
+    user-select: none;
+}
+
+.pin-input {
+    background: transparent !important;
+    border: none !important;
+    padding: 6px 0 !important;
+    width: 80px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-bright, #fff);
+    outline: none !important;
+}
+
+.pin-input.input-error {
+    color: #ef4444;
+}
+
+.pin-input.input-modified {
+    color: var(--accent, #e59f77);
+}
+
+.clear-pin-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim, #888);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
+}
+
+.clear-pin-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.pin-error-text {
+    font-size: 11px;
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pin-actions-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Empty */
+.biometric-empty-state {
+    padding: 36px;
+    text-align: center;
+    color: var(--text-dim, #888);
+}
+
+/* Footer */
+.biometric-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 12px;
+}
+
+@media (max-width: 640px) {
+    .biometric-modal-content {
+        max-height: 96vh;
+    }
+    .biometric-table th, .biometric-table td {
+        padding: 8px 10px;
+    }
+}

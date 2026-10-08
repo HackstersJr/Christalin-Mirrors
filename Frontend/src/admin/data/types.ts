@@ -91,6 +91,7 @@ export interface StaffMember {
     isActive: boolean
     joinedDate: string
     avatar?: string
+    biometricPin?: number | null
 }
 
 export interface SalonSettings {
@@ -205,6 +206,14 @@ export interface InventoryItem {
 }
 
 // ─── Staff Attendance ────────────────────────────────────────
+export interface AttendanceRawPunch {
+    id: string
+    biometricPin: number
+    punchTime: string           // timestamptz ISO
+    punchStatus?: string        // '0' check-in, '1' check-out or custom
+    receivedAt?: string         // timestamptz ISO
+}
+
 export interface AttendanceRecord {
     id: string
     staffId: string

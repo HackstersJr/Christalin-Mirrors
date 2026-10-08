@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Plus, Edit2, Trash2, Search } from 'lucide-react'
+import { Plus, Edit2, Trash2, Search, Fingerprint } from 'lucide-react'
 import { staffStore } from '../data/store'
 import { authStore, getBranchScope, scopeByBranch, isOwnerLevel } from '../data/authStore'
 import type { StaffMember } from '../data/types'
+import BiometricPinModal from '../components/BiometricPinModal'
 import '../AdminShared.css'
 
 const roles = [
@@ -36,6 +37,7 @@ const roleLabels: Record<string, string> = {
 const emptyForm: Omit<StaffMember, 'id'> = {
     name: '', role: 'hairstylist', branch: 'Bengaluru', phone: '', email: '',
     specialties: [], isActive: true, joinedDate: new Date().toISOString().split('T')[0],
+    biometricPin: null,
 }
 
 const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
@@ -67,6 +69,7 @@ export default function Staff() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState(scopedEmptyForm)
     const [specInput, setSpecInput] = useState('')
+    const [isBiometricModalOpen, setIsBiometricModalOpen] = useState(false)
 
     const reload = async () => {
         const data = await staffStore.getAll()
@@ -102,9 +105,13 @@ export default function Staff() {
     const resetForm = () => { setForm(scopedEmptyForm); setEditingId(null); setShowForm(false); setSpecInput('') }
 
     const deleteStaff = async (id: string) => {
-        if (confirm('Remove this staff member?')) {
-            await staffStore.delete(id)
-            await reload()
+        const member = staff.find(s => s.id === id)
+        if (confirm(`Remove staff member "${member?.name || 'this member'}" permanently?`)) {
+            const success = await staffStore.delete(id)
+            if (success) {
+                setStaff(prev => prev.filter(s => s.id !== id))
+                await reload()
+            }
         }
     }
 
@@ -117,17 +124,27 @@ export default function Staff() {
 
     return (
         <div>
-            <div className="admin-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="admin-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                 <div>
                     <h1 className="admin-page-title">Staff</h1>
                     <p className="admin-page-sub">Manage your team members</p>
                 </div>
-                {isOwner && (
-                    <button className="admin-btn admin-btn-primary" onClick={() => { resetForm(); setShowForm(!showForm) }}>
-                        <Plus size={14} />
-                        Add Staff
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button
+                        className="admin-btn admin-btn-secondary"
+                        onClick={() => setIsBiometricModalOpen(true)}
+                        title="Configure Belgaum Biometric Device User PINs"
+                    >
+                        <Fingerprint size={14} />
+                        Biometric PIN Mapping
                     </button>
-                )}
+                    {isOwner && (
+                        <button className="admin-btn admin-btn-primary" onClick={() => { resetForm(); setShowForm(!showForm) }}>
+                            <Plus size={14} />
+                            Add Staff
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Branch Counts */}
@@ -193,6 +210,17 @@ export default function Staff() {
                                 <label className="admin-form-label">Joined Date</label>
                                 <input className="admin-form-input" type="date" value={form.joinedDate} onChange={e => setForm({ ...form, joinedDate: e.target.value })} />
                             </div>
+                            <div className="admin-form-group">
+                                <label className="admin-form-label">Biometric Machine PIN</label>
+                                <input
+                                    className="admin-form-input"
+                                    type="number"
+                                    min="1"
+                                    placeholder="e.g. 1, 2, 3 (Device User ID)"
+                                    value={form.biometricPin ?? ''}
+                                    onChange={e => setForm({ ...form, biometricPin: e.target.value ? parseInt(e.target.value, 10) : null })}
+                                />
+                            </div>
                             <div className="admin-form-group full">
                                 <label className="admin-form-label">Specialties</label>
                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -234,6 +262,7 @@ export default function Staff() {
                             <th>Role</th>
                             <th>Branch</th>
                             <th>Contact</th>
+                            <th>Machine PIN</th>
                             <th>Specialties</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -241,7 +270,7 @@ export default function Staff() {
                     </thead>
                     <tbody>
                         {filtered.length === 0 ? (
-                            <tr><td colSpan={7}><div className="admin-empty" style={{ padding: 32 }}><Search size={28} className="admin-empty-icon" /><h3>No staff found</h3></div></td></tr>
+                            <tr><td colSpan={8}><div className="admin-empty" style={{ padding: 32 }}><Search size={28} className="admin-empty-icon" /><h3>No staff found</h3></div></td></tr>
                         ) : filtered.map(member => (
                             <tr key={member.id} style={{ opacity: member.isActive ? 1 : 0.5 }}>
                                 <td>
@@ -257,6 +286,15 @@ export default function Staff() {
                                 <td>
                                     <div className="cell-primary" style={{ fontSize: 13 }}>{member.phone}</div>
                                     <div className="cell-secondary">{member.email}</div>
+                                </td>
+                                <td>
+                                    {member.biometricPin != null ? (
+                                        <span className="admin-tag" style={{ background: 'rgba(193,127,89,0.18)', color: 'var(--accent)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                            <Fingerprint size={12} /> PIN #{member.biometricPin}
+                                        </span>
+                                    ) : (
+                                        <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>
+                                    )}
                                 </td>
                                 <td>
                                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -309,6 +347,10 @@ export default function Staff() {
                                 <span className="mobile-card-meta-label">Phone</span>
                                 <span>{member.phone || '—'}</span>
                             </div>
+                            <div className="mobile-card-meta-item">
+                                <span className="mobile-card-meta-label">Device PIN</span>
+                                <span>{member.biometricPin != null ? `PIN #${member.biometricPin}` : '—'}</span>
+                            </div>
                             <div className="mobile-card-meta-item full">
                                 <span className="mobile-card-meta-label">Email</span>
                                 <span>{member.email || '—'}</span>
@@ -331,6 +373,13 @@ export default function Staff() {
                     </div>
                 ))}
             </div>
+
+            <BiometricPinModal
+                isOpen={isBiometricModalOpen}
+                onClose={() => setIsBiometricModalOpen(false)}
+                initialBranch={branchScope || (branchFilter !== 'all' ? branchFilter : 'Belgaum')}
+                onStaffUpdated={reload}
+            />
         </div>
     )
 }

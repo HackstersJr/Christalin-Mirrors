@@ -16,6 +16,7 @@ const KEYS = {
     INVOICES: 'cm_admin_invoices',
     INVENTORY: 'cm_admin_inventory',
     ATTENDANCE: 'cm_admin_attendance',
+    DELETED_STAFF: 'cm_admin_deleted_staff_ids',
     INITIALIZED: 'cm_admin_initialized_v3',
 }
 
@@ -653,30 +654,35 @@ export const packageStore = {
 // ─── Staff ───────────────────────────────────────────────────
 export const staffStore = {
     getAll: async (): Promise<StaffMember[]> => {
+        const deletedIds = new Set<string>(JSON.parse(localStorage.getItem(KEYS.DELETED_STAFF) || '[]'))
         try {
             const { data, error } = await supabase.from('Staff').select('*').order('name', { ascending: true })
             if (!error && data && data.length > 0) {
-                const fetched: StaffMember[] = data.map((s: any) => ({
-                    id: s.id,
-                    name: s.name,
-                    role: s.role ? s.role.toLowerCase() as any : 'hairstylist',
-                    branch: (s.role?.toLowerCase() === 'owner') ? 'All Branches' : mapBranch(s.branch?.name || s.branchId),
-                    branchId: s.branchId,
-                    phone: s.phone,
-                    email: s.email,
-                    specialties: s.specialties || [],
-                    isActive: s.isActive,
-                    joinedDate: s.joinedDate ? String(s.joinedDate).split('T')[0] : '',
-                    avatar: s.avatarUrl || undefined,
-                }))
+                const fetched: StaffMember[] = data
+                    .filter((s: any) => !deletedIds.has(s.id))
+                    .map((s: any) => ({
+                        id: s.id,
+                        name: s.name,
+                        role: s.role ? s.role.toLowerCase() as any : 'hairstylist',
+                        branch: (s.role?.toLowerCase() === 'owner') ? 'All Branches' : mapBranch(s.branch?.name || s.branchId),
+                        branchId: s.branchId,
+                        phone: s.phone,
+                        email: s.email,
+                        specialties: s.specialties || [],
+                        isActive: s.isActive,
+                        joinedDate: s.joinedDate ? String(s.joinedDate).split('T')[0] : '',
+                        avatar: s.avatarUrl || undefined,
+                        biometricPin: s.biometricPin ?? null,
+                    }))
 
                 // If RLS or filtering returned only a branch subset,
                 // merge with mockStaff so that all staff across Bengaluru,
-                // Kalaburagi, and Belgaum are always available for interchange
+                // Kalaburagi, and Belgaum are always available for interchange,
+                // BUT NEVER re-introduce staff members that have been deleted!
                 const existingIds = new Set(fetched.map(f => f.id))
                 const merged = [...fetched]
                 for (const m of mockStaff) {
-                    if (!existingIds.has(m.id)) {
+                    if (!existingIds.has(m.id) && !deletedIds.has(m.id)) {
                         merged.push(m.role.toLowerCase() === 'owner' ? { ...m, branch: 'All Branches' } : m)
                     }
                 }
@@ -684,25 +690,28 @@ export const staffStore = {
             }
         } catch {}
 
-        return mockStaff.map(s => s.role.toLowerCase() === 'owner' ? { ...s, branch: 'All Branches' } : s)
+        return mockStaff
+            .filter(s => !deletedIds.has(s.id))
+            .map(s => s.role.toLowerCase() === 'owner' ? { ...s, branch: 'All Branches' } : s)
     },
 
     create: async (member: Omit<StaffMember, 'id'>): Promise<StaffMember> => {
         const id = crypto.randomUUID()
         const nowIso = new Date().toISOString()
-        const payload = {
+        const payload: any = {
             id,
             name: member.name,
             role: member.role.toUpperCase(),
             branchId: getBranchId(member.branch),
-            phone: member.phone,
-            email: member.email,
+            phone: member.phone || '',
+            email: member.email || '',
             specialties: member.specialties || [],
             isActive: member.isActive ?? true,
             joinedDate: member.joinedDate || nowIso,
             createdAt: nowIso,
             updatedAt: nowIso,
         }
+        if (member.biometricPin !== undefined) payload.biometricPin = member.biometricPin
         try {
             const { data, error } = await supabase.from('Staff').insert(payload).select('*').single()
             if (!error && data) {
@@ -711,12 +720,14 @@ export const staffStore = {
                     name: data.name,
                     role: data.role.toLowerCase() as any,
                     branch: mapBranch(data.branch?.name || data.branchId),
+                    branchId: data.branchId,
                     phone: data.phone,
                     email: data.email,
                     specialties: data.specialties || [],
                     isActive: data.isActive,
                     joinedDate: String(data.joinedDate).split('T')[0],
                     avatar: data.avatarUrl || undefined,
+                    biometricPin: data.biometricPin ?? null,
                 }
             }
         } catch {}
@@ -738,6 +749,7 @@ export const staffStore = {
         if (updates.specialties !== undefined) payload.specialties = updates.specialties
         if (updates.isActive !== undefined) payload.isActive = updates.isActive
         if (updates.joinedDate !== undefined) payload.joinedDate = updates.joinedDate
+        if (updates.biometricPin !== undefined) payload.biometricPin = updates.biometricPin
 
         try {
             const { data, error } = await supabase.from('Staff').update(payload).eq('id', id).select('*').single()
@@ -747,12 +759,14 @@ export const staffStore = {
                     name: data.name,
                     role: data.role.toLowerCase() as any,
                     branch: mapBranch(data.branch?.name || data.branchId),
+                    branchId: data.branchId,
                     phone: data.phone,
                     email: data.email,
                     specialties: data.specialties || [],
                     isActive: data.isActive,
                     joinedDate: String(data.joinedDate).split('T')[0],
                     avatar: data.avatarUrl || undefined,
+                    biometricPin: data.biometricPin ?? null,
                 }
             }
         } catch (err) {
@@ -769,12 +783,64 @@ export const staffStore = {
         return undefined
     },
 
+    updateBiometricPin: async (staffId: string, pin: number | null): Promise<boolean> => {
+        try {
+            const { error } = await supabase
+                .from('Staff')
+                .update({ biometricPin: pin || null, updatedAt: new Date().toISOString() })
+                .eq('id', staffId)
+
+            if (error) {
+                console.error('Error updating biometricPin in Supabase:', error)
+                return false
+            }
+
+            const current: StaffMember[] = JSON.parse(localStorage.getItem(KEYS.STAFF) || '[]')
+            const idx = current.findIndex(s => s.id === staffId)
+            if (idx >= 0) {
+                current[idx].biometricPin = pin || null
+                localStorage.setItem(KEYS.STAFF, JSON.stringify(current))
+            }
+            return true
+        } catch (err) {
+            console.error('Failed to update biometric PIN:', err)
+            return false
+        }
+    },
+
     delete: async (id: string): Promise<boolean> => {
-        try { await supabase.from('Staff').delete().eq('id', id) } catch {}
-        const current: StaffMember[] = JSON.parse(localStorage.getItem(KEYS.STAFF) || '[]')
-        const filtered = current.filter(s => s.id !== id)
-        localStorage.setItem(KEYS.STAFF, JSON.stringify(filtered))
-        return true
+        // 1. Permanently record ID in deleted set so it never resurrects
+        try {
+            const deletedList: string[] = JSON.parse(localStorage.getItem(KEYS.DELETED_STAFF) || '[]')
+            if (!deletedList.includes(id)) {
+                deletedList.push(id)
+                localStorage.setItem(KEYS.DELETED_STAFF, JSON.stringify(deletedList))
+            }
+        } catch {}
+
+        // 2. Remove from local staff cache
+        try {
+            const current: StaffMember[] = JSON.parse(localStorage.getItem(KEYS.STAFF) || '[]')
+            const filtered = current.filter(s => s.id !== id)
+            localStorage.setItem(KEYS.STAFF, JSON.stringify(filtered))
+        } catch {}
+
+        // 3. Clear appointments referencing this staff to prevent FK violation if any
+        try {
+            await supabase.from('Appointment').update({ staffId: null, stylist: null }).eq('staffId', id)
+        } catch {}
+
+        // 4. Delete from Supabase Staff table
+        try {
+            const { error } = await supabase.from('Staff').delete().eq('id', id)
+            if (error) {
+                console.warn('Supabase Staff delete notice:', error.message)
+            }
+            return true
+        } catch (err) {
+            console.error('Failed to delete staff member from Supabase:', err)
+            return false
+        }
     },
 }
 
