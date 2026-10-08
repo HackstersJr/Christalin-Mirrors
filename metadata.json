@@ -1,9 +1,7 @@
 {
   "name": "Christalin Mirrors — Refined Unisex Salon",
   "description": "Christalin Mirrors — Luxury unisex salon network across Bengaluru, Kalaburagi, and Belgaum, featuring executive daily sales reporting, multi-branch P&L, dedicated OpEx/CapEx management, and two-way Google Sheets synchronization.",
-  "requestFramePermissions": [
-    "microphone"
-  ],
+  "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

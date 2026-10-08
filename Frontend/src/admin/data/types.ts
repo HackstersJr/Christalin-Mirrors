@@ -227,26 +227,6 @@ export interface AttendanceRecord {
     updatedBy?: string
 }
 
-// ─── Voice Client Reviews ────────────────────────────────────
-export interface ClientReview {
-    id: string
-    appointmentId?: string
-    clientName: string
-    clientPhone?: string
-    branchId: string
-    branch: string
-    staffName?: string
-    serviceName?: string
-    transcript: string
-    audioUrl?: string
-    derivedRating: number   // 1 to 5 stars
-    sentiment: 'positive' | 'neutral' | 'negative'
-    tags: string[]
-    status: 'published' | 'pending' | 'flagged'
-    source?: 'web' | 'whatsapp_voice' | 'whatsapp_text'
-    createdAt: string
-}
-
 // ─── Expenses (Monthly P&L) ───────────────────────────────────
 // Fixed line items from the P&L statement that aren't derivable from
 // existing sales/inventory data (commissions, labor, rent, salaries, etc).

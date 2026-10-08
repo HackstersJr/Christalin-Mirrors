@@ -10,9 +10,8 @@ import {
 } from '../data/store';
 import { getBranchScope } from '../data/authStore';
 import { getBranchAddress } from '../../data/branches';
-import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice, ClientReview, ServicePackage } from '../data/types';
+import type { Client, ServiceRecord, StaffMember, Appointment, InventoryItem, InvoiceItem, Invoice, ServicePackage } from '../data/types';
 import { useToast } from '../components/Toast';
-import VoiceRecorderModal from '../components/VoiceRecorderModal';
 import SeznikVeerReceipt from '../components/SeznikVeerReceipt';
 import cmLogo from '../../assets/cm-logo-white.png';
 import '../AdminShared.css';
