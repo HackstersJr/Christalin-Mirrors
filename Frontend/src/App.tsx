@@ -106,12 +106,14 @@ import NotFound from './components/NotFound'
 import BookAppointment from './components/booking/BookAppointment'
 import VoiceReviewPage from './components/review/VoiceReviewPage'
 import VoiceReviews from './admin/pages/VoiceReviews'
+import Catalogue from './components/catalogue/Catalogue'
 
 function App() {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/book" element={<BookAppointment />} />
+            <Route path="/catalogue" element={<Catalogue />} />
             <Route path="/review" element={<VoiceReviewPage />} />
             <Route path="/voice-review" element={<VoiceReviewPage />} />
             <Route path="/privacy" element={<Privacy />} />
