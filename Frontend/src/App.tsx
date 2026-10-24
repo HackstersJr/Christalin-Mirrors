@@ -104,12 +104,14 @@ import Privacy from './components/Privacy'
 import Terms from './components/Terms'
 import NotFound from './components/NotFound'
 import BookAppointment from './components/booking/BookAppointment'
+import Catalogue from './components/catalogue/Catalogue'
 
 function App() {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/book" element={<BookAppointment />} />
+            <Route path="/catalogue" element={<Catalogue />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/admin/login" element={<Login />} />
