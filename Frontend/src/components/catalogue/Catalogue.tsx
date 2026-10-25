@@ -79,10 +79,10 @@ export default function Catalogue() {
     return (
         <div className="cat-root" onContextMenu={e => e.preventDefault()}>
             <div className="cat-bg" aria-hidden="true">
-                {/* Warm tint keeps the iridescence inside the Christalin cream / blush / sand palette. */}
+                {/* Mapped onto the brand palette: cream, blush, sand, caramel. */}
                 <Iridescence
-                    color="#f0d6c0" hueShift={12} saturation={0.5} brightness={1.6} contrast={0.95}
-                    speed={0.5} scale={1} detail={8} warp={1} opacity={1}
+                    palette={['#FBF7F2', '#F3DDCB', '#E8C4AA', '#D2AB8C']}
+                    contrast={1.1} speed={0.5} scale={1} detail={8} warp={1} opacity={1}
                     resolution={0.75} mouseReact clickSwirl={false}
                 />
             </div>
@@ -136,25 +136,19 @@ export default function Catalogue() {
             </div>
 
             <div className="cat-bottom">
-                <GlassSurface
-                    width="min(100%, 380px)" height="auto" borderRadius={30}
-                    distortionScale={-110} displace={0.4} backgroundOpacity={0.22} blur={14}
-                    className="cat-info"
-                >
-                    <div className="cat-info-inner">
-                        <div className="cat-svcdots" aria-hidden="true">
-                            {group.items.map((it, i) => (
-                                <div key={it.id} style={{ width: i === idx ? 22 : 6, background: i === idx ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
-                            ))}
-                        </div>
-                        <div key={active.id} className="cat-info-text cat-fade">
-                            <h2 style={{ '--len': active.name.length } as CSSProperties}>{active.name}</h2>
-                            <div className="cat-info-meta">
-                                <span className="cat-price">{active.price}</span>
-                            </div>
+                <div className="cat-info">
+                    <div className="cat-svcdots" aria-hidden="true">
+                        {group.items.map((it, i) => (
+                            <div key={it.id} style={{ width: i === idx ? 22 : 6, background: i === idx ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
+                        ))}
+                    </div>
+                    <div key={active.id} className="cat-info-text cat-fade">
+                        <h2 style={{ '--len': active.name.length } as CSSProperties}>{active.name}</h2>
+                        <div className="cat-info-meta">
+                            <span className="cat-price">{active.price}</span>
                         </div>
                     </div>
-                </GlassSurface>
+                </div>
 
                 <GlassSurface
                     width={196} height={50} borderRadius={25}

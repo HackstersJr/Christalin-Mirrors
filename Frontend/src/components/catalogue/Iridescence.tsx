@@ -35,6 +35,8 @@ uniform float uStir;
 uniform vec3 uPointer;
 uniform float uSheen;
 uniform vec4 uSwirls[6];
+uniform vec3 uPalette[4];
+uniform float uPaletteOn;
 in vec2 vUv;
 out vec4 outColor;
 
@@ -91,6 +93,14 @@ void main() {
   vec2 toPointer = (vUv - uPointer.xy) * aspect;
   col += col * uPointer.z * uSheen * 0.8 * exp(-dot(toPointer, toPointer) / 0.09);
 
+  if (uPaletteOn > 0.5) {
+    float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    float t = clamp((l - 0.2) / 0.65, 0.0, 1.0);
+    t = clamp((t - 0.5) * uContrast + 0.5, 0.0, 1.0) * 3.0;
+    col = t < 1.0 ? mix(uPalette[0], uPalette[1], t)
+        : t < 2.0 ? mix(uPalette[1], uPalette[2], t - 1.0)
+        : mix(uPalette[2], uPalette[3], t - 2.0);
+  }
   col = hueRotate(col, uHue);
   float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = mix(vec3(luma), col, uSaturation);
@@ -127,6 +137,8 @@ const compile = (gl: WebGL2RenderingContext, type: number, source: string) => {
 
 export interface IridescenceProps {
     color?: string | number[]
+    /** Four CSS colors, light to dark. When set, the pattern is mapped onto them instead of the rainbow. */
+    palette?: string[]
     speed?: number
     amplitude?: number
     mouseReact?: boolean
@@ -154,6 +166,7 @@ interface Swirl { x: number; y: number; age: number }
 
 const Iridescence = ({
     color = [1, 1, 1],
+    palette,
     speed = 1,
     amplitude = 0.1,
     mouseReact = true,
@@ -183,6 +196,8 @@ const Iridescence = ({
     const settings = {
         colorKey,
         color,
+        palette,
+        paletteKey: palette ? palette.join(',') : '',
         speed,
         amplitude,
         mouseReact,
@@ -233,7 +248,7 @@ const Iridescence = ({
         for (const name of [
             'uResolution', 'uTime', 'uColor', 'uMouse', 'uAmplitude', 'uScale', 'uRotation', 'uDetail',
             'uWarp', 'uHue', 'uSaturation', 'uBrightness', 'uContrast', 'uGrain', 'uSeed', 'uFade',
-            'uOpacity', 'uField', 'uStir', 'uPointer', 'uSheen', 'uSwirls',
+            'uOpacity', 'uField', 'uStir', 'uPointer', 'uSheen', 'uSwirls', 'uPalette', 'uPaletteOn',
         ]) {
             uniforms[name] = gl.getUniformLocation(program, name)
         }
@@ -261,6 +276,9 @@ const Iridescence = ({
             presence: 0,
             color: [1, 1, 1],
             colorKey: '',
+            paletteKey: '',
+            palette: new Float32Array(12),
+            paletteOn: 0,
             cols: 0,
             rows: 0,
             field: new Float32Array(0),
@@ -289,6 +307,22 @@ const Iridescence = ({
             probeCtx.fillRect(0, 0, 1, 1)
             const [r, g, b] = probeCtx.getImageData(0, 0, 1, 1).data
             state.color = [r / 255, g / 255, b / 255]
+        }
+
+        const resolvePalette = (s: typeof settings) => {
+            if (s.paletteKey === state.paletteKey) return
+            state.paletteKey = s.paletteKey
+            state.paletteOn = 0
+            if (!s.palette || s.palette.length < 4 || !probeCtx) return
+            s.palette.slice(0, 4).forEach((css, i) => {
+                probeCtx.clearRect(0, 0, 1, 1)
+                probeCtx.fillStyle = '#ffffff'
+                probeCtx.fillStyle = css
+                probeCtx.fillRect(0, 0, 1, 1)
+                const [r, g, b] = probeCtx.getImageData(0, 0, 1, 1).data
+                state.palette.set([r / 255, g / 255, b / 255], i * 3)
+            })
+            state.paletteOn = 1
         }
 
         const layoutField = () => {
@@ -359,6 +393,7 @@ const Iridescence = ({
         const render = () => {
             const s = settingsRef.current
             resolveColor(s)
+            resolvePalette(s)
             layoutField()
             gl.viewport(0, 0, canvas.width, canvas.height)
             gl.activeTexture(gl.TEXTURE0)
@@ -392,6 +427,8 @@ const Iridescence = ({
             gl.uniform3f(uniforms.uPointer, pointer.x, pointer.y, s.mouseReact ? state.presence : 0)
             gl.uniform1f(uniforms.uSheen, s.sheen)
             gl.uniform4fv(uniforms.uSwirls, swirlData)
+            gl.uniform3fv(uniforms.uPalette, state.palette)
+            gl.uniform1f(uniforms.uPaletteOn, state.paletteOn)
             gl.clearColor(0, 0, 0, 0)
             gl.clear(gl.COLOR_BUFFER_BIT)
             gl.drawArrays(gl.TRIANGLES, 0, 3)
