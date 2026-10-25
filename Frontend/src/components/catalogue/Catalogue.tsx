@@ -213,7 +213,7 @@ export default function Catalogue() {
                                 aria-pressed={a === aud}
                                 onClick={() => switchAudience(a)}
                             >
-                                {a === 'women' ? 'Women' : 'Men'}
+                                {a === 'women' ? 'Her' : 'Him'}
                             </button>
                         ))}
                     </div>
