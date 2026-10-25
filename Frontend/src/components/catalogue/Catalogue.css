@@ -53,9 +53,14 @@
 
 .cat-bar { position: absolute; top: 8px; left: 12px; right: 12px; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; }
 .cat-bar > * { pointer-events: auto; }
-.cat-switch { display: flex; width: 100%; gap: 2px; }
+.cat-switch { position: relative; display: flex; width: 100%; gap: 2px; }
+/* one pill that glides between the two options instead of each button toggling its own background */
+.cat-switch-pill { position: absolute; top: 0; bottom: 0; left: 0; width: calc(50% - 1px); border-radius: 21px; background: #2A2320; transform: translateX(0); transition: transform .45s cubic-bezier(.22,.8,.2,1); pointer-events: none; }
+.cat-switch-pill[data-pos="men"] { transform: translateX(calc(100% + 2px)); }
+@media (prefers-reduced-motion: reduce) { .cat-switch-pill { transition: none; } }
 .cat-switch button { flex: 1; min-height: 42px; padding: 0 12px; border: 0; border-radius: 21px; background: transparent; color: #5A4B40; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; transition: background .3s ease, color .3s ease; }
-.cat-switch button.cat-switch-on { background: #2A2320; color: #FAF6F1; }
+.cat-switch button { position: relative; z-index: 1; }
+.cat-switch button.cat-switch-on { color: #FAF6F1; }
 .cat-switch-glass { pointer-events: auto; }
 .cat-switch-glass .glass-surface__content { padding: 4px; }
 .cat-selpill {

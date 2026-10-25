@@ -206,6 +206,7 @@ export default function Catalogue() {
                     className="cat-switch-glass"
                 >
                     <div className="cat-switch" role="group" aria-label="Choose catalogue">
+                        <span className="cat-switch-pill" data-pos={aud} aria-hidden="true" />
                         {(['women', 'men'] as const).map(a => (
                             <button
                                 key={a}
