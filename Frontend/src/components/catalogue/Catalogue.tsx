@@ -1,328 +1,118 @@
-import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent, PointerEvent, WheelEvent } from 'react'
-import { ALL_ITEMS, CATALOGUES, FLAT, formatPrice } from './data'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, PointerEvent } from 'react'
+import { ALL_ITEMS, CATALOGUES, formatPrice } from './data'
 import type { Audience } from './data'
-import { ICONS } from './icons'
+import { cardArt } from './cardArt'
+import CircularGallery from './CircularGallery'
+import GlassSurface from './GlassSurface'
 import Iridescence from './Iridescence'
 import logo from './logo.png'
 import './Catalogue.css'
 
-type Phase = 'in' | 'out' | 'pre'
-type Axis = 'x' | 'y' | null
-
-interface Gesture {
-    x: number; y: number; t: number
-    axis: Axis
-    inIll: boolean
-    held: boolean
-    lx: number; ly: number; lt: number
-    v: number
-}
-
-function phase(ph: Phase) {
-    if (ph === 'out') return { op: 0, y: -6, tr: 'opacity .22s ease, transform .22s ease' }
-    if (ph === 'pre') return { op: 0, y: 10, tr: 'none' }
-    return { op: 1, y: 0, tr: 'opacity .8s ease, transform .8s cubic-bezier(.22,.8,.2,1)' }
-}
-
 export default function Catalogue() {
     const [aud, setAud] = useState<Audience>('women')
     const [gi, setGi] = useState(0)
-    const [mem, setMem] = useState<number[]>(() => CATALOGUES.women.map(() => 0))
-    const [shown, setShown] = useState({ g: 0, s: 0 })
-    const [topPh, setTopPh] = useState<Phase>('in')
-    const [botPh, setBotPh] = useState<Phase>('in')
-    const [drag, setDrag] = useState({ on: false, axis: null as Axis, dx: 0, dy: 0 })
-    const [holding, setHolding] = useState(false)
+    const [idx, setIdx] = useState(0)
     const [sel, setSel] = useState<Record<string, true>>({})
     const [open, setOpen] = useState(false)
     const [mode, setMode] = useState<'detail' | 'summary'>('detail')
+    const swipe = useRef<{ x: number; y: number } | null>(null)
 
-    const gesture = useRef<Gesture | null>(null)
-    const timers = useRef<{ t1?: number; t2?: number; h1?: number; h2?: number }>({})
-    const wheelAt = useRef(0)
     const groups = CATALOGUES[aud]
-    const flat = FLAT[aud]
-    const live = useRef({ aud, groups, gi, mem, open })
-    live.current = { aud, groups, gi, mem, open }
-
-    useEffect(() => {
-        const prev = document.title
-        document.title = 'Service Catalogue | Christalin Mirrors'
-        return () => {
-            document.title = prev
-            Object.values(timers.current).forEach(t => clearTimeout(t))
-        }
-    }, [])
-
-    const active = flat.find(f => f.gi === gi && f.si === mem[gi])!
+    const group = groups[gi]
+    const active = group.items[Math.min(idx, group.items.length - 1)]
     const selected = ALL_ITEMS.filter(f => sel[f.id])
     const total = selected.reduce((a, f) => a + f.priceN, 0)
     const isSel = !!sel[active.id]
 
-    const go = (gi2: number, si2: number) => {
-        const { gi: g0, mem: m0 } = live.current
-        if (gi2 === g0 && si2 === m0[gi2]) return
-        const gChanged = gi2 !== g0
-        const next = m0.slice()
-        next[gi2] = si2
-        clearTimeout(timers.current.t1)
-        clearTimeout(timers.current.t2)
-        setGi(gi2)
-        setMem(next)
-        setBotPh('out')
-        if (gChanged) setTopPh('out')
-        timers.current.t1 = window.setTimeout(() => {
-            setShown({ g: gi2, s: si2 })
-            setBotPh('pre')
-            setTopPh(gChanged ? 'pre' : 'in')
-            timers.current.t2 = window.setTimeout(() => {
-                setBotPh('in')
-                setTopPh('in')
-            }, 40)
-        }, 240)
-    }
+    useEffect(() => {
+        const prev = document.title
+        document.title = 'Service Catalogue | Christalin Mirrors'
+        return () => { document.title = prev }
+    }, [])
 
-    const stepSvc = (dir: number) => {
-        const { gi: g0, mem: m0 } = live.current
-        const n = live.current.groups[g0].items.length
-        go(g0, Math.max(0, Math.min(n - 1, m0[g0] + dir)))
-    }
+    // Regenerated only when the collection or the selection changes, so the gallery keeps its textures.
+    const galleryItems = useMemo(
+        () => group.items.map(it => ({ image: cardArt(it.icon, !!sel[it.id]), text: it.name, alt: `${it.name}, ${it.price}` })),
+        [group, sel],
+    )
 
-    const stepGrp = (dir: number) => {
-        const { gi: g0, mem: m0 } = live.current
-        const g2 = Math.max(0, Math.min(live.current.groups.length - 1, g0 + dir))
-        go(g2, m0[g2])
-    }
-
-    const toggleSelection = () => {
-        const { gi: g0, mem: m0 } = live.current
-        const id = `${live.current.aud}-${g0}-${m0[g0]}`
-        setSel(s => {
-            const n = { ...s }
-            if (n[id]) delete n[id]
-            else n[id] = true
-            return n
-        })
+    const goGroup = (next: number) => {
+        if (next === gi || next < 0 || next >= groups.length) return
+        setGi(next)
+        setIdx(0)
     }
 
     const switchAudience = (next: Audience) => {
         if (next === aud) return
-        clearTimeout(timers.current.t1)
-        clearTimeout(timers.current.t2)
         setAud(next)
         setGi(0)
-        setMem(CATALOGUES[next].map(() => 0))
-        setShown({ g: 0, s: 0 })
-        setTopPh('in')
-        setBotPh('in')
+        setIdx(0)
     }
 
-    const openDetail = () => { setMode('detail'); setOpen(true) }
-
-    const onDown = (e: PointerEvent) => {
-        if (live.current.open) return
-        const t = e.target as HTMLElement
-        const inIll = !!t.closest?.('[data-ill]')
-        const now = Date.now()
-        gesture.current = { x: e.clientX, y: e.clientY, t: now, axis: null, inIll, held: false, lx: e.clientX, ly: e.clientY, lt: now, v: 0 }
-        clearTimeout(timers.current.h1)
-        clearTimeout(timers.current.h2)
-        if (inIll) {
-            timers.current.h1 = window.setTimeout(() => {
-                if (gesture.current && !gesture.current.axis) setHolding(true)
-            }, 140)
-            timers.current.h2 = window.setTimeout(() => {
-                const g = gesture.current
-                if (g && !g.axis) {
-                    g.held = true
-                    toggleSelection()
-                    setHolding(false)
-                    try { navigator.vibrate?.(18) } catch { /* unsupported */ }
-                }
-            }, 790)
-        }
+    const toggleSelection = () => {
+        setSel(s => {
+            const n = { ...s }
+            if (n[active.id]) delete n[active.id]
+            else n[active.id] = true
+            return n
+        })
     }
 
-    const onMove = (e: PointerEvent) => {
-        const g = gesture.current
-        if (!g) return
-        const dx = e.clientX - g.x
-        const dy = e.clientY - g.y
-        if (!g.axis) {
-            if (Math.max(Math.abs(dx), Math.abs(dy)) <= 9) return
-            if (g.held) return
-            g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
-            clearTimeout(timers.current.h1)
-            clearTimeout(timers.current.h2)
-            setHolding(false)
-        }
-        const { gi: g0, mem: m0 } = live.current
-        let d = g.axis === 'x' ? dx : dy
-        const now = Date.now()
-        const pos = g.axis === 'x' ? e.clientX : e.clientY
-        const last = g.axis === 'x' ? g.lx : g.ly
-        if (now > g.lt) g.v = (pos - last) / (now - g.lt)
-        g.lx = e.clientX; g.ly = e.clientY; g.lt = now
-        if (g.axis === 'x') {
-            const n = live.current.groups[g0].items.length
-            if ((d > 0 && m0[g0] === 0) || (d < 0 && m0[g0] === n - 1)) d *= 0.3
-        } else if ((d > 0 && g0 === 0) || (d < 0 && g0 === live.current.groups.length - 1)) {
-            d *= 0.3
-        }
-        setDrag({ on: true, axis: g.axis, dx: g.axis === 'x' ? d : 0, dy: g.axis === 'y' ? d : 0 })
+    const openDetail = (index: number) => {
+        setIdx(index)
+        setMode('detail')
+        setOpen(true)
     }
 
-    const onEnd = (e: PointerEvent) => {
-        const g = gesture.current
-        if (!g) return
-        gesture.current = null
-        clearTimeout(timers.current.h1)
-        clearTimeout(timers.current.h2)
-        if (g.held) { setHolding(false); return }
-        if (!g.axis) {
-            setHolding(false)
-            if (g.inIll && e.type === 'pointerup' && Date.now() - g.t < 780) openDetail()
-            return
-        }
-        const d = g.axis === 'x' ? e.clientX - g.x : e.clientY - g.y
-        const commit = Math.abs(d) > 70 || Math.abs(g.v) > 0.45
-        const dir = (d < 0 || (Math.abs(d) <= 70 && g.v < 0)) ? 1 : -1
-        setDrag({ on: false, axis: null, dx: 0, dy: 0 })
-        if (commit) {
-            if (g.axis === 'x') stepSvc(dir)
-            else stepGrp(dir)
-        }
+    // The gallery handles sideways dragging; a clear vertical swipe changes collection.
+    const onSwipeDown = (e: PointerEvent) => { swipe.current = { x: e.clientX, y: e.clientY } }
+    const onSwipeUp = (e: PointerEvent) => {
+        const s = swipe.current
+        swipe.current = null
+        if (!s) return
+        const dx = e.clientX - s.x
+        const dy = e.clientY - s.y
+        if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) * 1.4) goGroup(gi + (dy < 0 ? 1 : -1))
     }
-
-    const onWheel = (e: WheelEvent) => {
-        if (live.current.open) return
-        const now = Date.now()
-        if (now - wheelAt.current < 700) return
-        const ax = Math.abs(e.deltaX)
-        const ay = Math.abs(e.deltaY)
-        if (Math.max(ax, ay) < 24) return
-        wheelAt.current = now
-        if (ay >= ax) stepGrp(e.deltaY > 0 ? 1 : -1)
-        else stepSvc(e.deltaX > 0 ? 1 : -1)
-    }
-
-    const onKey = (e: KeyboardEvent) => {
-        const move: Record<string, () => void> = {
-            ArrowLeft: () => stepSvc(-1),
-            ArrowRight: () => stepSvc(1),
-            ArrowUp: () => stepGrp(-1),
-            ArrowDown: () => stepGrp(1),
-        }
-        const fn = move[e.key]
-        if (fn) { e.preventDefault(); fn() }
-    }
-
-    const dx = drag.on && drag.axis === 'x' ? drag.dx : 0
-    const dy = drag.on && drag.axis === 'y' ? drag.dy : 0
-
-    const shownItem = flat.find(f => f.gi === shown.g && f.si === shown.s)!
-    const p = drag.on ? Math.min(1, Math.max(Math.abs(drag.dx), Math.abs(drag.dy)) / 170) : 0
-    const top = phase(topPh)
-    const bot = phase(botPh)
 
     return (
-        <div className="cat-root">
+        <div className="cat-root" onContextMenu={e => e.preventDefault()}>
             <div className="cat-bg" aria-hidden="true">
+                {/* Warm tint keeps the iridescence inside the Christalin cream / blush / sand palette. */}
                 <Iridescence
-                    color="#ffffff" saturation={1} brightness={1.5} contrast={1}
-                    speed={0.6} scale={1} detail={8} warp={1} opacity={1}
-                    resolution={0.75} mouseReact clickSwirl
+                    color="#f0d6c0" hueShift={12} saturation={0.5} brightness={1.6} contrast={0.95}
+                    speed={0.5} scale={1} detail={8} warp={1} opacity={1}
+                    resolution={0.75} mouseReact clickSwirl={false}
                 />
-            </div>
-
-            <div
-                className="cat-stage"
-                onContextMenu={e => e.preventDefault()}
-                onPointerDown={onDown}
-                onPointerMove={onMove}
-                onPointerUp={onEnd}
-                onPointerCancel={onEnd}
-                onPointerLeave={onEnd}
-                onWheel={onWheel}
-            >
-                {flat.map(f => {
-                    const X = f.si - mem[f.gi]
-                    const Y = f.gi - gi
-                    const dxe = f.gi === gi ? dx : 0
-                    const Xf = X + dxe / 230
-                    const Yf = Y + dy / 720
-                    const ax = Math.abs(Xf)
-                    const ay = Math.abs(Yf)
-                    const opX = ax <= 1 ? 1 - ax * 0.55 : Math.max(0, 0.45 - (ax - 1) * 0.45)
-                    const opY = Math.max(0, 1 - ay * 1.1)
-                    const sc = (1 - Math.min(ax, 2) * 0.26) * (1 - Math.min(ay, 1) * 0.14)
-                    const rot = -Math.max(-1, Math.min(1, Xf)) * 38
-                    const isActive = f.gi === gi && X === 0
-                    const hold = isActive && holding
-                    const picked = !!sel[f.id]
-                    return (
-                        <div
-                            key={f.id}
-                            className="cat-slide"
-                            style={{
-                                transform: `translate3d(calc(${X} * min(62%, 46vh) + ${dxe}px), calc(${Y * 100}% + ${dy}px), 0) rotateY(${rot}deg) scale(${sc})`,
-                                transition: drag.on ? 'none' : 'transform .75s cubic-bezier(.22,.8,.2,1)',
-                            }}
-                        >
-                            <button
-                                data-ill="1"
-                                className="cat-card"
-                                aria-label={`${f.name}, ${f.price}. Press Enter for details.`}
-                                tabIndex={isActive ? 0 : -1}
-                                onClick={e => { if (e.detail === 0) openDetail() }}
-                                onKeyDown={onKey}
-                                style={{
-                                    borderColor: picked ? '#9B7B5E' : 'rgba(255,255,255,0.8)',
-                                    pointerEvents: isActive ? 'auto' : 'none',
-                                    opacity: opX * opY,
-                                    transition: drag.on ? 'none' : 'opacity .75s ease, border-color .5s ease',
-                                }}
-                            >
-                                <span className="cat-card-sheen" aria-hidden="true" />
-                                <svg className="cat-card-outline" viewBox="0 0 80 100" preserveAspectRatio="none" aria-hidden="true">
-                                    <rect
-                                        x="0.5" y="0.5" width="79" height="99" rx="13.6" fill="none" stroke="#8A6B50"
-                                        strokeWidth="1.6" strokeLinecap="round" vectorEffect="non-scaling-stroke"
-                                        pathLength={100} strokeDasharray={100}
-                                        style={{
-                                            strokeDashoffset: hold ? 0 : 100,
-                                            transition: hold ? 'stroke-dashoffset .65s linear' : 'stroke-dashoffset .25s ease',
-                                        }}
-                                    />
-                                </svg>
-                                <svg className="cat-card-icon" viewBox="0 0 120 120" aria-hidden="true">
-                                    <g
-                                        fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                                        dangerouslySetInnerHTML={{ __html: ICONS[f.icon] }}
-                                    />
-                                </svg>
-                                {picked && (
-                                    <span className="cat-card-check" aria-hidden="true">
-                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#FAF6F1" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M2.5 7.5 L5.8 10.5 L11.5 3.8" />
-                                        </svg>
-                                    </span>
-                                )}
-                            </button>
-                        </div>
-                    )
-                })}
             </div>
 
             <div className="cat-top">
                 <img className="cat-logo" src={logo} alt="Christalin Mirrors" />
-                <div
-                    className="cat-top-title"
-                    style={{ opacity: top.op * (1 - 0.6 * p), transform: `translateY(${top.y}px)`, transition: drag.on ? 'none' : top.tr }}
-                >
-                    <h1 style={{ '--len': groups[shown.g].name.length } as CSSProperties}>{groups[shown.g].name}</h1>
+                <div className="cat-top-title">
+                    <h1 key={`${aud}-${gi}`} className="cat-fade" style={{ '--len': group.name.length } as CSSProperties}>{group.name}</h1>
                 </div>
+            </div>
+
+            <div className="cat-gallery" onPointerDown={onSwipeDown} onPointerUp={onSwipeUp} onPointerCancel={() => { swipe.current = null }}>
+                <CircularGallery
+                    key={`${aud}-${gi}`}
+                    items={galleryItems}
+                    bend={2}
+                    textColor="#8A6B50"
+                    borderRadius={0.14}
+                    itemSize={1.3}
+                    itemAspect={0.8}
+                    gap={0.2}
+                    wave={0.6}
+                    fadeEdges={0.08}
+                    shadow={0.18}
+                    showTitles={false}
+                    openOnClick={false}
+                    scrollEase={0.08}
+                    onActiveChange={setIdx}
+                    onItemClick={(_, i) => openDetail(i)}
+                />
             </div>
 
             <div className="cat-bar">
@@ -337,41 +127,53 @@ export default function Catalogue() {
                 )}
             </div>
 
-            <div className="cat-groupdots" aria-hidden="true">
-                {groups.map((_, i) => (
-                    <div key={i} style={{ height: i === gi ? 24 : 6, background: i === gi ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
+            <div className="cat-groupdots" role="group" aria-label="Collections">
+                {groups.map((g, i) => (
+                    <button key={g.name} className="cat-gdot" aria-label={g.name} aria-current={i === gi ? 'true' : undefined} onClick={() => goGroup(i)}>
+                        <span style={{ height: i === gi ? 24 : 6, background: i === gi ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
+                    </button>
                 ))}
             </div>
 
             <div className="cat-bottom">
-                <div className="cat-info">
-                    <div className="cat-svcdots" aria-hidden="true">
-                        {groups[gi].items.map((_, i) => (
-                            <div key={i} style={{ width: i === mem[gi] ? 22 : 6, background: i === mem[gi] ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
-                        ))}
-                    </div>
-                    <div
-                        className="cat-info-text"
-                        style={{ opacity: bot.op * (1 - 0.6 * p), transform: `translateY(${bot.y}px)`, transition: drag.on ? 'none' : bot.tr }}
-                    >
-                        <h2 style={{ '--len': shownItem.name.length } as CSSProperties}>{shownItem.name}</h2>
-                        <div className="cat-info-meta">
-                            <span className="cat-price">{shownItem.price}</span>
+                <GlassSurface
+                    width="min(100%, 380px)" height="auto" borderRadius={30}
+                    distortionScale={-110} displace={0.4} backgroundOpacity={0.22} blur={14}
+                    className="cat-info"
+                >
+                    <div className="cat-info-inner">
+                        <div className="cat-svcdots" aria-hidden="true">
+                            {group.items.map((it, i) => (
+                                <div key={it.id} style={{ width: i === idx ? 22 : 6, background: i === idx ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
+                            ))}
+                        </div>
+                        <div key={active.id} className="cat-info-text cat-fade">
+                            <h2 style={{ '--len': active.name.length } as CSSProperties}>{active.name}</h2>
+                            <div className="cat-info-meta">
+                                <span className="cat-price">{active.price}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            <div className="cat-switch" role="group" aria-label="Choose catalogue">
-                {(['women', 'men'] as const).map(a => (
-                    <button
-                        key={a}
-                        className={a === aud ? 'cat-switch-on' : ''}
-                        aria-pressed={a === aud}
-                        onClick={() => switchAudience(a)}
-                    >
-                        {a === 'women' ? 'Women' : 'Men'}
-                    </button>
-                ))}
-            </div>
+                </GlassSurface>
+
+                <GlassSurface
+                    width={196} height={50} borderRadius={25}
+                    distortionScale={-90} displace={0.4} backgroundOpacity={0.22} blur={10}
+                    className="cat-switch-glass"
+                >
+                    <div className="cat-switch" role="group" aria-label="Choose catalogue">
+                        {(['women', 'men'] as const).map(a => (
+                            <button
+                                key={a}
+                                className={a === aud ? 'cat-switch-on' : ''}
+                                aria-pressed={a === aud}
+                                onClick={() => switchAudience(a)}
+                            >
+                                {a === 'women' ? 'Women' : 'Men'}
+                            </button>
+                        ))}
+                    </div>
+                </GlassSurface>
             </div>
 
             <button
