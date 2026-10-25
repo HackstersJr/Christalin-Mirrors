@@ -17,6 +17,10 @@ export default function Catalogue() {
     const [open, setOpen] = useState(false)
     const [zoom, setZoom] = useState(false)
     const swipe = useRef<{ x: number; y: number } | null>(null)
+    // Collection change: slide the carousel out, swap its cards, slide the new ones in.
+    const [slide, setSlide] = useState<'idle' | 'out' | 'enter'>('idle')
+    const [slideDir, setSlideDir] = useState(1)
+    const slideTimer = useRef<number[]>([])
 
     const groups = CATALOGUES[aud]
     const group = groups[gi]
@@ -24,6 +28,8 @@ export default function Catalogue() {
     const selected = ALL_ITEMS.filter(f => sel[f.id])
     const total = selected.reduce((a, f) => a + f.priceN, 0)
     const isSel = !!sel[active.id]
+
+    useEffect(() => () => slideTimer.current.forEach(t => clearTimeout(t)), [])
 
     useEffect(() => {
         const prev = document.title
@@ -33,24 +39,41 @@ export default function Catalogue() {
 
     // Regenerated only when the collection or the selection changes, so the gallery keeps its textures.
     const galleryItems = useMemo(
-        () => group.items.map(it => ({ image: imageFor(it, !!sel[it.id]), text: it.name, description: it.blurb, alt: `${it.name}, ${it.price}` })),
+        () => group.items.map(it => ({
+            image: imageFor(it),
+            text: sel[it.id] ? `✓ ${it.name}` : it.name,
+            description: it.blurb,
+            alt: `${it.name}, ${it.price}${sel[it.id] ? ', selected' : ''}`,
+        })),
         [group, sel],
     )
 
-    const goGroup = (next: number) => {
+    const transition = (dir: number, apply: () => void) => {
+        if (slide !== 'idle') return
+        slideTimer.current.forEach(t => clearTimeout(t))
+        setZoom(false)
+        setSlideDir(dir)
+        setSlide('out')
+        slideTimer.current = [
+            window.setTimeout(() => {
+                apply()
+                setIdx(0)
+                setSlide('enter')
+                // two frames so the "enter" position is painted before sliding to rest
+                requestAnimationFrame(() => requestAnimationFrame(() => setSlide('idle')))
+            }, 260),
+        ]
+    }
+
+    const goGroup = (next: number, dir = next > gi ? 1 : -1) => {
         const n = (next + groups.length) % groups.length // collections loop
         if (n === gi) return
-        setZoom(false)
-        setGi(n)
-        setIdx(0)
+        transition(dir, () => setGi(n))
     }
 
     const switchAudience = (next: Audience) => {
         if (next === aud) return
-        setZoom(false)
-        setAud(next)
-        setGi(0)
-        setIdx(0)
+        transition(1, () => { setAud(next); setGi(0) })
     }
 
     const toggleSelection = () => {
@@ -70,7 +93,7 @@ export default function Catalogue() {
         if (!s || zoom) return
         const dx = e.clientX - s.x
         const dy = e.clientY - s.y
-        if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) * 1.4) goGroup(gi + (dy < 0 ? 1 : -1))
+        if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) * 1.4) goGroup(gi + (dy < 0 ? 1 : -1), dy < 0 ? 1 : -1)
     }
 
     return (
@@ -86,15 +109,20 @@ export default function Catalogue() {
                 </div>
             </div>
 
-            <div className="cat-gallery" data-zoom={zoom ? '' : undefined} onPointerDown={onSwipeDown} onPointerUp={onSwipeUp} onPointerCancel={() => { swipe.current = null }}>
+            <div
+                className="cat-gallery"
+                data-slide={slide}
+                style={{ '--slide-dir': slideDir } as CSSProperties}
+                onPointerDown={onSwipeDown} onPointerUp={onSwipeUp} onPointerCancel={() => { swipe.current = null }}>
                 <CircularGallery
-                    key={`${aud}-${gi}`}
+                    resetKey={`${aud}-${gi}`}
                     items={galleryItems}
+                    openReserve={96}
                     bend={2}
                     textColor="#2A2320"
                     font='bold 30px "Playfair Display"'
                     borderRadius={0.14}
-                    itemSize={1.05}
+                    itemSize={0.64}
                     itemAspect={0.8}
                     gap={0.2}
                     wave={0.6}

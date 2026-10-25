@@ -32,6 +32,10 @@ export interface CircularGalleryProps {
     onActiveChange?: (index: number) => void
     /** Added for the catalogue: fires when a card is zoomed open (with its index) or closed. */
     onOpenChange?: (open: boolean, index?: number) => void
+    /** Added for the catalogue: changing it returns to the first card without remounting. */
+    resetKey?: string | number
+    /** Added for the catalogue: px kept free below an opened card. */
+    openReserve?: number
     dpr?: number
     className?: string
     style?: CSSProperties

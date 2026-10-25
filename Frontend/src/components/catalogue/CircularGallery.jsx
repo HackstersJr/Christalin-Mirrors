@@ -249,6 +249,8 @@ const CircularGallery = ({
   onItemClick,
   onActiveChange,
   onOpenChange,
+  resetKey,
+  openReserve = 0,
   dpr,
   className = '',
   style,
@@ -286,6 +288,7 @@ const CircularGallery = ({
     onItemClick,
     onActiveChange,
     onOpenChange,
+    openReserve: Math.max(0, openReserve),
     dpr
   };
   const settingsRef = useRef(settings);
@@ -491,8 +494,9 @@ const CircularGallery = ({
         const aspect = textureFor(item.image).aspect || w / h;
         const titleSpace = item.text && s.showTitles ? captionSize() * 2.4 : 0;
         const captionSpace = titleSpace + (item.description ? 52 : 0);
-        const width = Math.min(view.width - margin * 2, (view.height - margin * 2 - captionSpace) * aspect);
-        return { width, height: width / aspect, y: captionSpace / 2, titleSpace };
+        const reserve = s.openReserve;
+        const width = Math.min(view.width - margin * 2, (view.height - margin * 2 - captionSpace - reserve) * aspect);
+        return { width, height: width / aspect, y: (captionSpace + reserve) / 2, titleSpace };
       };
       const activeFrame = openFrame(list[wrap(state.active, count)]);
       const spread = Math.max(0, activeFrame.width / 2 - w / 2);
@@ -1012,6 +1016,20 @@ const CircularGallery = ({
 
     engineRef.current = {
       wake,
+      // Added for the catalogue: jump back to the first card without remounting (no intro replay).
+      reset: () => {
+        state.scroll = 0;
+        state.target = 0;
+        state.velocity = 0;
+        state.open = 0;
+        state.openTarget = 0;
+        state.focus.clear();
+        state.hover.clear();
+        state.active = 0;
+        setActive(0);
+        setOpen(false);
+        wake();
+      },
       open: index => openSlot(slotFor(index)),
       focus: index => setSlot(slotFor(index), false),
       close
@@ -1049,6 +1067,15 @@ const CircularGallery = ({
   useEffect(() => {
     engineRef.current?.wake();
   });
+
+  const firstReset = useRef(true);
+  useEffect(() => {
+    if (firstReset.current) {
+      firstReset.current = false;
+      return;
+    }
+    engineRef.current?.reset();
+  }, [resetKey]);
 
   const count = list.length;
   const current = list[active % count] || list[0];

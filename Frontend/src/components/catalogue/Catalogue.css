@@ -22,9 +22,16 @@
 /* soft light veil so text and cards stay readable over the folds */
 .silk-bg-veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.28), rgba(250,246,241,0) 70%); }
 
-.cat-gallery { touch-action: none; position: absolute; left: 0; right: 0; top: 150px; bottom: 112px; z-index: 2; transition: top .5s cubic-bezier(.22,.8,.2,1), bottom .5s cubic-bezier(.22,.8,.2,1); }
-/* a zoomed card gets the whole screen (minus the select bar) */
-.cat-gallery[data-zoom] { top: 0; bottom: 104px; }
+.cat-gallery {
+    touch-action: none; position: absolute; inset: 0; z-index: 2;
+    --slide-dir: 1;
+    transition: transform .45s cubic-bezier(.22,.8,.2,1), opacity .35s ease;
+}
+/* Collection change: current cards slide away, new ones arrive from the other side. The gallery
+   keeps its size the whole time, so its canvas never gets cleared (that caused the flashing). */
+.cat-gallery[data-slide="out"] { transform: translateY(calc(var(--slide-dir) * -56px)); opacity: 0; transition-duration: .26s, .22s; }
+.cat-gallery[data-slide="enter"] { transform: translateY(calc(var(--slide-dir) * 56px)); opacity: 0; transition: none; }
+@media (prefers-reduced-motion: reduce) { .cat-gallery { transition: opacity .2s ease; transform: none !important; } }
 .cat-top, .cat-bar, .cat-groupdots, .cat-bottom { transition: opacity .4s ease; }
 .cat-zoom .cat-top, .cat-zoom .cat-bar, .cat-zoom .cat-groupdots, .cat-zoom .cat-bottom { opacity: 0; pointer-events: none; }
 .cat-zoom .cat-bottom *, .cat-zoom .cat-groupdots * { pointer-events: none; }
