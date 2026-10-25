@@ -5,7 +5,7 @@ import type { Audience } from './data'
 import { cardArt } from './cardArt'
 import CircularGallery from './CircularGallery'
 import GlassSurface from './GlassSurface'
-import Iridescence from './Iridescence'
+import SilkBackground from './SilkBackground'
 import logo from './logo.png'
 import './Catalogue.css'
 
@@ -79,12 +79,7 @@ export default function Catalogue() {
     return (
         <div className="cat-root" onContextMenu={e => e.preventDefault()}>
             <div className="cat-bg" aria-hidden="true">
-                {/* Mapped onto the brand palette: cream, blush, sand, caramel. */}
-                <Iridescence
-                    palette={['#FBF7F2', '#F3DDCB', '#E8C4AA', '#D2AB8C']}
-                    contrast={1.1} speed={0.5} scale={1} detail={8} warp={1} opacity={1}
-                    resolution={0.75} mouseReact clickSwirl={false}
-                />
+                <SilkBackground />
             </div>
 
             <div className="cat-top">
