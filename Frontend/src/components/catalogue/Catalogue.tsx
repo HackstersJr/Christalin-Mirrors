@@ -38,8 +38,9 @@ export default function Catalogue() {
     )
 
     const goGroup = (next: number) => {
-        if (next === gi || next < 0 || next >= groups.length) return
-        setGi(next)
+        const n = (next + groups.length) % groups.length // collections loop
+        if (n === gi) return
+        setGi(n)
         setIdx(0)
     }
 
