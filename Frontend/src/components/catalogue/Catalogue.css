@@ -14,7 +14,8 @@
 .cat-root ::selection { background: transparent; }
 .cat-root img { -webkit-user-drag: none; pointer-events: none; }
 .cat-root button { font-family: inherit; cursor: pointer; }
-.cat-root button:focus-visible { outline: 2px solid #9B7B5E; outline-offset: 3px; }
+.cat-root button:focus-visible, .cat-root [tabindex="-1"]:focus-visible { outline: 2px solid #2A2320; outline-offset: 3px; }
+.cat-root h1:focus, .cat-root h3:focus { outline: none; }
 
 .cat-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .silk-bg { position: absolute; inset: 0; }
@@ -37,7 +38,7 @@
 .cat-zoom .cat-bottom *, .cat-zoom .cat-groupdots * { pointer-events: none; }
 .cat-actionbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; padding: 0 20px 26px; display: flex; flex-direction: column; align-items: center; gap: 10px; opacity: 0; pointer-events: none; transform: translateY(12px); transition: opacity .4s ease, transform .5s cubic-bezier(.22,.8,.2,1); }
 .cat-zoom .cat-actionbar { opacity: 1; pointer-events: auto; transform: none; transition-delay: .25s; }
-.cat-action-price { font-size: 20px; font-weight: 600; color: #7A5F45; }
+.cat-action-price { font-size: 20px; font-weight: 600; color: #5E4632; }
 .cat-gallery .circular-gallery-close { display: none; } /* close by tapping the card again, outside it, or Escape */
 .cat-actionbar .cat-primary { width: min(100%, 380px); }
 .cat-fade { animation: catFade .55s cubic-bezier(.22,.8,.2,1) both; }
@@ -53,7 +54,7 @@
 .cat-bar { position: absolute; top: 8px; left: 12px; right: 12px; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; }
 .cat-bar > * { pointer-events: auto; }
 .cat-switch { display: flex; width: 100%; gap: 2px; }
-.cat-switch button { flex: 1; min-height: 42px; padding: 0 12px; border: 0; border-radius: 21px; background: transparent; color: #6F5F52; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; transition: background .3s ease, color .3s ease; }
+.cat-switch button { flex: 1; min-height: 42px; padding: 0 12px; border: 0; border-radius: 21px; background: transparent; color: #5A4B40; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; transition: background .3s ease, color .3s ease; }
 .cat-switch button.cat-switch-on { background: #2A2320; color: #FAF6F1; }
 .cat-switch-glass { pointer-events: auto; }
 .cat-switch-glass .glass-surface__content { padding: 4px; }

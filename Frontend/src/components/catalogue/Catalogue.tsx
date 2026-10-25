@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, PointerEvent } from 'react'
+import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react'
 import { ALL_ITEMS, CATALOGUES, formatPrice } from './data'
 import type { Audience } from './data'
 import { imageFor } from './cardArt'
@@ -21,6 +21,12 @@ export default function Catalogue() {
     const [slide, setSlide] = useState<'idle' | 'out' | 'enter'>('idle')
     const [slideDir, setSlideDir] = useState(1)
     const slideTimer = useRef<number[]>([])
+    // Selection popup focus: move in on open, trap Tab, Escape closes, give focus back on close.
+    const sheetRef = useRef<HTMLDivElement>(null)
+    const sheetHeadingRef = useRef<HTMLHeadingElement>(null)
+    const titleRef = useRef<HTMLHeadingElement>(null)
+    const returnFocus = useRef<HTMLElement | null>(null)
+    const wasOpen = useRef(false)
 
     const groups = CATALOGUES[aud]
     const group = groups[gi]
@@ -30,6 +36,44 @@ export default function Catalogue() {
     const isSel = !!sel[active.id]
 
     useEffect(() => () => slideTimer.current.forEach(t => clearTimeout(t)), [])
+
+    useEffect(() => {
+        if (open) {
+            wasOpen.current = true
+            requestAnimationFrame(() => sheetHeadingRef.current?.focus())
+        } else if (wasOpen.current) {
+            wasOpen.current = false
+            // The pill disappears after "Clear", so fall back to the collection title.
+            const back = returnFocus.current?.isConnected ? returnFocus.current : titleRef.current
+            back?.focus()
+        }
+    }, [open])
+
+    const openSheet = () => {
+        returnFocus.current = document.activeElement as HTMLElement | null
+        setOpen(true)
+    }
+
+    const onSheetKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            e.preventDefault()
+            setOpen(false)
+            return
+        }
+        if (e.key !== 'Tab' || !sheetRef.current) return
+        const items = [...sheetRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')]
+        if (!items.length) return
+        const first = items[0]
+        const last = items[items.length - 1]
+        const here = document.activeElement
+        if (e.shiftKey && (here === first || here === sheetHeadingRef.current)) {
+            e.preventDefault()
+            last.focus()
+        } else if (!e.shiftKey && here === last) {
+            e.preventDefault()
+            first.focus()
+        }
+    }
 
     useEffect(() => {
         const prev = document.title
@@ -102,14 +146,15 @@ export default function Catalogue() {
                 <SilkBackground />
             </div>
 
-            <div className="cat-top">
+            <div inert={open} className="cat-top">
                 <img className="cat-logo" src={logo} alt="Christalin Mirrors" />
                 <div className="cat-top-title">
-                    <h1 key={`${aud}-${gi}`} className="cat-fade" style={{ '--len': group.name.length } as CSSProperties}>{group.name}</h1>
+                    <h1 ref={titleRef} tabIndex={-1} key={`${aud}-${gi}`} className="cat-fade" style={{ '--len': group.name.length } as CSSProperties}>{group.name}</h1>
                 </div>
             </div>
 
             <div
+                inert={open}
                 className="cat-gallery"
                 data-slide={slide}
                 style={{ '--slide-dir': slideDir } as CSSProperties}
@@ -134,27 +179,27 @@ export default function Catalogue() {
                 />
             </div>
 
-            <div className="cat-bar">
+            <div inert={open} className="cat-bar">
                 {selected.length > 0 && (
                     <button
                         className="cat-selpill"
                         aria-label={`${selected.length} selected. View selection.`}
-                        onClick={() => setOpen(true)}
+                        onClick={openSheet}
                     >
                         {selected.length} selected
                     </button>
                 )}
             </div>
 
-            <div className="cat-groupdots" role="group" aria-label="Collections">
+            <div inert={open} className="cat-groupdots" role="group" aria-label="Collections">
                 {groups.map((g, i) => (
                     <button key={g.name} className="cat-gdot" aria-label={g.name} aria-current={i === gi ? 'true' : undefined} onClick={() => goGroup(i)}>
-                        <span style={{ height: i === gi ? 24 : 6, background: i === gi ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
+                        <span style={{ height: i === gi ? 24 : 6, background: i === gi ? '#6B4F38' : 'rgba(90,75,64,0.75)' }} />
                     </button>
                 ))}
             </div>
 
-            <div className="cat-bottom">
+            <div inert={open} className="cat-bottom">
                 <GlassSurface
                     width={196} height={50} borderRadius={25}
                     distortionScale={-90} displace={0.4} backgroundOpacity={0.22} blur={10}
@@ -175,7 +220,7 @@ export default function Catalogue() {
                 </GlassSurface>
             </div>
 
-            <div className="cat-actionbar" aria-hidden={!zoom}>
+            <div inert={open} className="cat-actionbar" aria-hidden={!zoom}>
                 <span className="cat-action-price">{active.price}</span>
                 <button
                     className="cat-primary"
@@ -196,10 +241,13 @@ export default function Catalogue() {
             />
 
             <div
+                ref={sheetRef}
                 className="cat-sheet"
                 role="dialog"
                 aria-modal="true"
-                aria-label="Your selection"
+                aria-labelledby="cat-sheet-title"
+                aria-hidden={!open}
+                onKeyDown={onSheetKey}
                 style={{
                     opacity: open ? 1 : 0,
                     transform: `translate(-50%, -50%) ${open ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.96)'}`,
@@ -210,7 +258,7 @@ export default function Catalogue() {
                 }}
             >
                 <div className="cat-sheet-close">
-                    <button onClick={() => setOpen(false)} aria-label="Close details">
+                    <button onClick={() => setOpen(false)} aria-label="Close selection">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                             <path d="M3 3 L13 13 M13 3 L3 13" />
                         </svg>
@@ -219,8 +267,8 @@ export default function Catalogue() {
 
                 <div style={{ opacity: open ? 1 : 0, transition: open ? 'opacity .7s ease .2s' : 'opacity .2s ease' }}>
                     <div className="cat-sheet-body">
-                        <span className="cat-eyebrow">Your selection</span>
-                        <h3>{selected.length} selected</h3>
+                        <span className="cat-eyebrow" aria-hidden="true">Your selection</span>
+                        <h3 id="cat-sheet-title" ref={sheetHeadingRef} tabIndex={-1}>Your selection: {selected.length} selected</h3>
                         <div className="cat-rule" />
                         <div className="cat-rows">
                             {selected.map(r => (
