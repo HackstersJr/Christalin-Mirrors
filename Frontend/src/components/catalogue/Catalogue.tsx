@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import { ALL_ITEMS, CATALOGUES, formatPrice } from './data'
 import type { Audience } from './data'
-import { cardArt } from './cardArt'
+import { imageFor } from './cardArt'
 import CircularGallery from './CircularGallery'
 import GlassSurface from './GlassSurface'
 import SilkBackground from './SilkBackground'
@@ -15,7 +15,7 @@ export default function Catalogue() {
     const [idx, setIdx] = useState(0)
     const [sel, setSel] = useState<Record<string, true>>({})
     const [open, setOpen] = useState(false)
-    const [mode, setMode] = useState<'detail' | 'summary'>('detail')
+    const [zoom, setZoom] = useState(false)
     const swipe = useRef<{ x: number; y: number } | null>(null)
 
     const groups = CATALOGUES[aud]
@@ -33,19 +33,21 @@ export default function Catalogue() {
 
     // Regenerated only when the collection or the selection changes, so the gallery keeps its textures.
     const galleryItems = useMemo(
-        () => group.items.map(it => ({ image: cardArt(it.icon, !!sel[it.id]), text: it.name, alt: `${it.name}, ${it.price}` })),
+        () => group.items.map(it => ({ image: imageFor(it, !!sel[it.id]), text: it.name, description: it.blurb, alt: `${it.name}, ${it.price}` })),
         [group, sel],
     )
 
     const goGroup = (next: number) => {
         const n = (next + groups.length) % groups.length // collections loop
         if (n === gi) return
+        setZoom(false)
         setGi(n)
         setIdx(0)
     }
 
     const switchAudience = (next: Audience) => {
         if (next === aud) return
+        setZoom(false)
         setAud(next)
         setGi(0)
         setIdx(0)
@@ -60,25 +62,19 @@ export default function Catalogue() {
         })
     }
 
-    const openDetail = (index: number) => {
-        setIdx(index)
-        setMode('detail')
-        setOpen(true)
-    }
-
     // The gallery handles sideways dragging; a clear vertical swipe changes collection.
     const onSwipeDown = (e: PointerEvent) => { swipe.current = { x: e.clientX, y: e.clientY } }
     const onSwipeUp = (e: PointerEvent) => {
         const s = swipe.current
         swipe.current = null
-        if (!s) return
+        if (!s || zoom) return
         const dx = e.clientX - s.x
         const dy = e.clientY - s.y
         if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) * 1.4) goGroup(gi + (dy < 0 ? 1 : -1))
     }
 
     return (
-        <div className="cat-root" onContextMenu={e => e.preventDefault()}>
+        <div className={`cat-root${zoom ? ' cat-zoom' : ''}`} onContextMenu={e => e.preventDefault()}>
             <div className="cat-bg" aria-hidden="true">
                 <SilkBackground />
             </div>
@@ -90,12 +86,13 @@ export default function Catalogue() {
                 </div>
             </div>
 
-            <div className="cat-gallery" onPointerDown={onSwipeDown} onPointerUp={onSwipeUp} onPointerCancel={() => { swipe.current = null }}>
+            <div className="cat-gallery" data-zoom={zoom ? '' : undefined} onPointerDown={onSwipeDown} onPointerUp={onSwipeUp} onPointerCancel={() => { swipe.current = null }}>
                 <CircularGallery
                     key={`${aud}-${gi}`}
                     items={galleryItems}
                     bend={2}
-                    textColor="#8A6B50"
+                    textColor="#2A2320"
+                    font='bold 30px "Playfair Display"'
                     borderRadius={0.14}
                     itemSize={1.3}
                     itemAspect={0.8}
@@ -103,11 +100,9 @@ export default function Catalogue() {
                     wave={0.6}
                     fadeEdges={0.08}
                     shadow={0.18}
-                    showTitles={false}
-                    openOnClick={false}
                     scrollEase={0.08}
                     onActiveChange={setIdx}
-                    onItemClick={(_, i) => openDetail(i)}
+                    onOpenChange={(o, i) => { setZoom(o); if (i !== undefined) setIdx(i) }}
                 />
             </div>
 
@@ -116,7 +111,7 @@ export default function Catalogue() {
                     <button
                         className="cat-selpill"
                         aria-label={`${selected.length} selected. View selection.`}
-                        onClick={() => { setMode('summary'); setOpen(true) }}
+                        onClick={() => setOpen(true)}
                     >
                         {selected.length} selected
                     </button>
@@ -166,6 +161,18 @@ export default function Catalogue() {
                 </GlassSurface>
             </div>
 
+            <div className="cat-actionbar" aria-hidden={!zoom}>
+                <span className="cat-action-price">{active.price}</span>
+                <button
+                    className="cat-primary"
+                    tabIndex={zoom ? 0 : -1}
+                    onClick={toggleSelection}
+                    style={{ background: isSel ? 'transparent' : '#2A2320', color: isSel ? '#2A2320' : '#FAF6F1' }}
+                >
+                    {isSel ? 'Remove from selection' : 'Select this service'}
+                </button>
+            </div>
+
             <button
                 className="cat-backdrop"
                 aria-label="Close"
@@ -178,7 +185,7 @@ export default function Catalogue() {
                 className="cat-sheet"
                 role="dialog"
                 aria-modal="true"
-                aria-label={mode === 'detail' ? active.name : 'Your selection'}
+                aria-label="Your selection"
                 style={{
                     opacity: open ? 1 : 0,
                     transform: `translate(-50%, -50%) ${open ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.96)'}`,
@@ -197,47 +204,28 @@ export default function Catalogue() {
                 </div>
 
                 <div style={{ opacity: open ? 1 : 0, transition: open ? 'opacity .7s ease .2s' : 'opacity .2s ease' }}>
-                    {mode === 'detail' ? (
-                        <div className="cat-sheet-body">
-                            <span className="cat-eyebrow">{active.group}</span>
-                            <h3>{active.name}</h3>
-                            <div className="cat-rule" />
-                            {active.sub && <p className="cat-desc">{active.sub}</p>}
-                            <div className="cat-facts">
-                                <div><span className="cat-eyebrow-sm">Price</span><span className="cat-fact cat-price">{active.price}</span></div>
-                            </div>
-                            <button
-                                className="cat-primary"
-                                onClick={toggleSelection}
-                                style={{ background: isSel ? 'transparent' : '#2A2320', color: isSel ? '#2A2320' : '#FAF6F1' }}
-                            >
-                                {isSel ? 'Remove from selection' : 'Select this service'}
-                            </button>
+                    <div className="cat-sheet-body">
+                        <span className="cat-eyebrow">Your selection</span>
+                        <h3>{selected.length} selected</h3>
+                        <div className="cat-rule" />
+                        <div className="cat-rows">
+                            {selected.map(r => (
+                                <div key={r.id} className="cat-row">
+                                    <div><span className="cat-row-name">{r.name}</span><span className="cat-row-group">{r.group}</span></div>
+                                    <span className="cat-row-price">{r.price}</span>
+                                </div>
+                            ))}
                         </div>
-                    ) : (
-                        <div className="cat-sheet-body">
-                            <span className="cat-eyebrow">Your selection</span>
-                            <h3>{selected.length} selected</h3>
-                            <div className="cat-rule" />
-                            <div className="cat-rows">
-                                {selected.map(r => (
-                                    <div key={r.id} className="cat-row">
-                                        <div><span className="cat-row-name">{r.name}</span><span className="cat-row-group">{r.group}</span></div>
-                                        <span className="cat-row-price">{r.price}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="cat-rule" />
-                            <div className="cat-total">
-                                <span className="cat-eyebrow-sm">Estimated total</span>
-                                <span className="cat-total-value">{formatPrice(total)}</span>
-                            </div>
-                            <div className="cat-actions">
-                                <button className="cat-secondary" onClick={() => { setSel({}); setOpen(false) }}>Clear</button>
-                                <button className="cat-primary cat-grow" onClick={() => setOpen(false)}>Continue browsing</button>
-                            </div>
+                        <div className="cat-rule" />
+                        <div className="cat-total">
+                            <span className="cat-eyebrow-sm">Estimated total</span>
+                            <span className="cat-total-value">{formatPrice(total)}</span>
                         </div>
-                    )}
+                        <div className="cat-actions">
+                            <button className="cat-secondary" onClick={() => { setSel({}); setOpen(false) }}>Clear</button>
+                            <button className="cat-primary cat-grow" onClick={() => setOpen(false)}>Continue browsing</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

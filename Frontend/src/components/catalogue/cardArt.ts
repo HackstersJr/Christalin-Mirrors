@@ -1,5 +1,18 @@
 import { ICONS } from './icons'
 
+// Drop photos named after a service's `slug` (see Catalogs/Catalogue_Image_Shot_List.md) into
+// src/assets/catalogue/ and they replace the generated card automatically.
+const photos = import.meta.glob('../../assets/catalogue/*.{jpg,jpeg,png,webp}', {
+    eager: true, query: '?url', import: 'default',
+}) as Record<string, string>
+const photoBySlug = new Map(
+    Object.entries(photos).map(([path, url]) => [path.split('/').pop()!.replace(/\.[^.]+$/, ''), url]),
+)
+
+/** The photo for a service if one has been added, otherwise the generated card. */
+export const imageFor = (item: { slug: string; icon: string }, selected: boolean) =>
+    photoBySlug.get(item.slug) ?? cardArt(item.icon, selected)
+
 const cache = new Map<string, string>()
 
 /**

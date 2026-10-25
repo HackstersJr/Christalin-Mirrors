@@ -1,5 +1,7 @@
 // Self-contained catalogue data, taken from Catalogs/Christalin_Mirrors_Services_{women,men}.md.
 // Intentionally not linked to the admin services store, bookings or the landing-page services list.
+import { blurbFor, slugFor } from './meta'
+
 export type Audience = 'women' | 'men'
 
 export interface CatalogueItem {
@@ -13,6 +15,10 @@ export interface CatalogueItem {
     icon: string
     priceN: number
     price: string
+    /** Short, catchy line shown when the card is zoomed. */
+    blurb: string
+    /** Photo file name (no extension) looked up in src/assets/catalogue/. */
+    slug: string
 }
 
 export interface CatalogueGroup {
@@ -217,6 +223,7 @@ const build = (aud: Audience, raw: typeof WOMEN): CatalogueGroup[] =>
         items: g.items.map((it, si) => ({
             id: `${aud}-${gi}-${si}`, gi, si, group: g.name, name: it[0], sub: it[3], icon: it[1],
             priceN: it[2], price: formatPrice(it[2], it[4]),
+            blurb: blurbFor(aud, g.name, it[0]), slug: slugFor(aud, g.name, it[0]),
         })),
     }))
 

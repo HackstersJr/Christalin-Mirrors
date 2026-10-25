@@ -22,7 +22,16 @@
 /* soft light veil so text and cards stay readable over the folds */
 .silk-bg-veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.28), rgba(250,246,241,0) 70%); }
 
-.cat-gallery { touch-action: none; position: absolute; left: 0; right: 0; top: 150px; bottom: 210px; z-index: 2; }
+.cat-gallery { touch-action: none; position: absolute; left: 0; right: 0; top: 150px; bottom: 210px; z-index: 2; transition: top .5s cubic-bezier(.22,.8,.2,1), bottom .5s cubic-bezier(.22,.8,.2,1); }
+/* a zoomed card gets the whole screen (minus the select bar) */
+.cat-gallery[data-zoom] { top: 0; bottom: 104px; }
+.cat-top, .cat-bar, .cat-groupdots, .cat-bottom { transition: opacity .4s ease; }
+.cat-zoom .cat-top, .cat-zoom .cat-bar, .cat-zoom .cat-groupdots, .cat-zoom .cat-bottom { opacity: 0; pointer-events: none; }
+.cat-zoom .cat-bottom *, .cat-zoom .cat-groupdots * { pointer-events: none; }
+.cat-actionbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; padding: 0 20px 26px; display: flex; flex-direction: column; align-items: center; gap: 10px; opacity: 0; pointer-events: none; transform: translateY(12px); transition: opacity .4s ease, transform .5s cubic-bezier(.22,.8,.2,1); }
+.cat-zoom .cat-actionbar { opacity: 1; pointer-events: auto; transform: none; transition-delay: .25s; }
+.cat-action-price { font-size: 20px; font-weight: 600; color: #7A5F45; }
+.cat-actionbar .cat-primary { width: min(100%, 380px); }
 .cat-fade { animation: catFade .55s cubic-bezier(.22,.8,.2,1) both; }
 @keyframes catFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .cat-fade { animation: none; } }

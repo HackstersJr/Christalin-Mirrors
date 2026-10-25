@@ -248,6 +248,7 @@ const CircularGallery = ({
   intro = true,
   onItemClick,
   onActiveChange,
+  onOpenChange,
   dpr,
   className = '',
   style,
@@ -284,6 +285,7 @@ const CircularGallery = ({
     intro,
     onItemClick,
     onActiveChange,
+    onOpenChange,
     dpr
   };
   const settingsRef = useRef(settings);
@@ -669,12 +671,14 @@ const CircularGallery = ({
       setSlot(slot);
       state.openTarget = 1;
       setOpen(true);
+      settingsRef.current.onOpenChange?.(true, wrap(slot, settingsRef.current.items.length));
       wake();
     };
 
     const close = () => {
       state.openTarget = 0;
       setOpen(false);
+      settingsRef.current.onOpenChange?.(false);
       wake();
     };
 

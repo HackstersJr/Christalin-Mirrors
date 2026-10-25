@@ -30,6 +30,8 @@ export interface CircularGalleryProps {
     intro?: boolean
     onItemClick?: (item: GalleryItem, index: number) => void
     onActiveChange?: (index: number) => void
+    /** Added for the catalogue: fires when a card is zoomed open (with its index) or closed. */
+    onOpenChange?: (open: boolean, index?: number) => void
     dpr?: number
     className?: string
     style?: CSSProperties
