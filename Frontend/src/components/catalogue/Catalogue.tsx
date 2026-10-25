@@ -94,7 +94,7 @@ export default function Catalogue() {
                     textColor="#2A2320"
                     font='bold 30px "Playfair Display"'
                     borderRadius={0.14}
-                    itemSize={1.3}
+                    itemSize={1.05}
                     itemAspect={0.8}
                     gap={0.2}
                     wave={0.6}
@@ -127,20 +127,6 @@ export default function Catalogue() {
             </div>
 
             <div className="cat-bottom">
-                <div className="cat-info">
-                    <div className="cat-svcdots" aria-hidden="true">
-                        {group.items.map((it, i) => (
-                            <div key={it.id} style={{ width: i === idx ? 22 : 6, background: i === idx ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
-                        ))}
-                    </div>
-                    <div key={active.id} className="cat-info-text cat-fade">
-                        <h2 style={{ '--len': active.name.length } as CSSProperties}>{active.name}</h2>
-                        <div className="cat-info-meta">
-                            <span className="cat-price">{active.price}</span>
-                        </div>
-                    </div>
-                </div>
-
                 <GlassSurface
                     width={196} height={50} borderRadius={25}
                     distortionScale={-90} displace={0.4} backgroundOpacity={0.22} blur={10}
