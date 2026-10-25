@@ -6,6 +6,13 @@
     -webkit-user-select: none; user-select: none;
     min-height: 560px;
 }
+.cat-root, .cat-root * {
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.cat-root ::selection { background: transparent; }
+.cat-root img { -webkit-user-drag: none; pointer-events: none; }
 .cat-root button { font-family: inherit; cursor: pointer; }
 .cat-root button:focus-visible { outline: 2px solid #9B7B5E; outline-offset: 3px; }
 
@@ -26,7 +33,7 @@
 .cat-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; perspective: 1100px; }
 .cat-slide { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .cat-card {
-    position: relative; width: min(60%, 34vh); aspect-ratio: 4 / 5;
+    position: relative; width: min(60%, 31vh); aspect-ratio: 4 / 5;
     border-radius: 17% / 13.6%; border: 1px solid rgba(255,255,255,0.8);
     background: linear-gradient(160deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.18) 100%);
     -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%);
@@ -38,13 +45,23 @@
 .cat-card-icon { position: relative; width: 64%; height: 64%; pointer-events: none; }
 .cat-card-check { position: absolute; top: 7%; right: 8%; width: 30px; height: 30px; border-radius: 50%; background: #2A2320; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 
-.cat-top { position: absolute; top: 0; left: 0; right: 0; padding: 14px 24px 0; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 5; }
-.cat-logo { height: 62px; width: auto; margin: 8px 0 0; }
-.cat-top-title { display: flex; flex-direction: column; align-items: center; margin-top: 28px; }
-.cat-top-title h1 { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: clamp(52px, 16vw, 76px); line-height: 1.05; text-align: center; color: #2A2320; }
+.cat-top { position: absolute; top: 0; left: 0; right: 0; padding: 52px 24px 0; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 5; }
+.cat-logo { height: 54px; width: auto; margin: 0; }
+.cat-top-title { display: flex; flex-direction: column; align-items: center; margin-top: 12px; max-width: 100%; }
+/* --len is the character count; the size shrinks with it so a title always stays on one line. */
+.cat-top-title h1 { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: clamp(30px, calc(150vw / var(--len, 8)), 76px); line-height: 1.05; text-align: center; color: #2A2320; white-space: nowrap; }
 
+.cat-bar { position: absolute; top: 8px; left: 12px; right: 12px; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; }
+.cat-bar > * { pointer-events: auto; }
+.cat-switch {
+    display: flex; padding: 3px; border-radius: 22px; border: 1px solid rgba(255,255,255,0.8); background: rgba(255,255,255,0.45);
+    -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 10px 24px rgba(70,50,35,0.12);
+}
+.cat-switch button { min-height: 40px; padding: 0 14px; border: 0; border-radius: 20px; background: transparent; color: #6F5F52; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; transition: background .3s ease, color .3s ease; }
+.cat-switch button.cat-switch-on { background: #2A2320; color: #FAF6F1; }
 .cat-selpill {
-    position: absolute; top: 12px; right: 12px; z-index: 6; min-height: 44px; padding: 0 16px; border-radius: 22px;
+    margin-left: auto; min-height: 44px; padding: 0 16px; border-radius: 22px;
     border: 1px solid rgba(255,255,255,0.8); background: rgba(255,255,255,0.45);
     -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 10px 24px rgba(70,50,35,0.12);
@@ -66,7 +83,7 @@
 .cat-svcdots { display: flex; align-items: center; gap: 8px; height: 6px; }
 .cat-svcdots div { height: 3px; border-radius: 2px; transition: width .5s ease, background .5s ease; }
 .cat-info-text { display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 74px; }
-.cat-info-text h2 { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: clamp(34px, 10vw, 44px); line-height: 1.15; text-align: center; color: #2A2320; }
+.cat-info-text h2 { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: clamp(22px, calc(min(100vw - 88px, 292px) * 1.7 / var(--len, 12)), 44px); line-height: 1.15; text-align: center; color: #2A2320; text-wrap: balance; }
 .cat-info-meta { display: flex; align-items: baseline; gap: 10px; }
 .cat-price { font-size: 18px; font-weight: 600; color: #7A5F45; }
 .cat-time { font-size: 13px; color: #6F5F52; }

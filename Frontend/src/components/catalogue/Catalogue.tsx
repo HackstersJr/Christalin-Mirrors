@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent, WheelEvent } from 'react'
-import { FLAT, GROUPS, formatPrice } from './data'
+import type { CSSProperties, KeyboardEvent, PointerEvent, WheelEvent } from 'react'
+import { ALL_ITEMS, CATALOGUES, FLAT, formatPrice } from './data'
+import type { Audience } from './data'
 import { ICONS } from './icons'
 import logo from './logo.png'
 import './Catalogue.css'
@@ -28,8 +29,9 @@ function phase(ph: Phase) {
 }
 
 export default function Catalogue() {
+    const [aud, setAud] = useState<Audience>('women')
     const [gi, setGi] = useState(0)
-    const [mem, setMem] = useState<number[]>(() => GROUPS.map(() => 0))
+    const [mem, setMem] = useState<number[]>(() => CATALOGUES.women.map(() => 0))
     const [shown, setShown] = useState({ g: 0, s: 0 })
     const [topPh, setTopPh] = useState<Phase>('in')
     const [botPh, setBotPh] = useState<Phase>('in')
@@ -43,8 +45,10 @@ export default function Catalogue() {
     const gesture = useRef<Gesture | null>(null)
     const timers = useRef<{ t1?: number; t2?: number; h1?: number; h2?: number }>({})
     const wheelAt = useRef(0)
-    const live = useRef({ gi, mem, open })
-    live.current = { gi, mem, open }
+    const groups = CATALOGUES[aud]
+    const flat = FLAT[aud]
+    const live = useRef({ aud, groups, gi, mem, open })
+    live.current = { aud, groups, gi, mem, open }
 
     useEffect(() => {
         const prev = document.title
@@ -55,8 +59,8 @@ export default function Catalogue() {
         }
     }, [])
 
-    const active = FLAT.find(f => f.gi === gi && f.si === mem[gi])!
-    const selected = FLAT.filter(f => sel[f.id])
+    const active = flat.find(f => f.gi === gi && f.si === mem[gi])!
+    const selected = ALL_ITEMS.filter(f => sel[f.id])
     const total = selected.reduce((a, f) => a + f.priceN, 0)
     const isSel = !!sel[active.id]
 
@@ -86,25 +90,37 @@ export default function Catalogue() {
 
     const stepSvc = (dir: number) => {
         const { gi: g0, mem: m0 } = live.current
-        const n = GROUPS[g0].items.length
+        const n = live.current.groups[g0].items.length
         go(g0, Math.max(0, Math.min(n - 1, m0[g0] + dir)))
     }
 
     const stepGrp = (dir: number) => {
         const { gi: g0, mem: m0 } = live.current
-        const g2 = Math.max(0, Math.min(GROUPS.length - 1, g0 + dir))
+        const g2 = Math.max(0, Math.min(live.current.groups.length - 1, g0 + dir))
         go(g2, m0[g2])
     }
 
     const toggleSelection = () => {
         const { gi: g0, mem: m0 } = live.current
-        const id = `${g0}-${m0[g0]}`
+        const id = `${live.current.aud}-${g0}-${m0[g0]}`
         setSel(s => {
             const n = { ...s }
             if (n[id]) delete n[id]
             else n[id] = true
             return n
         })
+    }
+
+    const switchAudience = (next: Audience) => {
+        if (next === aud) return
+        clearTimeout(timers.current.t1)
+        clearTimeout(timers.current.t2)
+        setAud(next)
+        setGi(0)
+        setMem(CATALOGUES[next].map(() => 0))
+        setShown({ g: 0, s: 0 })
+        setTopPh('in')
+        setBotPh('in')
     }
 
     const openDetail = () => { setMode('detail'); setOpen(true); setHintGone(true) }
@@ -155,9 +171,9 @@ export default function Catalogue() {
         if (now > g.lt) g.v = (pos - last) / (now - g.lt)
         g.lx = e.clientX; g.ly = e.clientY; g.lt = now
         if (g.axis === 'x') {
-            const n = GROUPS[g0].items.length
+            const n = live.current.groups[g0].items.length
             if ((d > 0 && m0[g0] === 0) || (d < 0 && m0[g0] === n - 1)) d *= 0.3
-        } else if ((d > 0 && g0 === 0) || (d < 0 && g0 === GROUPS.length - 1)) {
+        } else if ((d > 0 && g0 === 0) || (d < 0 && g0 === live.current.groups.length - 1)) {
             d *= 0.3
         }
         setDrag({ on: true, axis: g.axis, dx: g.axis === 'x' ? d : 0, dy: g.axis === 'y' ? d : 0 })
@@ -211,7 +227,7 @@ export default function Catalogue() {
     const dx = drag.on && drag.axis === 'x' ? drag.dx : 0
     const dy = drag.on && drag.axis === 'y' ? drag.dy : 0
 
-    const shownItem = FLAT.find(f => f.gi === shown.g && f.si === shown.s)!
+    const shownItem = flat.find(f => f.gi === shown.g && f.si === shown.s)!
     const p = drag.on ? Math.min(1, Math.max(Math.abs(drag.dx), Math.abs(drag.dy)) / 170) : 0
     const top = phase(topPh)
     const bot = phase(botPh)
@@ -231,6 +247,7 @@ export default function Catalogue() {
 
             <div
                 className="cat-stage"
+                onContextMenu={e => e.preventDefault()}
                 onPointerDown={onDown}
                 onPointerMove={onMove}
                 onPointerUp={onEnd}
@@ -238,7 +255,7 @@ export default function Catalogue() {
                 onPointerLeave={onEnd}
                 onWheel={onWheel}
             >
-                {FLAT.map(f => {
+                {flat.map(f => {
                     const X = f.si - mem[f.gi]
                     const Y = f.gi - gi
                     const dxe = f.gi === gi ? dx : 0
@@ -313,22 +330,36 @@ export default function Catalogue() {
                     className="cat-top-title"
                     style={{ opacity: top.op * (1 - 0.6 * p), transform: `translateY(${top.y}px)`, transition: drag.on ? 'none' : top.tr }}
                 >
-                    <h1>{GROUPS[shown.g].name}</h1>
+                    <h1 style={{ '--len': groups[shown.g].name.length } as CSSProperties}>{groups[shown.g].name}</h1>
                 </div>
             </div>
 
-            {selected.length > 0 && (
-                <button
-                    className="cat-selpill"
-                    aria-label={`${selected.length} selected. View selection.`}
-                    onClick={() => { setMode('summary'); setOpen(true) }}
-                >
-                    {selected.length} selected
-                </button>
-            )}
+            <div className="cat-bar">
+                <div className="cat-switch" role="group" aria-label="Choose catalogue">
+                    {(['women', 'men'] as const).map(a => (
+                        <button
+                            key={a}
+                            className={a === aud ? 'cat-switch-on' : ''}
+                            aria-pressed={a === aud}
+                            onClick={() => switchAudience(a)}
+                        >
+                            {a === 'women' ? 'Women' : 'Men'}
+                        </button>
+                    ))}
+                </div>
+                {selected.length > 0 && (
+                    <button
+                        className="cat-selpill"
+                        aria-label={`${selected.length} selected. View selection.`}
+                        onClick={() => { setMode('summary'); setOpen(true) }}
+                    >
+                        {selected.length} selected
+                    </button>
+                )}
+            </div>
 
             <div className="cat-groupdots" aria-hidden="true">
-                {GROUPS.map((_, i) => (
+                {groups.map((_, i) => (
                     <div key={i} style={{ height: i === gi ? 24 : 6, background: i === gi ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
                 ))}
             </div>
@@ -336,7 +367,7 @@ export default function Catalogue() {
             <div className="cat-bottom">
                 <div className="cat-info">
                     <div className="cat-svcdots" aria-hidden="true">
-                        {GROUPS[gi].items.map((_, i) => (
+                        {groups[gi].items.map((_, i) => (
                             <div key={i} style={{ width: i === mem[gi] ? 22 : 6, background: i === mem[gi] ? '#9B7B5E' : 'rgba(111,95,82,0.4)' }} />
                         ))}
                     </div>
@@ -344,10 +375,9 @@ export default function Catalogue() {
                         className="cat-info-text"
                         style={{ opacity: bot.op * (1 - 0.6 * p), transform: `translateY(${bot.y}px)`, transition: drag.on ? 'none' : bot.tr }}
                     >
-                        <h2>{shownItem.name}</h2>
+                        <h2 style={{ '--len': shownItem.name.length } as CSSProperties}>{shownItem.name}</h2>
                         <div className="cat-info-meta">
                             <span className="cat-price">{shownItem.price}</span>
-                            <span className="cat-time">{shownItem.time}</span>
                         </div>
                     </div>
                 </div>
@@ -394,10 +424,9 @@ export default function Catalogue() {
                             <span className="cat-eyebrow">{active.group}</span>
                             <h3>{active.name}</h3>
                             <div className="cat-rule" />
-                            <p className="cat-desc">{active.desc}</p>
+                            {active.sub && <p className="cat-desc">{active.sub}</p>}
                             <div className="cat-facts">
                                 <div><span className="cat-eyebrow-sm">Price</span><span className="cat-fact cat-price">{active.price}</span></div>
-                                <div><span className="cat-eyebrow-sm">Time</span><span className="cat-fact">{active.time}</span></div>
                             </div>
                             <button
                                 className="cat-primary"
