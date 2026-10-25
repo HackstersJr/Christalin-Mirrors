@@ -3,6 +3,7 @@ import type { CSSProperties, KeyboardEvent, PointerEvent, WheelEvent } from 'rea
 import { ALL_ITEMS, CATALOGUES, FLAT, formatPrice } from './data'
 import type { Audience } from './data'
 import { ICONS } from './icons'
+import Iridescence from './Iridescence'
 import logo from './logo.png'
 import './Catalogue.css'
 
@@ -17,10 +18,6 @@ interface Gesture {
     lx: number; ly: number; lt: number
     v: number
 }
-
-const BG_A = [[0, 0], [30, 18], [12, 46], [-8, 10], [26, -4], [6, 30]]
-const BG_B = [[0, 0], [-24, -20], [-6, 18], [-30, -34], [-12, 24], [-26, -8]]
-const BG_C = [[0, 0], [20, -24], [36, -8], [8, -40], [-14, -18], [30, -30]]
 
 function phase(ph: Phase) {
     if (ph === 'out') return { op: 0, y: -6, tr: 'opacity .22s ease, transform .22s ease' }
@@ -229,17 +226,14 @@ export default function Catalogue() {
     const top = phase(topPh)
     const bot = phase(botPh)
 
-    const bg = (arr: number[][]) => {
-        const v = arr[gi % 6]
-        return `translate(${v[0]}%, ${v[1]}%)`
-    }
-
     return (
         <div className="cat-root">
             <div className="cat-bg" aria-hidden="true">
-                <div className="cat-bg-a" style={{ transform: bg(BG_A) }}><div className="cat-blob cat-blob-a" /></div>
-                <div className="cat-bg-b" style={{ transform: bg(BG_B) }}><div className="cat-blob cat-blob-b" /></div>
-                <div className="cat-bg-c" style={{ transform: bg(BG_C) }}><div className="cat-blob cat-blob-c" /></div>
+                <Iridescence
+                    color="#f0d3bd" saturation={0.55} brightness={1.45} contrast={0.9}
+                    speed={0.35} scale={1.3} detail={6} warp={0.8} opacity={0.6}
+                    resolution={0.6} mouseReact={false} clickSwirl={false}
+                />
             </div>
 
             <div

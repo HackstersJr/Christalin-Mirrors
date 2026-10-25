@@ -17,18 +17,6 @@
 .cat-root button:focus-visible { outline: 2px solid #9B7B5E; outline-offset: 3px; }
 
 .cat-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.cat-bg > div { position: absolute; aspect-ratio: 1; transition: transform 1.8s cubic-bezier(.22,.8,.2,1); }
-.cat-bg-a { left: -25%; top: -12%; width: 85%; }
-.cat-bg-b { right: -30%; top: 28%; width: 90%; }
-.cat-bg-c { left: -10%; bottom: -22%; width: 95%; }
-.cat-blob { width: 100%; height: 100%; border-radius: 50%; }
-.cat-blob-a { background: radial-gradient(circle, rgba(232,196,164,0.85) 0%, rgba(232,196,164,0) 68%); animation: catDriftA 17s ease-in-out infinite alternate; }
-.cat-blob-b { background: radial-gradient(circle, rgba(222,176,166,0.7) 0%, rgba(222,176,166,0) 66%); animation: catDriftB 21s ease-in-out infinite alternate; }
-.cat-blob-c { background: radial-gradient(circle, rgba(184,150,112,0.5) 0%, rgba(184,150,112,0) 66%); animation: catDriftC 19s ease-in-out infinite alternate; }
-@keyframes catDriftA { 0% { transform: translate(0,0) scale(1) } 100% { transform: translate(14%,10%) scale(1.18) } }
-@keyframes catDriftB { 0% { transform: translate(0,0) scale(1.1) } 100% { transform: translate(-12%,-14%) scale(0.92) } }
-@keyframes catDriftC { 0% { transform: translate(0,0) scale(1) } 100% { transform: translate(10%,-12%) scale(1.22) } }
-@media (prefers-reduced-motion: reduce) { .cat-blob { animation: none !important; } }
 
 .cat-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; perspective: 1100px; }
 .cat-slide { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
