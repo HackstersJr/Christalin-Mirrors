@@ -40,7 +40,6 @@ export default function Catalogue() {
     const [sel, setSel] = useState<Record<string, true>>({})
     const [open, setOpen] = useState(false)
     const [mode, setMode] = useState<'detail' | 'summary'>('detail')
-    const [hintGone, setHintGone] = useState(false)
 
     const gesture = useRef<Gesture | null>(null)
     const timers = useRef<{ t1?: number; t2?: number; h1?: number; h2?: number }>({})
@@ -76,7 +75,6 @@ export default function Catalogue() {
         setMem(next)
         setBotPh('out')
         if (gChanged) setTopPh('out')
-        setHintGone(true)
         timers.current.t1 = window.setTimeout(() => {
             setShown({ g: gi2, s: si2 })
             setBotPh('pre')
@@ -123,7 +121,7 @@ export default function Catalogue() {
         setBotPh('in')
     }
 
-    const openDetail = () => { setMode('detail'); setOpen(true); setHintGone(true) }
+    const openDetail = () => { setMode('detail'); setOpen(true) }
 
     const onDown = (e: PointerEvent) => {
         if (live.current.open) return
@@ -161,7 +159,6 @@ export default function Catalogue() {
             clearTimeout(timers.current.h1)
             clearTimeout(timers.current.h2)
             setHolding(false)
-            setHintGone(true)
         }
         const { gi: g0, mem: m0 } = live.current
         let d = g.axis === 'x' ? dx : dy
@@ -335,18 +332,6 @@ export default function Catalogue() {
             </div>
 
             <div className="cat-bar">
-                <div className="cat-switch" role="group" aria-label="Choose catalogue">
-                    {(['women', 'men'] as const).map(a => (
-                        <button
-                            key={a}
-                            className={a === aud ? 'cat-switch-on' : ''}
-                            aria-pressed={a === aud}
-                            onClick={() => switchAudience(a)}
-                        >
-                            {a === 'women' ? 'Women' : 'Men'}
-                        </button>
-                    ))}
-                </div>
                 {selected.length > 0 && (
                     <button
                         className="cat-selpill"
@@ -381,11 +366,18 @@ export default function Catalogue() {
                         </div>
                     </div>
                 </div>
-                <p className="cat-hint">
-                    {!hintGone
-                        ? 'Swipe up or down for collections, sideways for services'
-                        : isSel ? 'Selected. Hold to remove' : 'Tap for details. Hold to select'}
-                </p>
+            <div className="cat-switch" role="group" aria-label="Choose catalogue">
+                {(['women', 'men'] as const).map(a => (
+                    <button
+                        key={a}
+                        className={a === aud ? 'cat-switch-on' : ''}
+                        aria-pressed={a === aud}
+                        onClick={() => switchAudience(a)}
+                    >
+                        {a === 'women' ? 'Women' : 'Men'}
+                    </button>
+                ))}
+            </div>
             </div>
 
             <button
