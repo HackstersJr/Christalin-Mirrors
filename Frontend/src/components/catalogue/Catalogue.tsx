@@ -230,9 +230,9 @@ export default function Catalogue() {
         <div className="cat-root">
             <div className="cat-bg" aria-hidden="true">
                 <Iridescence
-                    color="#f0d3bd" saturation={0.55} brightness={1.45} contrast={0.9}
-                    speed={0.35} scale={1.3} detail={6} warp={0.8} opacity={0.6}
-                    resolution={0.6} mouseReact={false} clickSwirl={false}
+                    color="#ffffff" saturation={1} brightness={1.5} contrast={1}
+                    speed={0.6} scale={1} detail={8} warp={1} opacity={1}
+                    resolution={0.75} mouseReact clickSwirl
                 />
             </div>
 
